@@ -1,0 +1,16 @@
+[package]
+name = "stargazer"
+version = "0.1.0"
+edition = "2024"
+description = "A UCI chess engine"
+publish = false
+
+[dependencies]
+
+# Chess engines live and die by raw speed, so release builds get every
+# optimization we can reasonably turn on.
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
