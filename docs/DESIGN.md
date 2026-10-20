@@ -12,7 +12,7 @@ Code for a component isn't written until its section is Decided.
 | Protocol | UCI | Standard for GUIs, testing tools and Lichess bots. |
 | Origin | Written from scratch | The point is to build it, not wrap Stockfish. |
 | Name | Stargazer | Named after an astronomer-diviner D&D character. |
-| Goal | A Lichess rating around 1800, with code Charlie understands | Reachable with a classic search and hand-written evaluation, no neural network. Understanding comes first, strength second. |
+| Goal | A Lichess rating around 1800, with code Charlie understands | Reachable with a classic search and hand-written evaluation, no neural network. Understanding comes first, strength second. 2000 is a possible later goal: more search and evaluation work, no change of design. |
 | Targets | Native (GUIs, Lichess bot) and the browser (WebAssembly) | A free "play it here" tile on the portfolio site. See "Runs in a browser" below. |
 | Board | Hybrid: bitboards plus a 64-square board | See section 1. |
 | Repo | Private for now | Licence decided before it goes public (section 7). |
