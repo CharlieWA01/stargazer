@@ -14,3 +14,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-20 | [#6](https://github.com/CharlieWA01/stargazer/pull/6) | Complete the rules of chess and prove them with perft (Milestone 1 done) |
 | 2026-10-20 | [#7](https://github.com/CharlieWA01/stargazer/pull/7) | Milestone 2 decisions and the evaluation function |
 | 2026-10-20 | [#8](https://github.com/CharlieWA01/stargazer/pull/8) | Search: alpha-beta, iterative deepening, quiescence and the draw rules |
+| 2026-10-20 | [#9](https://github.com/CharlieWA01/stargazer/pull/9) | Clocks and stop: the search runs on its own thread |
