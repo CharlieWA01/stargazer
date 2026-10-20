@@ -6,12 +6,21 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 | # | Milestone | Done when |
 |---|---|---|
 | 0 | **Skeleton** | Builds, passes CI, answers the UCI handshake. *(done)* |
-| 1 | **Foundation** | Board representation and legal move generation pass the perft suite. *(current; board design decided)* |
+| 1 | **Foundation** | Board representation and legal move generation pass the perft suite. *(current; board and move generation designs decided)* |
 | 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. |
 | 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. |
 | 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. |
 | 5 | **Going public** | Running as a Lichess bot with a real rating. |
 | 6 | **Stretch** | NNUE evaluation, multithreading. |
+
+### Milestone 1 steps
+
+- [x] The board: hybrid bitboards plus 64-square array, FEN in and out,
+      UCI `position` and `d` (PR #4)
+- [ ] Knight, king and pawn moves
+- [ ] Sliding pieces (ray walking), castling, en passant, promotion; making
+      a move (copy-make)
+- [ ] Perft on the six standard positions, shallow in CI, deep as `bench`
 
 ## Release names (proposal)
 
@@ -37,6 +46,8 @@ Which milestone or strength level earns each name is still to be decided.
 ## Parking lot
 
 - NNUE evaluation (Milestone 6); the evaluation is built to be swappable.
+- Magic bitboards for sliding pieces, and fully legal move generation, if
+  `bench` shows either is worth it.
 - Push from 1800 to 2000: more search tricks, a richer evaluation, Texel
   tuning (see `docs/DECISIONS.md`, 2026-10-20).
 - Multithreading (Lazy SMP), native build only.
@@ -45,6 +56,7 @@ Which milestone or strength level earns each name is still to be decided.
 
 ## Known limitations
 
-- Plays no chess yet: only the UCI handshake.
+- Plays no chess yet: it can load and print a position, but not move.
+- `position ... moves ...` is refused until move making exists.
 - The browser build, when it exists, will be single-threaded and so a little
   weaker than the Lichess bot.

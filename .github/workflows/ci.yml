@@ -26,3 +26,7 @@ jobs:
         run: cargo test
       - name: Release build
         run: cargo build --release
+      # The engine must also run in a browser (docs/DESIGN.md, "Runs in a
+      # browser"). Building the library for WebAssembly proves it still can.
+      - name: Browser (WebAssembly) build
+        run: cargo build --lib --release --target wasm32-unknown-unknown

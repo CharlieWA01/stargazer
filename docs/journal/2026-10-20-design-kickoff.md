@@ -32,6 +32,12 @@ shared documentation standard.
    decision log moved out of DESIGN.md), roadmap, portfolio, interview
    stories, history, PR template and the two docs workflows.
 
+8. **Move generation** (design section 2). A second write-up covered four
+   questions; Charlie accepted all four recommendations: pseudo-legal
+   moves checked afterwards, ray walking for sliding pieces, copy-make, and
+   perft on six standard positions (shallow in CI, deep before releases).
+   Recorded in PR #4. Milestone 1 code can now start.
+
 ## Problems and fixes
 - **Jargon.** "Board representation" read as "a board you can see", which
   Lichess already has. Reframed: UCI is the API; the internal board is the

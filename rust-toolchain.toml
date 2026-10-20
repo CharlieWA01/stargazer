@@ -1,3 +1,6 @@
 [toolchain]
 channel = "stable"
 components = ["rustfmt", "clippy"]
+# The browser build (WebAssembly). CI compiles for it on every PR so
+# nothing creeps into the engine that a browser can't run.
+targets = ["wasm32-unknown-unknown"]

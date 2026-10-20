@@ -95,3 +95,36 @@ history, the PR checklist and the `docs-check` and `docs-history` workflows.
 **Alternatives:** keep decisions only in DESIGN.md's decision log.
 **Why:** every repo reads the same way, and the record is ready for
 interviews and for Claude's next session.
+
+## 2026-10-20: Move generation: pseudo-legal, ray walking, copy-make (PR #4)
+**Decision:** generate pseudo-legal moves and reject those that leave the
+king attacked; find sliding-piece moves by walking rays; try moves by
+copying the position.
+**Alternatives:** fully legal generation (pins and checks worked out first);
+magic bitboards or PEXT for sliding pieces; make/unmake.
+**Why:** each choice is the simplest to write, read and explain, and fast
+enough for the 1800 goal. Each faster alternative stays possible behind the
+same functions, to be adopted only if `bench` measures a real gain, which
+also gives a true before-and-after number. PEXT is ruled out by the browser
+build.
+**Trade-offs:** slower move generation than a tuned engine (rough guess:
+ray walking is about half the speed of magics for sliding pieces).
+
+## 2026-10-20: Perft in CI and before releases (PR #4)
+**Decision:** the six standard perft positions at shallow depth in CI on
+every PR; deep runs before each release, doubling as the `bench` command.
+**Alternatives:** CI only (too slow at useful depths); a separate run only
+(bugs reach `main` unnoticed).
+**Why:** CI catches rule bugs on every change in under a minute; the deep
+run catches the rare bug that only shows several moves in.
+
+## 2026-10-20: CI builds the browser version on every PR (PR #4)
+**Decision:** `rust-toolchain.toml` includes the WebAssembly target, and CI
+builds the library for it on every PR.
+**Alternatives:** check the browser build only when the portfolio tile is
+built (Milestone 2 or later).
+**Why:** the "runs in a browser" rule is easy to break by accident (a clock
+read, a thread). A failing CI step catches it the day it happens instead of
+months later. The first board code already compiles for the browser.
+**Cost:** about half a minute more CI per PR, and a one-time download of the
+WebAssembly standard library (rustup does it automatically).

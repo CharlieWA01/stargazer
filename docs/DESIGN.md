@@ -48,13 +48,33 @@ Considered and rejected:
 How sliding pieces (bishops, rooks, queens) find their moves on bitboards is
 section 2.
 
-### 2. Move generation
-- **Legal vs. pseudo-legal:** generate only legal moves, or generate all moves
-  and discard the ones that leave the king in check?
-- **Sliding pieces (bishops, rooks, queens):** magic bitboards, PEXT, or
-  simpler ray loops?
-- **Verification:** perft against published node counts; which test suite
-  (standard positions plus tricky ones like castling and en passant edge cases).
+### 2. Move generation: **Decided** (2026-10-20)
+Given a position, list every move. Search runs this millions of times a
+second, so it must be both exactly right and fast.
+
+- **Pseudo-legal, checked afterwards.** List each piece's moves as if the
+  king didn't matter; before a move is played for real, ask "after this,
+  is my own king attacked?" and skip it if so. Simplest to write and
+  explain. Rejected for now: fully legal generation (work out pins and
+  checks first): faster in perft and in-check positions, but notorious edge
+  cases (an en passant capture that uncovers a check along the rank). The
+  switch would stay inside move generation if profiling ever asks for it.
+- **Sliding pieces by ray walking.** From a bishop, rook or queen, step
+  along each direction until a piece blocks. The rest of the engine only
+  calls `bishop_attacks(square, blockers)` and `rook_attacks(square,
+  blockers)`, so magic bitboards can replace the inside later, if `bench`
+  shows it's worth it, with perft proving identical answers. PEXT is ruled
+  out: browsers can't use the instruction.
+- **Knights, kings and pawns** use ready-made tables of their moves from
+  each square.
+- **Copy-make.** To try a move, copy the position (about 200 bytes) and play
+  the move on the copy; to take it back, discard the copy. No undo code, so
+  no undo bugs. Rejected: make/unmake (reverse each move in place), slightly
+  faster in theory but every special move needs its own undo logic.
+- **Proof: perft** on the six standard positions from the Chess Programming
+  Wiki (start position, "Kiwipete" and positions 3 to 6), compared with
+  published node counts. When a count is wrong, "perft divide" (the count
+  after each first move) finds the move at fault.
 
 ### Runs in a browser (constraint, decided 2026-10-20)
 Stargazer must also compile to WebAssembly so visitors can play it on the
@@ -91,7 +111,9 @@ $0). So:
 
 ### 5. Testing and infrastructure
 - CI: GitHub Actions running format, lint, tests and a release build (in place).
-- Perft suite: run in CI, or separately because it's slow?
+- Perft suite: **decided 2026-10-20: both.** Shallow depths (about 4) of
+  the six standard positions run in CI on every PR; deep runs (5 to 6) are a
+  separate command run before each release, which also serves as `bench`.
 - Strength testing: fastchess or cutechess-cli for SPRT matches; where it runs
   (local machine vs. a cloud box) and with what opening book.
 - Benchmarking: a fixed `bench` command so speed regressions are visible.
