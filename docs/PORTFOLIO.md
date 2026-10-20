@@ -11,9 +11,10 @@ Lichess as a bot, and playable in any visitor's browser on my portfolio site
 through WebAssembly.
 
 ## Status
-Design stage (Milestone 1 of 6). The engine answers the UCI handshake; the
-board design is decided (bitboards plus a 64-square array). No chess played
-yet.
+Milestone 1 of 6 done (2026-10-20): Stargazer knows every rule of chess,
+proven by perft on the six standard test positions, up to 119 million
+positions deep from the start, all exact. It doesn't choose moves yet
+(Milestone 2: search and evaluation).
 
 ## What makes it interesting
 - **Two targets from one codebase:** a native engine (chess GUIs, Lichess

@@ -9,9 +9,10 @@ eventually, as a Lichess bot.
 
 ## Status
 
-**Pre-alpha: Milestone 1 (Foundation).** The engine answers the UCI handshake
-but does not play chess yet. The board design is decided; the rest of the
-architecture is being worked out in [`docs/DESIGN.md`](docs/DESIGN.md).
+**Pre-alpha: Milestone 1 (Foundation) done.** Stargazer knows every rule of
+chess, proven by perft on six standard positions, but doesn't choose moves
+yet; search and evaluation are Milestone 2. The architecture is in
+[`docs/DESIGN.md`](docs/DESIGN.md).
 
 ## Building and running
 
@@ -19,7 +20,7 @@ You need [Rust](https://rustup.rs) installed.
 
 ```sh
 cargo build --release          # build the engine
-./target/release/stargazer     # run it, then type: uci
+./target/release/stargazer     # run it, then type: uci, d, go perft 5
 cargo test                     # run the tests
 ```
 

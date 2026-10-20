@@ -6,8 +6,8 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 | # | Milestone | Done when |
 |---|---|---|
 | 0 | **Skeleton** | Builds, passes CI, answers the UCI handshake. *(done)* |
-| 1 | **Foundation** | Board representation and legal move generation pass the perft suite. *(current; board and move generation designs decided)* |
-| 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. |
+| 1 | **Foundation** | Board representation and legal move generation pass the perft suite. *(done 2026-10-20)* |
+| 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. *(next; needs DESIGN.md sections 3 and 4)* |
 | 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. |
 | 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. |
 | 5 | **Going public** | Running as a Lichess bot with a real rating. |
@@ -19,9 +19,10 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
       UCI `position` and `d` (PR #4)
 - [x] Knight, king and pawn moves, including promotions and en passant
       (PR #5)
-- [ ] Sliding pieces (ray walking), castling, en passant, promotion; making
-      a move (copy-make)
-- [ ] Perft on the six standard positions, shallow in CI, deep as `bench`
+- [x] Sliding pieces (ray walking), castling, check detection, legal
+      moves, making a move (copy-make), UCI `position ... moves` (PR #6)
+- [x] Perft on the six standard positions: depth 4 in CI, full depth by
+      hand before releases; `go perft N` in UCI (PR #6)
 
 ## Release names (proposal)
 
@@ -57,7 +58,8 @@ Which milestone or strength level earns each name is still to be decided.
 
 ## Known limitations
 
-- Plays no chess yet: it can load and print a position, but not move.
-- `position ... moves ...` is refused until move making exists.
+- Knows the rules completely but doesn't choose moves yet: `go` only
+  supports `go perft N`. Search and evaluation are Milestone 2.
+- No `bench` command yet; `go perft 6` is the rough speed check.
 - The browser build, when it exists, will be single-threaded and so a little
   weaker than the Lichess bot.

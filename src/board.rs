@@ -17,7 +17,9 @@
 
 use std::fmt;
 
+use crate::attacks::{bishop_attacks, king_attacks, knight_attacks, pawn_attacks, rook_attacks};
 use crate::bitboard::Bitboard;
+use crate::movegen::Move;
 
 /// White or Black.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -285,8 +287,7 @@ impl Position {
     }
 
     /// Lift the piece off a square, updating both the bitboards and the
-    /// 64-square array. Used by move making (Milestone 1, next steps).
-    #[allow(dead_code)]
+    /// 64-square array.
     fn remove_piece(&mut self, square: Square) -> Option<Piece> {
         let piece = self.squares[square.index()].take()?;
         self.pieces[piece.color.index()][piece.kind.index()].remove(square);
@@ -489,6 +490,138 @@ impl Position {
     }
 }
 
+/// Attacks, check, and playing a move.
+impl Position {
+    /// The square this side's king stands on.
+    pub fn king_square(&self, color: Color) -> Square {
+        self.pieces(Piece::new(color, PieceKind::King))
+            .squares()
+            .next()
+            .expect("every position has exactly one king per side")
+    }
+
+    /// Does any piece of colour `by` attack `square`?
+    ///
+    /// The trick is to look outward from the square: "if a knight stood
+    /// here, which squares could it jump to?" If one of those holds an enemy
+    /// knight, that knight attacks this square. The same works for every
+    /// piece, because attacks are symmetrical (pawns use the other colour's
+    /// pattern, since they attack forward).
+    pub fn is_attacked(&self, square: Square, by: Color) -> bool {
+        let theirs = |kind| self.pieces(Piece::new(by, kind));
+        let blockers = self.occupied();
+        let diagonal_sliders = theirs(PieceKind::Bishop) | theirs(PieceKind::Queen);
+        let straight_sliders = theirs(PieceKind::Rook) | theirs(PieceKind::Queen);
+
+        !(pawn_attacks(by.opponent(), square) & theirs(PieceKind::Pawn)).is_empty()
+            || !(knight_attacks(square) & theirs(PieceKind::Knight)).is_empty()
+            || !(king_attacks(square) & theirs(PieceKind::King)).is_empty()
+            || !(bishop_attacks(square, blockers) & diagonal_sliders).is_empty()
+            || !(rook_attacks(square, blockers) & straight_sliders).is_empty()
+    }
+
+    /// Is this side's king in check?
+    pub fn in_check(&self, color: Color) -> bool {
+        self.is_attacked(self.king_square(color), color.opponent())
+    }
+
+    /// Play a move and return the new position, leaving this one untouched
+    /// ("copy-make", DESIGN.md section 2). To take the move back, just keep
+    /// using the old position.
+    ///
+    /// The move must come from move generation for this position. It may
+    /// leave the mover's own king in check; the caller checks that.
+    pub fn make_move(&self, mv: Move) -> Position {
+        let mut next = *self;
+        let us = self.side_to_move;
+        let moving = self
+            .piece_on(mv.from)
+            .expect("a move starts from a square with a piece on it");
+        let captured = next.remove_piece(mv.to);
+
+        next.remove_piece(mv.from);
+        let arriving = match mv.promotion {
+            Some(kind) => Piece::new(us, kind),
+            None => moving,
+        };
+        next.put_piece(arriving, mv.to);
+
+        // En passant: a pawn moving diagonally onto the en passant square
+        // captures the enemy pawn that is beside it, not on the square itself.
+        if moving.kind == PieceKind::Pawn && Some(mv.to) == self.en_passant {
+            let victim = Square::new(mv.to.file(), mv.from.rank());
+            next.remove_piece(victim);
+        }
+
+        // Castling: a king moving two squares brings its rook across.
+        if moving.kind == PieceKind::King && mv.from.file().abs_diff(mv.to.file()) == 2 {
+            let rank = mv.from.rank();
+            let (rook_from, rook_to) = if mv.to.file() == 6 {
+                (Square::new(7, rank), Square::new(5, rank)) // kingside: h to f
+            } else {
+                (Square::new(0, rank), Square::new(3, rank)) // queenside: a to d
+            };
+            let rook = next
+                .remove_piece(rook_from)
+                .expect("castling rights mean the rook is in place");
+            next.put_piece(rook, rook_to);
+        }
+
+        // A pawn that moves two squares can be captured en passant on the
+        // square it skipped, for one move only.
+        next.en_passant = None;
+        if moving.kind == PieceKind::Pawn && mv.from.rank().abs_diff(mv.to.rank()) == 2 {
+            let skipped_rank = (mv.from.rank() + mv.to.rank()) / 2;
+            next.en_passant = Some(Square::new(mv.from.file(), skipped_rank));
+        }
+
+        // Castling rights are lost for good when the king moves, or when a
+        // rook moves from (or is captured on) its starting corner.
+        for corner in [mv.from, mv.to] {
+            next.lose_castling_rights_touching(corner);
+        }
+
+        // The 50-move rule counter resets on any pawn move or capture.
+        if moving.kind == PieceKind::Pawn || captured.is_some() {
+            next.halfmove_clock = 0;
+        } else {
+            next.halfmove_clock += 1;
+        }
+        if us == Color::Black {
+            next.fullmove_number += 1;
+        }
+        next.side_to_move = us.opponent();
+        next
+    }
+
+    /// Something moved from or to this square: clear any castling right
+    /// that depends on a king or rook starting there.
+    fn lose_castling_rights_touching(&mut self, square: Square) {
+        const A1: Square = Square::new(0, 0);
+        const E1: Square = Square::new(4, 0);
+        const H1: Square = Square::new(7, 0);
+        const A8: Square = Square::new(0, 7);
+        const E8: Square = Square::new(4, 7);
+        const H8: Square = Square::new(7, 7);
+        let rights = &mut self.castling;
+        match square {
+            E1 => {
+                rights.white_kingside = false;
+                rights.white_queenside = false;
+            }
+            E8 => {
+                rights.black_kingside = false;
+                rights.black_queenside = false;
+            }
+            H1 => rights.white_kingside = false,
+            A1 => rights.white_queenside = false,
+            H8 => rights.black_kingside = false,
+            A8 => rights.black_queenside = false,
+            _ => {}
+        }
+    }
+}
+
 /// Prints the board as a diagram, White at the bottom, then the FEN.
 /// This is what the UCI `d` command shows.
 impl fmt::Display for Position {
@@ -660,6 +793,84 @@ mod tests {
         for (fen, expected) in cases {
             assert_eq!(Position::from_fen(fen), Err(expected), "FEN: {fen}");
         }
+    }
+
+    /// Play a move given in UCI form (no promotion) and return the new FEN.
+    fn after(fen: &str, from: &str, to: &str) -> String {
+        let position = Position::from_fen(fen).unwrap();
+        let next = position.make_move(Move::new(sq(from), sq(to)));
+        assert!(next.is_consistent());
+        next.to_fen()
+    }
+
+    #[test]
+    fn making_a_move_leaves_the_old_position_untouched() {
+        let start = Position::startpos();
+        let next = start.make_move(Move::new(sq("e2"), sq("e4")));
+        assert_eq!(start.to_fen(), START_FEN);
+        assert_eq!(
+            next.to_fen(),
+            "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+        );
+    }
+
+    #[test]
+    fn castling_brings_the_rook_across_and_ends_the_rights() {
+        let fen = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 3 10";
+        assert_eq!(
+            after(fen, "e1", "g1"),
+            "r3k2r/8/8/8/8/8/8/R4RK1 b kq - 4 10"
+        );
+        assert_eq!(
+            after(fen, "e1", "c1"),
+            "r3k2r/8/8/8/8/8/8/2KR3R b kq - 4 10"
+        );
+    }
+
+    #[test]
+    fn moving_or_losing_a_rook_ends_that_side_only() {
+        let fen = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
+        // The h1 rook moves: White keeps queenside only.
+        assert_eq!(
+            after(fen, "h1", "h2"),
+            "r3k2r/8/8/8/8/8/7R/R3K3 b Qkq - 1 1"
+        );
+        // The a1 rook captures on a8: White loses queenside, Black too.
+        assert_eq!(after(fen, "a1", "a8"), "R3k2r/8/8/8/8/8/8/4K2R b Kk - 0 1");
+    }
+
+    #[test]
+    fn en_passant_removes_the_pawn_beside_not_ahead() {
+        let fen = "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1";
+        assert_eq!(after(fen, "e5", "d6"), "4k3/8/3P4/8/8/8/8/4K3 b - - 0 1");
+    }
+
+    #[test]
+    fn promotion_replaces_the_pawn() {
+        let position = Position::from_fen("4k3/1P6/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let mv = Move {
+            from: sq("b7"),
+            to: sq("b8"),
+            promotion: Some(PieceKind::Knight),
+        };
+        assert_eq!(
+            position.make_move(mv).to_fen(),
+            "1N2k3/8/8/8/8/8/8/4K3 b - - 0 1"
+        );
+    }
+
+    #[test]
+    fn attacks_and_check() {
+        let p = Position::from_fen("4k3/8/8/8/1b6/8/8/4K3 w - - 0 1").unwrap();
+        // The bishop on b4 gives check along b4-c3-d2-e1.
+        assert!(p.in_check(Color::White));
+        assert!(!p.in_check(Color::Black));
+        assert!(p.is_attacked(sq("a5"), Color::Black));
+        assert!(!p.is_attacked(sq("b5"), Color::Black));
+        // Pawns attack diagonally forward, not straight ahead.
+        let p = Position::from_fen("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1").unwrap();
+        assert!(p.is_attacked(sq("d3"), Color::White));
+        assert!(!p.is_attacked(sq("e3"), Color::White));
     }
 
     #[test]

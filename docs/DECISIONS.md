@@ -141,3 +141,13 @@ the engine starts.
 no translation. Flags can be added later if `bench` shows a gain. Compile-time
 tables cost nothing at startup, need no setup code, and work the same in
 the browser build.
+
+## 2026-10-20: CI perft goes to depth 4, not 3 (PR #6)
+**Decision:** the per-PR perft test checks all six standard positions to
+depth 4.
+**Alternatives:** depth 3 (well under a second); depth 5 (minutes).
+**Why:** a test bug proved depth 3 isn't enough. With the en passant
+capture deliberately broken (the captured pawn left on the board), every
+position passed at depth 3; only Kiwipete at depth 4 caught it
+(4,085,601 instead of 4,085,603). Depth 4 catches it in about 10 seconds.
+**Cost:** about 10 seconds more CI per PR.

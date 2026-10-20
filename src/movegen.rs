@@ -1,17 +1,17 @@
 //! Move generation: given a position, list the moves the side to move can
 //! make (DESIGN.md section 2).
 //!
-//! The moves are "pseudo-legal": each piece moves by its own rules, but a
-//! move that leaves the mover's own king in check isn't filtered out here.
-//! That check happens when a move is played (Milestone 1, step 3).
-//!
-//! So far this covers knights, kings (without castling) and pawns,
-//! including promotions and en passant. Bishops, rooks, queens and castling
-//! come next.
+//! It works in two stages:
+//! 1. `pseudo_legal_moves`: every move each piece can make by its own
+//!    rules, without asking whether it leaves our own king in check.
+//! 2. `legal_moves`: plays each of those on a copy of the board and keeps
+//!    only the ones after which our king is not attacked.
 
 use std::fmt;
 
-use crate::attacks::{king_attacks, knight_attacks, pawn_attacks};
+use crate::attacks::{
+    bishop_attacks, king_attacks, knight_attacks, pawn_attacks, queen_attacks, rook_attacks,
+};
 use crate::bitboard::Bitboard;
 use crate::board::{Color, Piece, PieceKind, Position, Square};
 
@@ -57,13 +57,26 @@ const PROMOTION_CHOICES: [PieceKind; 4] = [
     PieceKind::Knight,
 ];
 
-/// Every pseudo-legal move for the side to move (see the module notes for
-/// which pieces are covered so far).
+/// Every legal move for the side to move: the pseudo-legal moves, minus
+/// any that would leave our own king in check.
+pub fn legal_moves(position: &Position) -> Vec<Move> {
+    let us = position.side_to_move;
+    pseudo_legal_moves(position)
+        .into_iter()
+        .filter(|&mv| !position.make_move(mv).in_check(us))
+        .collect()
+}
+
+/// Every pseudo-legal move for the side to move.
 pub fn pseudo_legal_moves(position: &Position) -> Vec<Move> {
     let mut moves = Vec::with_capacity(64);
     knight_moves(position, &mut moves);
     king_moves(position, &mut moves);
+    castling_moves(position, &mut moves);
     pawn_moves(position, &mut moves);
+    slider_moves(position, PieceKind::Bishop, bishop_attacks, &mut moves);
+    slider_moves(position, PieceKind::Rook, rook_attacks, &mut moves);
+    slider_moves(position, PieceKind::Queen, queen_attacks, &mut moves);
     moves
 }
 
@@ -84,13 +97,80 @@ fn knight_moves(position: &Position, moves: &mut Vec<Move>) {
 }
 
 /// The king steps one square in any direction, onto an empty square or a
-/// capture. (Castling comes in step 3, with the "is this square attacked?" check.)
+/// capture. (Castling is separate, below.)
 fn king_moves(position: &Position, moves: &mut Vec<Move>) {
     let us = position.side_to_move;
     for from in position.pieces(Piece::new(us, PieceKind::King)).squares() {
         for to in (king_attacks(from) & landing_squares(position)).squares() {
             moves.push(Move::new(from, to));
         }
+    }
+}
+
+/// Bishops, rooks and queens: every square along their lines up to the
+/// first piece, which they may capture if it's an enemy.
+fn slider_moves(
+    position: &Position,
+    kind: PieceKind,
+    attacks: fn(Square, Bitboard) -> Bitboard,
+    moves: &mut Vec<Move>,
+) {
+    let us = position.side_to_move;
+    let blockers = position.occupied();
+    for from in position.pieces(Piece::new(us, kind)).squares() {
+        for to in (attacks(from, blockers) & landing_squares(position)).squares() {
+            moves.push(Move::new(from, to));
+        }
+    }
+}
+
+/// Castling, written as the king moving two squares towards its rook.
+/// Allowed when:
+/// - the right hasn't been lost (king and that rook haven't moved);
+/// - every square between king and rook is empty;
+/// - the king isn't in check, and doesn't pass through an attacked square.
+///
+/// Landing in check is caught by the general legality test, like any move.
+fn castling_moves(position: &Position, moves: &mut Vec<Move>) {
+    let us = position.side_to_move;
+    let them = us.opponent();
+    let rank = match us {
+        Color::White => 0,
+        Color::Black => 7,
+    };
+    let (kingside, queenside) = match us {
+        Color::White => (
+            position.castling.white_kingside,
+            position.castling.white_queenside,
+        ),
+        Color::Black => (
+            position.castling.black_kingside,
+            position.castling.black_queenside,
+        ),
+    };
+    let king = Square::new(4, rank);
+    let empty = |files: &[u8]| {
+        files
+            .iter()
+            .all(|&file| position.piece_on(Square::new(file, rank)).is_none())
+    };
+    // A FEN can claim rights that the pieces don't match; trust the pieces.
+    let has =
+        |file: u8, kind| position.piece_on(Square::new(file, rank)) == Some(Piece::new(us, kind));
+    let kingside = kingside && has(7, PieceKind::Rook);
+    let queenside = queenside && has(0, PieceKind::Rook);
+    if (!kingside && !queenside) || !has(4, PieceKind::King) || position.is_attacked(king, them) {
+        return;
+    }
+
+    // Kingside: f and g empty; the king crosses f.
+    if kingside && empty(&[5, 6]) && !position.is_attacked(Square::new(5, rank), them) {
+        moves.push(Move::new(king, Square::new(6, rank)));
+    }
+    // Queenside: b, c and d empty; the king crosses d. (b only needs to be
+    // empty, for the rook to pass; it may be attacked.)
+    if queenside && empty(&[1, 2, 3]) && !position.is_attacked(Square::new(3, rank), them) {
+        moves.push(Move::new(king, Square::new(2, rank)));
     }
 }
 
@@ -177,8 +257,7 @@ mod tests {
     #[test]
     fn twenty_moves_from_the_start() {
         // 16 pawn moves (each pawn one or two squares) and 4 knight moves.
-        // Bishops, rooks and queens are all blocked in at the start, so
-        // leaving them out doesn't change this count.
+        // Bishops, rooks and queens are all blocked in at the start.
         let moves = moves_in(crate::board::START_FEN);
         assert_eq!(moves.len(), 20);
         assert!(moves.contains(&"e2e4".to_string()));
@@ -253,6 +332,77 @@ mod tests {
         // King e1, own pawn e2: d1, f1, d2, f2.
         let fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
         assert_eq!(moves_from(fen, "e1"), ["e1d1", "e1d2", "e1f1", "e1f2"]);
+    }
+
+    /// Only the legal moves starting from one square.
+    fn legal_from(fen: &str, square: &str) -> Vec<String> {
+        let position = Position::from_fen(fen).unwrap();
+        let mut names: Vec<String> = legal_moves(&position)
+            .iter()
+            .map(Move::to_string)
+            .filter(|m| m.starts_with(square))
+            .collect();
+        names.sort();
+        names
+    }
+
+    #[test]
+    fn castling_both_ways_when_the_path_is_clear() {
+        let fen = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
+        let king = legal_from(fen, "e1");
+        assert!(king.contains(&"e1g1".to_string()));
+        assert!(king.contains(&"e1c1".to_string()));
+    }
+
+    #[test]
+    fn no_castling_without_the_right_or_through_pieces() {
+        // Rights lost (no K/Q in the FEN).
+        let king = legal_from("r3k2r/8/8/8/8/8/8/R3K2R w kq - 0 1", "e1");
+        assert!(!king.contains(&"e1g1".to_string()));
+        // A knight on b1 blocks queenside castling even though the king
+        // never crosses b1.
+        let king = legal_from("r3k2r/8/8/8/8/8/8/RN2K2R w KQkq - 0 1", "e1");
+        assert!(!king.contains(&"e1c1".to_string()));
+        assert!(king.contains(&"e1g1".to_string()));
+    }
+
+    #[test]
+    fn no_castling_out_of_through_or_into_check() {
+        // A black rook on e8 gives check: no castling at all.
+        let king = legal_from("4r1k1/8/8/8/8/8/8/R3K2R w KQ - 0 1", "e1");
+        assert!(!king.iter().any(|m| m == "e1g1" || m == "e1c1"));
+        // A rook on f8 attacks f1, which the king crosses going kingside.
+        let king = legal_from("5rk1/8/8/8/8/8/8/R3K2R w KQ - 0 1", "e1");
+        assert!(!king.contains(&"e1g1".to_string()));
+        assert!(king.contains(&"e1c1".to_string()));
+        // A rook on g8 attacks g1, where the king would land.
+        let king = legal_from("6rk/8/8/8/8/8/8/R3K2R w KQ - 0 1", "e1");
+        assert!(!king.contains(&"e1g1".to_string()));
+    }
+
+    #[test]
+    fn a_pinned_piece_cannot_leave_the_line() {
+        // The e2 knight stands between its king on e1 and a rook on e8.
+        assert!(legal_from("4r1k1/8/8/8/8/8/4N3/4K3 w - - 0 1", "e2").is_empty());
+    }
+
+    #[test]
+    fn in_check_only_escapes_are_legal() {
+        // White king on e1, checked by a rook on e8; a white rook on a2 can
+        // block on e2. Legal: king steps off the file, or block.
+        let position = Position::from_fen("4r1k1/8/8/8/8/8/R7/4K3 w - - 0 1").unwrap();
+        let mut moves: Vec<String> = legal_moves(&position).iter().map(Move::to_string).collect();
+        moves.sort();
+        assert_eq!(moves, ["a2e2", "e1d1", "e1d2", "e1f1", "e1f2"]);
+    }
+
+    #[test]
+    fn checkmate_has_no_legal_moves() {
+        // Fool's mate: 1. f3 e5 2. g4 Qh4#.
+        let fen = "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3";
+        let position = Position::from_fen(fen).unwrap();
+        assert!(position.in_check(Color::White));
+        assert!(legal_moves(&position).is_empty());
     }
 
     #[test]

@@ -3,8 +3,14 @@
 //!
 //! These pieces always reach the same squares from a given square, whatever
 //! else is on the board, so the answers are worked out once, when Stargazer
-//! is compiled, and looked up after that. (Bishops, rooks and queens depend
-//! on what's in their way, so they're handled separately, by walking rays.)
+//! is compiled, and looked up after that.
+//!
+//! Bishops, rooks and queens depend on what's in their way, so their
+//! attacks are found by "walking rays": step along each direction until
+//! the edge of the board or the first piece, which is attacked too (it may
+//! be an enemy to capture). The rest of the engine only calls
+//! `bishop_attacks` and `rook_attacks`, so a faster method (magic
+//! bitboards) could replace the inside later without touching anything else.
 
 use crate::bitboard::Bitboard;
 use crate::board::{Color, Square};
@@ -89,6 +95,51 @@ pub fn pawn_attacks(color: Color, square: Square) -> Bitboard {
     }
 }
 
+/// The 4 diagonal directions a bishop slides in.
+const BISHOP_DIRECTIONS: [(i8, i8); 4] = [(1, 1), (1, -1), (-1, -1), (-1, 1)];
+
+/// The 4 straight directions a rook slides in.
+const ROOK_DIRECTIONS: [(i8, i8); 4] = [(0, 1), (1, 0), (0, -1), (-1, 0)];
+
+/// From `square`, slide along each direction, one square at a time, until
+/// leaving the board or reaching a square in `blockers` (included: a piece
+/// standing there is attacked).
+fn slide(square: Square, directions: &[(i8, i8)], blockers: Bitboard) -> Bitboard {
+    let mut attacked = Bitboard::EMPTY;
+    for &(file_step, rank_step) in directions {
+        let mut file = square.file() as i8;
+        let mut rank = square.rank() as i8;
+        loop {
+            file += file_step;
+            rank += rank_step;
+            if !(0..8).contains(&file) || !(0..8).contains(&rank) {
+                break;
+            }
+            let reached = Square::new(file as u8, rank as u8);
+            attacked.insert(reached);
+            if blockers.contains(reached) {
+                break;
+            }
+        }
+    }
+    attacked
+}
+
+/// Every square a bishop on `square` attacks, given the pieces in the way.
+pub fn bishop_attacks(square: Square, blockers: Bitboard) -> Bitboard {
+    slide(square, &BISHOP_DIRECTIONS, blockers)
+}
+
+/// Every square a rook on `square` attacks, given the pieces in the way.
+pub fn rook_attacks(square: Square, blockers: Bitboard) -> Bitboard {
+    slide(square, &ROOK_DIRECTIONS, blockers)
+}
+
+/// A queen moves like a rook and a bishop combined.
+pub fn queen_attacks(square: Square, blockers: Bitboard) -> Bitboard {
+    bishop_attacks(square, blockers) | rook_attacks(square, blockers)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -128,6 +179,47 @@ mod tests {
         assert_eq!(king_attacks(sq("e4")).count(), 8);
         assert_eq!(names(king_attacks(sq("a1"))), ["b1", "a2", "b2"]);
         assert_eq!(king_attacks(sq("h5")).count(), 5);
+    }
+
+    fn set_of(names: &[&str]) -> Bitboard {
+        let mut set = Bitboard::EMPTY;
+        for name in names {
+            set.insert(sq(name));
+        }
+        set
+    }
+
+    #[test]
+    fn rook_on_an_empty_board_sees_its_whole_file_and_rank() {
+        assert_eq!(rook_attacks(sq("d4"), Bitboard::EMPTY).count(), 14);
+        assert_eq!(rook_attacks(sq("a1"), Bitboard::EMPTY).count(), 14);
+    }
+
+    #[test]
+    fn bishop_on_an_empty_board() {
+        assert_eq!(bishop_attacks(sq("d4"), Bitboard::EMPTY).count(), 13);
+        assert_eq!(bishop_attacks(sq("a1"), Bitboard::EMPTY).count(), 7);
+    }
+
+    #[test]
+    fn sliders_stop_at_the_first_piece_and_include_it() {
+        // Rook on d4, pieces on d6 and f4: it sees d5 and d6 but not d7;
+        // e4 and f4 but not g4.
+        let blockers = set_of(&["d6", "f4"]);
+        let attacks = rook_attacks(sq("d4"), blockers);
+        assert!(attacks.contains(sq("d5")) && attacks.contains(sq("d6")));
+        assert!(!attacks.contains(sq("d7")));
+        assert!(attacks.contains(sq("f4")) && !attacks.contains(sq("g4")));
+        // Down 3 (d3-d1), up 2 (d5, d6), left 3 (c4-a4), right 2 (e4, f4).
+        assert_eq!(attacks.count(), 3 + 2 + 3 + 2);
+
+        let attacks = bishop_attacks(sq("c1"), set_of(&["e3"]));
+        assert_eq!(names(attacks), ["b2", "d2", "a3", "e3"]);
+    }
+
+    #[test]
+    fn queen_is_rook_plus_bishop() {
+        assert_eq!(queen_attacks(sq("d4"), Bitboard::EMPTY).count(), 27);
     }
 
     #[test]
