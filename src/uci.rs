@@ -2,12 +2,15 @@
 //! tournament tools use to talk to an engine over stdin/stdout.
 //!
 //! So far this handles the startup handshake, setting up a position
-//! (`position startpos` or `position fen ...`), and `d`, which prints the
-//! current board. It doesn't play moves yet.
+//! (`position startpos` or `position fen ...`, optionally followed by
+//! `moves ...`), `d`, which prints the current board, and `go perft N`,
+//! which counts move sequences. It doesn't search for a best move yet.
 
 use std::io::{BufRead, Write};
 
 use crate::board::Position;
+use crate::movegen::legal_moves;
+use crate::perft::divide;
 
 /// Read UCI commands line by line and reply until `quit` or end of input.
 pub fn run(input: impl BufRead, mut output: impl Write) {
@@ -35,6 +38,27 @@ pub fn run(input: impl BufRead, mut output: impl Write) {
                     writeln!(output, "info string invalid position: {reason}").ok();
                 }
             },
+            // `go perft N`: count every move sequence N moves deep, listed by
+            // first move (a debugging tool many engines share).
+            "go" => {
+                let mut words = line.split_whitespace().skip(1);
+                if words.next() == Some("perft") {
+                    match words.next().and_then(|n| n.parse().ok()) {
+                        Some(depth) => {
+                            let split = divide(&position, depth);
+                            for (mv, count) in &split {
+                                writeln!(output, "{mv}: {count}").ok();
+                            }
+                            let total: u64 = split.iter().map(|(_, count)| count).sum();
+                            writeln!(output).ok();
+                            writeln!(output, "Nodes searched: {total}").ok();
+                        }
+                        None => {
+                            writeln!(output, "info string usage: go perft <depth>").ok();
+                        }
+                    }
+                }
+            }
             // Not part of UCI, but most engines have it: print the board.
             "d" => {
                 writeln!(output, "{position}").ok();
@@ -60,16 +84,20 @@ fn parse_position(line: &str) -> Result<Position, String> {
         Some((setup, moves)) => (setup.trim(), moves.trim()),
         None => (rest, ""),
     };
-    let position = if setup == "startpos" {
+    let mut position = if setup == "startpos" {
         Position::startpos()
     } else if let Some(fen) = setup.strip_prefix("fen") {
         Position::from_fen(fen.trim()).map_err(|e| e.to_string())?
     } else {
         return Err(format!("expected startpos or fen, got \"{setup}\""));
     };
-    if !moves.is_empty() {
-        // Playing moves comes with move generation (Milestone 1, next steps).
-        return Err("playing moves isn't supported yet".to_string());
+    // Play each move in turn, accepting only legal ones.
+    for text in moves.split_whitespace() {
+        let mv = legal_moves(&position)
+            .into_iter()
+            .find(|mv| mv.to_string() == text)
+            .ok_or_else(|| format!("{text} is not a legal move here"))?;
+        position = position.make_move(mv);
     }
     Ok(position)
 }
@@ -124,12 +152,28 @@ mod tests {
     }
 
     #[test]
-    fn moves_are_not_supported_yet() {
-        let reply = respond("position startpos moves e2e4\n");
+    fn moves_after_a_position_are_played() {
+        let reply = respond("position startpos moves e2e4 e7e5 g1f3\nd\n");
+        assert!(
+            reply.contains("FEN: rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2")
+        );
+    }
+
+    #[test]
+    fn an_illegal_move_is_refused() {
+        // After 1. e4, White can't move again.
+        let reply = respond("position startpos moves e2e4 d2d4\n");
         assert_eq!(
             reply,
-            "info string invalid position: playing moves isn't supported yet\n"
+            "info string invalid position: d2d4 is not a legal move here\n"
         );
+    }
+
+    #[test]
+    fn go_perft_lists_each_first_move_and_the_total() {
+        let reply = respond("go perft 2\n");
+        assert!(reply.contains("e2e4: 20\n"));
+        assert!(reply.ends_with("Nodes searched: 400\n"));
     }
 
     #[test]

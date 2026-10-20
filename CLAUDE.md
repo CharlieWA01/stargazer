@@ -71,12 +71,14 @@ cargo build --lib --target wasm32-unknown-unknown   # the browser build must kee
 - `src/bitboard.rs`: sets of squares as 64-bit numbers; the bit tricks live here
 - `src/board.rs`: squares, pieces and a position (hybrid: bitboards plus a
   64-square array), read from and written as FEN
-- `src/attacks.rs`: ready-made tables of knight, king and pawn attacks,
-  built at compile time
-- `src/movegen.rs`: the `Move` type and pseudo-legal move generation
-  (knights, kings, pawns so far)
-- `src/uci.rs`: UCI protocol handling (handshake, `position`, and `d` to
-  print the board)
+- `src/attacks.rs`: ready-made tables of knight, king and pawn attacks
+  (built at compile time) and ray walking for bishops, rooks and queens
+- `src/movegen.rs`: the `Move` type, pseudo-legal moves for every piece
+  (castling included), and `legal_moves`
+- `src/perft.rs`: perft and divide, with the six standard positions as tests
+  (deep run: `cargo test --release -- --ignored`; see `docs/runbooks/perft.md`)
+- `src/uci.rs`: UCI protocol handling (handshake, `position ... moves`,
+  `d` to print the board, `go perft N`)
 - `docs/DESIGN.md`: the architecture, section by section; the source of truth
 - `docs/DECISIONS.md`: dated decisions with alternatives and reasons
 - `docs/ROADMAP.md`: milestones, release names, parking lot

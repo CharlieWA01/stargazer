@@ -34,3 +34,21 @@ that way.
 - **Result:** The demo stays on track at about $0 a month (it runs on the
   visitor's computer), and the constraint costs almost nothing now instead
   of a rewrite later. It also made the engine easier to test.
+
+## Proving the rules: a bug that hid at depth 3
+**Tags:** Testing, Design
+
+- **Situation:** A chess engine's move generator runs millions of times a
+  second, and one rules bug (a wrong en passant, an illegal castle) makes
+  it play nonsense. Unit tests can't cover every combination.
+- **Task:** Prove the rules correct, cheaply enough to run on every PR.
+- **Action:** Used perft: count every move sequence to a fixed depth from
+  six standard positions and compare with published totals. Then checked
+  the test itself by breaking the code on purpose. With en passant broken
+  (the captured pawn left on the board), every position still passed at
+  depth 3. Only one position, at depth 4, caught it (4,085,601 vs
+  4,085,603). So CI runs depth 4 (about 10 seconds), and a deep run up to
+  119 million positions happens before releases.
+- **Result:** All six positions match exactly at full depth. The rules are
+  proven, not assumed, and the test is known to catch the bug it's for.
+  Lesson: test the tests.
