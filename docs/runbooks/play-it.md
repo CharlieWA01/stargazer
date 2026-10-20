@@ -19,11 +19,28 @@ the side to move, or `mate N`), positions searched, speed, and the line it
 expects (`pv`). `bestmove` is its choice.
 
 ## Against it in a GUI
-Any UCI GUI works: Cute Chess, Arena, Banksia, En Croissant. Build with
-`cargo build --release`, then add a new engine in the GUI pointing at
-`target/release/stargazer` (no arguments, protocol UCI). Pick a time
-control and play. The engine uses the clock the GUI sends (`wtime`,
-`btime`, `winc`, `binc`).
+Any UCI GUI works. Build with `cargo build --release`, then add a new
+engine in the GUI pointing at `target/release/stargazer` (no arguments,
+protocol UCI). Pick a time control and play. The engine uses the clock the
+GUI sends (`wtime`, `btime`, `winc`, `binc`).
+
+### On Charlie's Chromebook (Linux, Debian 12): PyChess
+```sh
+sudo apt install pychess
+pychess          # start it from the terminal so errors show
+```
+Edit → Engines → New, pick `~/stargazer/target/release/stargazer`; then a
+new game with Stargazer as the opponent. Fallback, plainer but dependable:
+`sudo apt install xboard polyglot`, then
+`xboard -fUCI -fcp ~/stargazer/target/release/stargazer` (Stargazer plays Black).
+
+What didn't work there (2026-10-20):
+- Cute Chess: not in Debian's package list.
+- En Croissant 0.15.0 (`.deb` from its GitHub releases): installs, but won't
+  start: `GLIBC_2.39 not found`. It was built for a newer Linux than
+  Debian 12. Remove with `sudo apt remove en-croissant`.
+- The Linux side of a Chromebook has no `~/Downloads`; download into the
+  home folder (not into a repo, or git sees the file).
 
 ## Self-play check (after any change to search, time or UCI)
 ```sh

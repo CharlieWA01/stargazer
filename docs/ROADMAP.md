@@ -7,8 +7,8 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 |---|---|---|
 | 0 | **Skeleton** | Builds, passes CI, answers the UCI handshake. *(done)* |
 | 1 | **Foundation** | Board representation and legal move generation pass the perft suite. *(done 2026-10-20)* |
-| 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. *(current; design decided 2026-10-20)* |
-| 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. |
+| 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. *(done 2026-10-20)* |
+| 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. *(next)* |
 | 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. |
 | 5 | **Going public** | Running as a Lichess bot with a real rating. |
 | 6 | **Stretch** | NNUE evaluation, multithreading. |
@@ -33,7 +33,7 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 - [x] Full UCI: clocks, `stop`, `info`, `bestmove`; plays in a GUI and
       against itself under a clock with no losses on time (#9)
 
-## Release names (proposal)
+## Release names
 
 Releases are named after stars, starting dim and getting brighter as the
 engine gets stronger, ending with Sirius, the brightest star in the night sky.
@@ -41,7 +41,7 @@ Magnitudes are apparent brightness as seen from Earth (lower is brighter).
 
 | Star | Magnitude | Fits with |
 |---|---|---|
-| Polaris | 1.98 | First playable release; the guide star |
+| Polaris | 1.98 | First playable release (Milestone 2); the guide star. **Taken 2026-10-20** |
 | Deneb | 1.25 | |
 | Spica | 0.97 | |
 | Aldebaran | 0.86 | |
@@ -52,7 +52,9 @@ Magnitudes are apparent brightness as seen from Earth (lower is brighter).
 | Canopus | −0.74 | |
 | Sirius | −1.46 | The big one |
 
-Which milestone or strength level earns each name is still to be decided.
+Polaris is the first playable version (Milestone 2). Which milestone or
+strength level earns each later name is still to be decided, and so is how
+a release is tagged and built (DESIGN.md section 6).
 
 ## Parking lot
 

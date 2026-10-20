@@ -11,10 +11,15 @@ Lichess as a bot, and playable in any visitor's browser on my portfolio site
 through WebAssembly.
 
 ## Status
-Milestone 1 of 6 done (2026-10-20): Stargazer knows every rule of chess,
-proven by perft on the six standard test positions, up to 119 million
-positions deep from the start, all exact. It doesn't choose moves yet
-(Milestone 2: search and evaluation).
+Milestone 2 of 6 done (2026-10-20): the first playable version, named
+Polaris, plays full games in any
+chess GUI under a real clock. Every rule of chess is proven by perft (six
+standard test positions, up to 119 million positions deep, all exact). It
+looks ahead with alpha-beta search (depth 6 from the start in under a
+second, about 800,000 positions a second) and judges positions with an
+evaluation whose every number is our own. Its first opponent, me (about
+1000 on Lichess), lost. Next: an SPRT testing rig, so every strength change
+is measured (Milestone 3).
 
 ## What makes it interesting
 - **Two targets from one codebase:** a native engine (chess GUIs, Lichess
