@@ -89,25 +89,40 @@ $0). So:
   separate small browser package, never in the engine core, and is asked
   about first.
 
-### 3. Search
-- Base algorithm: negamax with alpha-beta and iterative deepening (the
-  near-universal starting point).
-- What to add, and in what order: quiescence search, transposition table, move
-  ordering (MVV-LVA, killer moves, history), null-move pruning, late move
-  reductions, aspiration windows.
-- Time management: how long to think per move under different time controls.
-- Multithreading (Lazy SMP): now, later, or never?
+### 3. Search: **Decided** (2026-10-20)
+- **Core:** negamax with alpha-beta and iterative deepening. Scores are in
+  centipawns (100 = one pawn) from the side to move's point of view; the
+  search reports `info depth ... score cp ... pv ...` over UCI.
+- **In Milestone 2:** quiescence search (play out captures before judging,
+  so it never stops mid-exchange), captures first ordered best-first
+  (MVV-LVA), checkmate and stalemate scoring (quicker mates score higher),
+  and draws by repetition and the 50-move rule.
+- **Later (Milestone 4), each only if SPRT shows a gain:** transposition
+  table (with Zobrist hashing), killer and history moves, null-move
+  pruning, late move reductions, check extensions, aspiration windows,
+  principal variation search.
+- **Time:** about one twentieth of the remaining time plus most of the
+  increment per move, under a hard ceiling; stop between depths if the next
+  one clearly won't finish. Also `go depth`, `go movetime`, `go infinite`.
+  Smarter, position-aware time use is parked (ROADMAP.md).
+- **`stop` and threads:** the core stays single-threaded and clock-free; it
+  is handed a stop signal and a time limit and checks them every few
+  thousand positions. The native UCI layer runs the search on a second
+  thread so it can still read `stop`; the browser page uses a background
+  worker. Multithreaded search (Lazy SMP) stays a stretch goal, native only.
 
-### 4. Evaluation
-- **Hand-crafted:** material, piece-square tables, pawn structure, king
-  safety, mobility. Understandable and tunable; this is where chess knowledge
-  shows up most directly.
-- **NNUE:** a small neural network, the modern approach. Much stronger, but it
-  needs training data and a training pipeline.
-- Likely path: hand-crafted first, NNUE as a later milestone. **Confirmed
-  2026-10-20:** hand-crafted is enough for the 1800 goal. NNUE stays a
-  stretch goal, so the evaluation is designed as a swappable piece that a
-  network can replace later without touching the board or search.
+### 4. Evaluation: **Decided** (2026-10-20)
+- **Hand-crafted first; NNUE a stretch goal** (confirmed 2026-10-20). The
+  evaluation sits behind one function, `evaluate(position) -> score`, so it
+  can be extended or replaced without touching search.
+- **Milestone 2 terms:** material (pawn 100, knight 320, bishop 330, rook
+  500, queen 900) plus piece-square tables, with separate middlegame and
+  endgame tables blended by the material left on the board ("tapered").
+- **The numbers are our own:** written by hand from chess principles, then
+  fitted to game results by our own tuner (Texel tuning) in Milestone 4.
+  Rejected: the public "Simplified Evaluation Function" tables and PeSTO's
+  machine-tuned tables, which would start stronger but aren't ours.
+- **Later, each by SPRT:** pawn structure, king safety, mobility.
 
 ### 5. Testing and infrastructure
 - CI: GitHub Actions running format, lint, tests and a release build (in place).
