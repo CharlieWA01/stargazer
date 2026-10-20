@@ -6,7 +6,7 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 | # | Milestone | Done when |
 |---|---|---|
 | 0 | **Skeleton** | Builds, passes CI, answers the UCI handshake. *(done)* |
-| 1 | **Foundation** | Board representation and legal move generation pass the perft suite. *(current; board design decided)* |
+| 1 | **Foundation** | Board representation and legal move generation pass the perft suite. *(current; board and move generation designs decided)* |
 | 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. |
 | 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. |
 | 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. |
@@ -37,6 +37,8 @@ Which milestone or strength level earns each name is still to be decided.
 ## Parking lot
 
 - NNUE evaluation (Milestone 6); the evaluation is built to be swappable.
+- Magic bitboards for sliding pieces, and fully legal move generation, if
+  `bench` shows either is worth it.
 - Push from 1800 to 2000: more search tricks, a richer evaluation, Texel
   tuning (see `docs/DECISIONS.md`, 2026-10-20).
 - Multithreading (Lazy SMP), native build only.
