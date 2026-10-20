@@ -1,60 +1,101 @@
 //! UCI (Universal Chess Interface): the text protocol chess GUIs and
 //! tournament tools use to talk to an engine over stdin/stdout.
 //!
-//! So far this handles the startup handshake, setting up a position
-//! (`position startpos` or `position fen ...`, optionally followed by
-//! `moves ...`), `go depth N` (search N half-moves deep and answer with
-//! `bestmove`), `go perft N` (count move sequences), `d` (print the board)
-//! and `eval` (print the evaluation). Clocks and `stop` come next
-//! (ROADMAP.md, Milestone 2 step 3); until then, `go` without a depth
-//! searches to `DEFAULT_DEPTH`.
+//! Handles the startup handshake, `position startpos` or `position fen ...`
+//! (optionally followed by `moves ...`), `go` with a clock (`wtime btime
+//! winc binc movestogo`), `go movetime N`, `go depth N` and `go infinite`,
+//! `stop`, and `quit`. Extras most engines share: `go perft N` (count move
+//! sequences), `d` (print the board) and `eval` (print the evaluation).
+//!
+//! The search runs on its own thread, so this loop keeps reading commands
+//! while it thinks: `stop` and `isready` are answered straight away.
 
+use std::fmt::Display;
 use std::io::{BufRead, Write};
-use std::time::Instant;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
 
 use crate::board::{Color, Position};
 use crate::eval::evaluate;
 use crate::movegen::legal_moves;
 use crate::perft::divide;
-use crate::search::{Report, mate_in, search};
+use crate::search::{MAX_PLY, Report, mate_in, search};
 
-/// How deep `go` searches when it isn't given a depth (until clocks are
-/// handled). Takes well under a second in a release build.
+/// How deep a bare `go` (no clock, depth or time) searches. Handy when
+/// typing commands by hand; well under a second in a release build.
 const DEFAULT_DEPTH: u32 = 5;
 
+/// Time kept back on every move for the GUI or Lichess to pass the move on,
+/// so the engine never loses on time by a whisker.
+const SAFETY_MARGIN_MS: u64 = 50;
+
+/// Output shared between this loop and the search thread.
+type Output<W> = Arc<Mutex<W>>;
+
+/// Print one line and send it at once (GUIs wait for whole lines).
+fn say<W: Write>(output: &Output<W>, text: impl Display) {
+    let mut output = output.lock().unwrap();
+    writeln!(output, "{text}").ok();
+    output.flush().ok();
+}
+
+/// A search running on its own thread.
+struct Thinking {
+    stop: Arc<AtomicBool>,
+    thread: JoinHandle<()>,
+    infinite: bool,
+}
+
+impl Thinking {
+    /// Tell the search to stop, and wait until it has said `bestmove`.
+    fn stop(self) {
+        self.stop.store(true, Ordering::Relaxed);
+        self.thread.join().ok();
+    }
+}
+
 /// Read UCI commands line by line and reply until `quit` or end of input.
-pub fn run(input: impl BufRead, mut output: impl Write) {
+pub fn run<W: Write + Send + 'static>(input: impl BufRead, output: W) {
+    let output = Arc::new(Mutex::new(output));
     // Every position of the game so far, the current one last: the search
     // needs the earlier ones for the repetition rule.
     let mut game = vec![Position::startpos()];
+    let mut thinking: Option<Thinking> = None;
 
     for line in input.lines() {
         let Ok(line) = line else { break };
         let command = line.split_whitespace().next().unwrap_or("");
 
+        // A GUI shouldn't change the position or start a new search while
+        // we think, but if one does, finish the current search first.
+        if matches!(command, "ucinewgame" | "position" | "go" | "stop" | "quit")
+            && let Some(search) = thinking.take()
+        {
+            search.stop();
+        }
+
         match command {
             "uci" => {
-                writeln!(output, "id name {} {}", crate::NAME, crate::VERSION).ok();
-                writeln!(output, "id author {}", crate::AUTHOR).ok();
-                writeln!(output, "uciok").ok();
+                say(
+                    &output,
+                    format!("id name {} {}", crate::NAME, crate::VERSION),
+                );
+                say(&output, format!("id author {}", crate::AUTHOR));
+                say(&output, "uciok");
             }
-            "isready" => {
-                writeln!(output, "readyok").ok();
-            }
+            "isready" => say(&output, "readyok"),
             "ucinewgame" => game = vec![Position::startpos()],
             "position" => match parse_position(&line) {
                 Ok(new_game) => game = new_game,
                 // UCI has no error reply, so explain with an "info string"
                 // and keep the old position.
-                Err(reason) => {
-                    writeln!(output, "info string invalid position: {reason}").ok();
-                }
+                Err(reason) => say(&output, format!("info string invalid position: {reason}")),
             },
-            "go" => go(&line, &game, &mut output),
+            "go" => thinking = go(&line, &game, &output),
             // Not part of UCI, but most engines have it: print the board.
-            "d" => {
-                writeln!(output, "{}", current(&game)).ok();
-            }
+            "d" => say(&output, current(&game)),
             // Also not UCI: the evaluation of the current position, without
             // looking ahead, shown from White's side like most tools do.
             "eval" => {
@@ -64,14 +105,23 @@ pub fn run(input: impl BufRead, mut output: impl Write) {
                     Color::Black => -evaluate(position),
                 };
                 let pawns = f64::from(for_white) / 100.0;
-                writeln!(output, "Evaluation: {pawns:+.2} (White's view)").ok();
+                say(&output, format!("Evaluation: {pawns:+.2} (White's view)"));
             }
-            "quit" => break,
-            // The UCI spec says to ignore anything we don't understand.
+            "quit" => return,
+            // `stop` was handled above. The UCI spec says to ignore anything
+            // we don't understand.
             _ => {}
         }
+    }
 
-        output.flush().ok();
+    // End of input (commands piped in from a file, say): let a search with
+    // a limit finish; stop one that would run forever.
+    if let Some(search) = thinking {
+        if search.infinite {
+            search.stop();
+        } else {
+            search.thread.join().ok();
+        }
     }
 }
 
@@ -79,46 +129,161 @@ fn current(game: &[Position]) -> &Position {
     game.last().expect("the game always has a current position")
 }
 
-/// `go perft N` counts every move sequence N moves deep, listed by first
-/// move (a debugging tool many engines share). Any other `go` searches,
-/// printing an `info` line after each depth and then `bestmove`.
-fn go(line: &str, game: &[Position], output: &mut impl Write) {
-    let words: Vec<&str> = line.split_whitespace().skip(1).collect();
-    let number_after = |word: &str| {
-        let at = words.iter().position(|&w| w == word)?;
-        words.get(at + 1)?.parse::<u32>().ok()
-    };
+/// What a `go` command asked for.
+#[derive(Default, Debug, PartialEq)]
+struct GoLimits {
+    depth: Option<u32>,
+    movetime: Option<u64>,
+    infinite: bool,
+    /// Milliseconds left on each clock, and added per move: [White, Black].
+    time: [Option<u64>; 2],
+    increment: [u64; 2],
+    moves_to_go: Option<u64>,
+}
 
+fn parse_go(line: &str) -> GoLimits {
+    let words: Vec<&str> = line.split_whitespace().skip(1).collect();
+    let number_after = |word: &str| -> Option<u64> {
+        let at = words.iter().position(|&w| w == word)?;
+        // Some GUIs send a negative time when the clock has run out.
+        let value: i64 = words.get(at + 1)?.parse().ok()?;
+        Some(value.max(0) as u64)
+    };
+    GoLimits {
+        depth: number_after("depth").map(|d| d as u32),
+        movetime: number_after("movetime"),
+        infinite: words.contains(&"infinite"),
+        time: [number_after("wtime"), number_after("btime")],
+        increment: [
+            number_after("winc").unwrap_or(0),
+            number_after("binc").unwrap_or(0),
+        ],
+        moves_to_go: number_after("movestogo"),
+    }
+}
+
+/// How long to think, in milliseconds: a target (`soft`) and a ceiling
+/// never crossed (`hard`).
+#[derive(Debug, PartialEq)]
+struct TimeBudget {
+    soft: u64,
+    hard: u64,
+}
+
+impl TimeBudget {
+    /// Inside a depth: past the ceiling, stop now.
+    fn out_of_time(&self, elapsed_ms: u64) -> bool {
+        elapsed_ms >= self.hard
+    }
+
+    /// Between depths: each depth takes several times longer than the one
+    /// before, so past half the target there's no point starting another.
+    fn worth_another_depth(&self, elapsed_ms: u64) -> bool {
+        elapsed_ms < self.soft / 2
+    }
+}
+
+/// Plan this move's time (DESIGN.md section 3): about a twentieth of the
+/// time left (or a share of it until the next time control) plus most of
+/// the increment, and never more than three times that. Returns `None`
+/// when there's no clock or move time, so the search has no time limit.
+fn time_budget(limits: &GoLimits, side: Color) -> Option<TimeBudget> {
+    if let Some(movetime) = limits.movetime {
+        let hard = movetime.saturating_sub(SAFETY_MARGIN_MS).max(1);
+        return Some(TimeBudget { soft: hard, hard });
+    }
+    let index = match side {
+        Color::White => 0,
+        Color::Black => 1,
+    };
+    let remaining = limits.time[index]?;
+    let increment = limits.increment[index];
+    let available = remaining.saturating_sub(SAFETY_MARGIN_MS).max(1);
+    let share = match limits.moves_to_go {
+        Some(moves) => (moves + 1).min(20),
+        None => 20,
+    };
+    let soft = (remaining / share + increment * 3 / 4).min(available);
+    let hard = (soft * 3).min(available);
+    Some(TimeBudget { soft, hard })
+}
+
+/// `go perft N` counts every move sequence N moves deep, listed by first
+/// move (a debugging tool many engines share). Any other `go` starts a
+/// search on its own thread, which prints an `info` line after each depth
+/// and then `bestmove`.
+fn go<W: Write + Send + 'static>(
+    line: &str,
+    game: &[Position],
+    output: &Output<W>,
+) -> Option<Thinking> {
+    let words: Vec<&str> = line.split_whitespace().skip(1).collect();
     if words.first() == Some(&"perft") {
-        match number_after("perft") {
+        match words.get(1).and_then(|n| n.parse().ok()) {
             Some(depth) => {
                 let split = divide(current(game), depth);
                 for (mv, count) in &split {
-                    writeln!(output, "{mv}: {count}").ok();
+                    say(output, format!("{mv}: {count}"));
                 }
                 let total: u64 = split.iter().map(|(_, count)| count).sum();
-                writeln!(output).ok();
-                writeln!(output, "Nodes searched: {total}").ok();
+                say(output, "");
+                say(output, format!("Nodes searched: {total}"));
             }
-            None => {
-                writeln!(output, "info string usage: go perft <depth>").ok();
-            }
+            None => say(output, "info string usage: go perft <depth>"),
         }
-        return;
+        return None;
     }
 
-    let depth = number_after("depth").unwrap_or(DEFAULT_DEPTH);
-    let started = Instant::now();
-    let best = search(game, depth, &mut || false, &mut |report| {
-        writeln!(output, "{}", info_line(report, started)).ok();
-        output.flush().ok();
-        true
-    });
-    match best {
-        Some(mv) => writeln!(output, "bestmove {mv}").ok(),
-        // No legal move (checkmate or stalemate): UCI's "null move".
-        None => writeln!(output, "bestmove 0000").ok(),
+    let limits = parse_go(line);
+    let budget = time_budget(&limits, current(game).side_to_move);
+    let max_depth = match (limits.depth, limits.infinite || budget.is_some()) {
+        (Some(depth), _) => depth,
+        (None, true) => MAX_PLY as u32,
+        (None, false) => DEFAULT_DEPTH,
     };
+    let infinite = limits.infinite;
+
+    let stop = Arc::new(AtomicBool::new(false));
+    let game = game.to_vec();
+    let output = Arc::clone(output);
+    let thread_stop = Arc::clone(&stop);
+    let thread = thread::spawn(move || {
+        let started = Instant::now();
+        let stop = thread_stop;
+        let elapsed = || started.elapsed().as_millis() as u64;
+        let best = search(
+            &game,
+            max_depth,
+            // Inside a depth: stop when told to, or at the hard limit.
+            &mut || {
+                stop.load(Ordering::Relaxed)
+                    || budget.as_ref().is_some_and(|b| b.out_of_time(elapsed()))
+            },
+            // Between depths: report, then decide whether to go deeper.
+            &mut |report| {
+                say(&output, info_line(report, started));
+                !stop.load(Ordering::Relaxed)
+                    && budget
+                        .as_ref()
+                        .is_none_or(|b| b.worth_another_depth(elapsed()))
+            },
+        );
+        // `go infinite` must not answer until told to stop, even if the
+        // search has run out of depths.
+        while infinite && !stop.load(Ordering::Relaxed) {
+            thread::sleep(Duration::from_millis(5));
+        }
+        match best {
+            Some(mv) => say(&output, format!("bestmove {mv}")),
+            // No legal move (checkmate or stalemate): UCI's "null move".
+            None => say(&output, "bestmove 0000"),
+        }
+    });
+    Some(Thinking {
+        stop,
+        thread,
+        infinite,
+    })
 }
 
 /// `info depth 5 score cp 30 nodes 77045 time 92 nps 837445 pv b1c3 ...`
@@ -175,10 +340,62 @@ fn parse_position(line: &str) -> Result<Vec<Position>, String> {
 mod tests {
     use super::*;
 
+    /// Collects what the engine prints, from either thread.
+    #[derive(Clone, Default)]
+    struct Captured(Arc<Mutex<Vec<u8>>>);
+
+    impl Write for Captured {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().write(bytes)
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
     fn respond(input: &str) -> String {
-        let mut output = Vec::new();
-        run(input.as_bytes(), &mut output);
-        String::from_utf8(output).unwrap()
+        let captured = Captured::default();
+        run(input.as_bytes(), captured.clone());
+        String::from_utf8(captured.0.lock().unwrap().clone()).unwrap()
+    }
+
+    /// Input that arrives a line at a time, each after a pause, like a GUI
+    /// typing commands while the engine thinks.
+    struct Paced {
+        lines: std::collections::VecDeque<(u64, String)>,
+        pending: Vec<u8>,
+    }
+
+    impl std::io::Read for Paced {
+        fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+            if self.pending.is_empty() {
+                let Some((pause_ms, line)) = self.lines.pop_front() else {
+                    return Ok(0);
+                };
+                thread::sleep(Duration::from_millis(pause_ms));
+                self.pending = format!("{line}\n").into_bytes();
+            }
+            let n = buffer.len().min(self.pending.len());
+            buffer[..n].copy_from_slice(&self.pending[..n]);
+            self.pending.drain(..n);
+            Ok(n)
+        }
+    }
+
+    fn respond_paced(lines: &[(u64, &str)]) -> String {
+        let input = Paced {
+            lines: lines.iter().map(|&(ms, l)| (ms, l.to_string())).collect(),
+            pending: Vec::new(),
+        };
+        let captured = Captured::default();
+        run(std::io::BufReader::new(input), captured.clone());
+        String::from_utf8(captured.0.lock().unwrap().clone()).unwrap()
+    }
+
+    fn timed(input: &str) -> (String, Duration) {
+        let started = Instant::now();
+        let reply = respond(input);
+        (reply, started.elapsed())
     }
 
     #[test]
@@ -279,5 +496,98 @@ mod tests {
             .parse()
             .unwrap();
         assert!(pawns > 8.0, "{reply}");
+    }
+
+    #[test]
+    fn go_with_a_clock_moves_in_time() {
+        // One second each: the target is 1000 / 20 = 50 ms, the ceiling 150 ms.
+        let (reply, took) = timed("go wtime 1000 btime 1000\n");
+        assert!(reply.contains("bestmove "), "{reply}");
+        assert!(took < Duration::from_millis(1000), "took {took:?}");
+    }
+
+    #[test]
+    fn go_movetime_is_respected() {
+        let (reply, took) = timed("go movetime 200\n");
+        assert!(reply.contains("bestmove "), "{reply}");
+        assert!(took < Duration::from_millis(1000), "took {took:?}");
+    }
+
+    #[test]
+    fn go_infinite_waits_for_stop() {
+        // Kings only: every depth is instant, so the search runs out of
+        // depths long before `stop`, but must still wait for it.
+        let reply = respond_paced(&[
+            (0, "position fen 4k3/8/8/8/8/8/8/4K3 w - - 0 1"),
+            (0, "go infinite"),
+            (300, "isready"),
+            (0, "stop"),
+        ]);
+        let ready = reply
+            .find("readyok")
+            .expect("isready answered while thinking");
+        let best = reply.find("bestmove").expect("bestmove after stop");
+        assert!(ready < best, "{reply}");
+        assert_eq!(reply.matches("bestmove").count(), 1);
+    }
+
+    #[test]
+    fn stop_ends_a_long_search_quickly() {
+        let (reply, took) = timed("go infinite\nstop\n");
+        assert!(
+            reply.ends_with('\n') && reply.contains("bestmove "),
+            "{reply}"
+        );
+        assert!(took < Duration::from_secs(2), "took {took:?}");
+    }
+
+    #[test]
+    fn reading_the_go_command() {
+        let limits = parse_go("go wtime 60000 btime 55000 winc 1000 binc 2000 movestogo 30");
+        assert_eq!(limits.time, [Some(60000), Some(55000)]);
+        assert_eq!(limits.increment, [1000, 2000]);
+        assert_eq!(limits.moves_to_go, Some(30));
+        assert!(!limits.infinite && limits.depth.is_none());
+        // A clock that ran out is sometimes sent as a negative number.
+        assert_eq!(parse_go("go wtime -20 btime 100").time[0], Some(0));
+    }
+
+    #[test]
+    fn the_time_budget() {
+        let clock = |wtime, btime, winc, binc| GoLimits {
+            time: [Some(wtime), Some(btime)],
+            increment: [winc, binc],
+            ..GoLimits::default()
+        };
+        // A minute, no increment: 3 seconds target, 9 seconds ceiling.
+        assert_eq!(
+            time_budget(&clock(60_000, 1, 0, 0), Color::White),
+            Some(TimeBudget {
+                soft: 3_000,
+                hard: 9_000
+            })
+        );
+        // The side to move's clock is the one used.
+        assert_eq!(
+            time_budget(&clock(1, 60_000, 0, 2_000), Color::Black),
+            Some(TimeBudget {
+                soft: 4_500,
+                hard: 13_500
+            })
+        );
+        // Almost out of time: never plan more than what's left, minus the margin.
+        let low = time_budget(&clock(1_000, 1_000, 3_000, 3_000), Color::White).unwrap();
+        assert_eq!(low.hard, 950);
+        assert!(low.soft <= low.hard);
+        // When to stop: inside a depth at the ceiling, between depths past
+        // half the target.
+        let budget = TimeBudget {
+            soft: 1_000,
+            hard: 3_000,
+        };
+        assert!(budget.worth_another_depth(499) && !budget.worth_another_depth(500));
+        assert!(!budget.out_of_time(2_999) && budget.out_of_time(3_000));
+        // No clock: no time limit.
+        assert_eq!(time_budget(&GoLimits::default(), Color::White), None);
     }
 }

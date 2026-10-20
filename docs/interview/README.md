@@ -52,3 +52,27 @@ that way.
 - **Result:** All six positions match exactly at full depth. The rules are
   proven, not assumed, and the test is known to catch the bug it's for.
   Lesson: test the tests.
+
+## Two threads, one engine: thinking while listening
+**Tags:** Concurrency, Testing, Design
+
+- **Situation:** A chess engine has to think for a set time and still
+  answer the GUI while it thinks (`stop`, "are you ready?"). The same
+  engine also has to run in a web browser, where there's no clock to read
+  inside the search and threads work differently.
+- **Task:** Play under a real clock without ever losing on time, and keep
+  the search core free of clocks and threads.
+- **Action:** Kept the search single-threaded. It only asks a "should I
+  stop?" question every 2,048 positions and reports after each depth. The
+  native UCI layer runs it on a second thread and answers that question
+  from a stop flag and a time budget: a target plus a hard ceiling, with a
+  safety margin. When I checked the new tests by breaking the code, two of
+  them couldn't fail: one depended on machine speed, one sent its input
+  too fast to notice an early answer. I rewrote them, pulling the timing
+  decisions into small pure functions and feeding the engine paced input,
+  like a person typing.
+- **Result:** Self-play under 10-second, 3-second and 1-second clocks with
+  no losses on time and no illegal moves, plus tests that are proven to
+  catch the bugs they're for. The browser build will reuse the same
+  search unchanged. Lesson: a timing test that can't fail is worse than
+  none, because it looks like protection.

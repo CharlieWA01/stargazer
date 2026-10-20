@@ -102,10 +102,14 @@ $0). So:
   table (with Zobrist hashing), killer and history moves, null-move
   pruning, late move reductions, check extensions, aspiration windows,
   principal variation search.
-- **Time:** about one twentieth of the remaining time plus most of the
-  increment per move, under a hard ceiling; stop between depths if the next
-  one clearly won't finish. Also `go depth`, `go movetime`, `go infinite`.
-  Smarter, position-aware time use is parked (ROADMAP.md).
+- **Time:** a target of one twentieth of the remaining time (or a share
+  until the next time control, with `movestogo`) plus three quarters of the
+  increment, and a ceiling of three times the target. Both stay 50 ms
+  inside the clock. Inside a depth the search stops at the ceiling; between
+  depths it starts another only if under half the target, because each
+  depth takes several times longer than the last. Also `go depth`,
+  `go movetime`, `go infinite`. Built in PR #9. Smarter, position-aware
+  time use is parked (ROADMAP.md).
 - **`stop` and threads:** the core stays single-threaded and clock-free; it
   is handed a stop signal and a time limit and checks them every few
   thousand positions. The native UCI layer runs the search on a second
