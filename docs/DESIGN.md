@@ -102,8 +102,12 @@ $0). So:
   then). The bot only connects out to Lichess, so nothing is exposed. Likely
   host: the planned homelab mini PC (no extra cost); a small always-on cloud
   server would be about $5 to $15 a month (Lambda can't hold the connection).
-- Browser build for the portfolio site's Stargazer tile (see "Runs in a
-  browser").
+- Portfolio tile (decided 2026-10-20): **both** a "play it here" page on the
+  portfolio site, with the engine running in the visitor's browser (see
+  "Runs in a browser"), and a link to the Lichess bot's profile to show its
+  real rating. The page says the browser version is single-threaded and so
+  a little weaker than the rated one. The tile links to Lichess rather than
+  fetching the rating live, so the site makes no calls to other servers.
 - Release process: how and when versions get tagged and built.
 
 ### 7. Project housekeeping
