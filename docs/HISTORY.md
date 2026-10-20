@@ -10,3 +10,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-20 | [#2](https://github.com/CharlieWA01/stargazer/pull/2) | Record goals, browser target and board design decisions |
 | 2026-10-20 | [#3](https://github.com/CharlieWA01/stargazer/pull/3) | Adopt the shared documentation standard |
 | 2026-10-20 | [#4](https://github.com/CharlieWA01/stargazer/pull/4) | Record move generation decisions, and add the board (Milestone 1, step 1) |
+| 2026-10-20 | [#5](https://github.com/CharlieWA01/stargazer/pull/5) | Add knight, king and pawn move generation (Milestone 1, step 2) |
