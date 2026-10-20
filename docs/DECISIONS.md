@@ -128,3 +128,16 @@ read, a thread). A failing CI step catches it the day it happens instead of
 months later. The first board code already compiles for the browser.
 **Cost:** about half a minute more CI per PR, and a one-time download of the
 WebAssembly standard library (rustup does it automatically).
+
+## 2026-10-20: A move is from, to and promotion; tables built at compile time (PR #5)
+**Decision:** a `Move` holds only its from-square, to-square and promotion
+piece, exactly what UCI writes (`e7e8q`). Castling, en passant and double
+pushes are recognised from the move itself when it's played. Knight, king
+and pawn attack tables are built while Stargazer compiles.
+**Alternatives:** extra flags on each move ("this is castling", "this is en
+passant"), packed into 16 bits as fast engines do; building the tables when
+the engine starts.
+**Why:** the plain form reads like chess and converts to and from UCI with
+no translation. Flags can be added later if `bench` shows a gain. Compile-time
+tables cost nothing at startup, need no setup code, and work the same in
+the browser build.
