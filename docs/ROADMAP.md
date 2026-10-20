@@ -4,8 +4,8 @@ Milestones are rough and will be refined during the architecture discussions.
 
 | # | Milestone | Done when |
 |---|---|---|
-| 0 | **Skeleton** | Builds, passes CI, answers the UCI handshake. *(current)* |
-| 1 | **Foundation** | Board representation and legal move generation pass the perft suite. |
+| 0 | **Skeleton** | Builds, passes CI, answers the UCI handshake. *(done)* |
+| 1 | **Foundation** | Board representation and legal move generation pass the perft suite. *(current; board design decided)* |
 | 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. |
 | 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. |
 | 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. |
