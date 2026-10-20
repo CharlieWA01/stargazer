@@ -11,7 +11,8 @@ Lichess as a bot, and playable in any visitor's browser on my portfolio site
 through WebAssembly.
 
 ## Status
-Milestone 2 of 6 done (2026-10-20): Stargazer plays full games in any
+Milestone 2 of 6 done (2026-10-20): the first playable version, named
+Polaris, plays full games in any
 chess GUI under a real clock. Every rule of chess is proven by perft (six
 standard test positions, up to 119 million positions deep, all exact). It
 looks ahead with alpha-beta search (depth 6 from the start in under a

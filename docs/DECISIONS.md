@@ -220,3 +220,12 @@ The margin covers the GUI or Lichess passing the move on. A bare `go` with
 no limits is only typed by hand, where a quick answer is more useful than
 thinking forever.
 **Cost:** none. The numbers are first guesses; SPRT can tune them later.
+
+## 2026-10-20: The first playable version is "Polaris" (PR #10)
+**Decision:** the Milestone 2 engine (it plays full games under a clock) is
+named Polaris, the first star in the release-name list.
+**Alternatives:** wait for the first Lichess-rated version to use a name.
+**Why:** Polaris is the guide star, a fitting name for the first version
+that plays. Charlie chose it.
+**Cost:** none. How releases are tagged and built is still open (DESIGN.md
+section 6), so no tag or version bump yet.

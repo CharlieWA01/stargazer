@@ -8,6 +8,7 @@ The last item of Milestone 2: Charlie plays Stargazer in a chess GUI.
   settled on PyChess from Debian's own packages. Added the engine with
   Edit → Engines → New, pointing at `target/release/stargazer`.
 - Charlie (about 1000 on Lichess) played it, and Stargazer won.
+- Charlie named this first playable version **Polaris** (DECISIONS.md).
 - Marked Milestone 2 done in the roadmap; updated `PORTFOLIO.md` and the
   play-it runbook with the Chromebook setup.
 
