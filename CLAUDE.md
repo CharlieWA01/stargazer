@@ -62,6 +62,7 @@ cargo test                         # unit tests
 cargo fmt                          # format
 cargo clippy --all-targets -- -D warnings
 cargo build --lib --target wasm32-unknown-unknown   # the browser build must keep compiling
+python3 tools/selfplay.py target/release/stargazer  # after search, time or UCI changes
 ```
 
 ## Layout
@@ -82,7 +83,10 @@ cargo build --lib --target wasm32-unknown-unknown   # the browser build must kee
 - `src/search.rs`: choosing a move (alpha-beta, iterative deepening,
   quiescence, mate and draw rules); clock-free, asks `should_stop`
 - `src/uci.rs`: UCI protocol handling (handshake, `position ... moves`,
-  `go depth N`, `go perft N`, `d` to print the board, `eval`)
+  `go` with clocks, `movetime`, `depth`, `infinite`, `stop`; `go perft N`,
+  `d` to print the board, `eval`); the search runs on its own thread
+- `tools/selfplay.py`: engine-vs-itself games under a clock (no time
+  losses, no illegal moves); see `docs/runbooks/play-it.md`
 - `docs/DESIGN.md`: the architecture, section by section; the source of truth
 - `docs/DECISIONS.md`: dated decisions with alternatives and reasons
 - `docs/ROADMAP.md`: milestones, release names, parking lot

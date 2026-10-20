@@ -204,3 +204,19 @@ already drawn. (3) keeps the core free of clocks, which the browser build
 handles differently from the native one. (4) lets a GUI get a move from
 the engine now; depth 5 takes a fraction of a second in a release build.
 **Cost:** none of note; (4) is temporary and goes away in step 3.
+
+## 2026-10-20: The time budget in detail (PR #9)
+**Decision:** a target of remaining/20 (or remaining/(movestogo+1), at most
+20) plus 3/4 of the increment; a ceiling of 3 times the target; both capped
+at the clock minus a 50 ms safety margin. Stop at the ceiling mid-depth;
+start a new depth only before half the target. `go infinite` waits for
+`stop` even when it runs out of depths. A bare `go` still searches 5 deep.
+**Alternatives:** stop only at a fixed time (wastes the unfinished depth, or
+overruns); predict each depth's length from the branching factor (more
+code, same idea); no safety margin.
+**Why:** the standard simple scheme. The half-target rule avoids starting a
+depth that can't finish, and the ceiling covers a depth that runs long.
+The margin covers the GUI or Lichess passing the move on. A bare `go` with
+no limits is only typed by hand, where a quick answer is more useful than
+thinking forever.
+**Cost:** none. The numbers are first guesses; SPRT can tune them later.

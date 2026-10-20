@@ -30,7 +30,8 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 - [x] Search: alpha-beta, iterative deepening, quiescence, captures first,
       mate and draw detection (repetition, 50-move rule, insufficient
       material); UCI `go depth N` and `eval` (#8)
-- [ ] Full UCI: clocks, `stop`, `info`, `bestmove`; plays in a GUI
+- [x] Full UCI: clocks, `stop`, `info`, `bestmove`; plays in a GUI and
+      against itself under a clock with no losses on time (#9)
 
 ## Release names (proposal)
 
@@ -71,9 +72,13 @@ Which milestone or strength level earns each name is still to be decided.
 
 ## Known limitations
 
-- No clock handling or `stop` yet: `go` searches to a fixed depth
-  (`go depth N`, or 5 by default), which a GUI's time control ignores.
-  That's Milestone 2 step 3.
+- Depth 1 always finishes, even past the time limit, so there's always a
+  move. It takes about a millisecond from the start position but about
+  30 ms in a busy middlegame (Kiwipete), which matters only with a few
+  milliseconds left on the clock.
+- Time use is deliberately simple. Over a long game with an increment the
+  clock settles at about 5 times the increment (half a second at +0.1s).
+  The smarter version is in the parking lot.
 - About 800,000 positions a second. Every position generates all its legal
   moves, quiescence included, and repetitions are found by comparing whole
   positions; Zobrist hashing (with the transposition table) will speed both.
