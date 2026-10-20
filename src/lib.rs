@@ -5,6 +5,7 @@
 //! - `board`: pieces, squares and a full position, read from and written as FEN
 //! - `attacks`: ready-made tables of where knights, kings and pawns attack
 //! - `movegen`: listing the moves in a position
+//! - `eval`: scoring a position (material and where the pieces stand)
 //! - `perft`: counting move sequences, to prove move generation correct
 //! - `uci`: the text protocol GUIs and Lichess use to talk to the engine
 //!
@@ -13,6 +14,7 @@
 pub mod attacks;
 pub mod bitboard;
 pub mod board;
+pub mod eval;
 pub mod movegen;
 pub mod perft;
 pub mod uci;

@@ -75,6 +75,8 @@ cargo build --lib --target wasm32-unknown-unknown   # the browser build must kee
   (built at compile time) and ray walking for bishops, rooks and queens
 - `src/movegen.rs`: the `Move` type, pseudo-legal moves for every piece
   (castling included), and `legal_moves`
+- `src/eval.rs`: scores a position (material plus where each piece stands,
+  blended between middlegame and endgame); tables built from chess rules
 - `src/perft.rs`: perft and divide, with the six standard positions as tests
   (deep run: `cargo test --release -- --ignored`; see `docs/runbooks/perft.md`)
 - `src/uci.rs`: UCI protocol handling (handshake, `position ... moves`,

@@ -7,7 +7,7 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 |---|---|---|
 | 0 | **Skeleton** | Builds, passes CI, answers the UCI handshake. *(done)* |
 | 1 | **Foundation** | Board representation and legal move generation pass the perft suite. *(done 2026-10-20)* |
-| 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. *(next; needs DESIGN.md sections 3 and 4)* |
+| 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. *(current; design decided 2026-10-20)* |
 | 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. |
 | 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. |
 | 5 | **Going public** | Running as a Lichess bot with a real rating. |
@@ -23,6 +23,13 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
       moves, making a move (copy-make), UCI `position ... moves` (PR #6)
 - [x] Perft on the six standard positions: depth 4 in CI, full depth by
       hand before releases; `go perft N` in UCI (PR #6)
+
+### Milestone 2 steps
+
+- [x] Evaluation: material and tapered piece-square tables, our own values (#7)
+- [ ] Search: alpha-beta, iterative deepening, quiescence, captures first,
+      mate and draw detection
+- [ ] Full UCI: clocks, `stop`, `info`, `bestmove`; plays in a GUI
 
 ## Release names (proposal)
 
@@ -50,6 +57,9 @@ Which milestone or strength level earns each name is still to be decided.
 - NNUE evaluation (Milestone 6); the evaluation is built to be swappable.
 - Magic bitboards for sliding pieces, and fully legal move generation, if
   `bench` shows either is worth it.
+- Position-aware time management (Charlie's idea): spend more time when
+  the position is complicated or the best move keeps changing between
+  depths. A strength change, so measured by SPRT (Milestone 4).
 - Push from 1800 to 2000: more search tricks, a richer evaluation, Texel
   tuning (see `docs/DECISIONS.md`, 2026-10-20).
 - Multithreading (Lazy SMP), native build only.

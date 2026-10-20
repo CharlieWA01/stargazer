@@ -151,3 +151,37 @@ capture deliberately broken (the captured pawn left on the board), every
 position passed at depth 3; only Kiwipete at depth 4 caught it
 (4,085,601 instead of 4,085,603). Depth 4 catches it in about 10 seconds.
 **Cost:** about 10 seconds more CI per PR.
+
+## 2026-10-20: Search: alpha-beta core, only blunder-stoppers in Milestone 2 (PR #7)
+**Decision:** negamax with alpha-beta and iterative deepening; in Milestone 2
+only quiescence search, captures-first ordering, and mate and draw
+detection. Every other search technique waits for Milestone 4 and SPRT.
+**Alternatives:** add the well-known big gains (transposition table, null
+move, late move reductions) straight away.
+**Why:** the core is the standard, explainable starting point. Quiescence
+search is what stops an engine hanging pieces, so it's needed to play at
+all. Adding the rest before SPRT exists would mean guessing at their value
+instead of measuring it, and measuring them makes good first tests of the
+SPRT rig.
+
+## 2026-10-20: Evaluation numbers are our own, tuned later (PR #7)
+**Decision:** material plus tapered (middlegame/endgame) piece-square
+tables, with values written by hand from chess principles and later fitted
+to game results by our own Texel tuner.
+**Alternatives:** the public "Simplified Evaluation Function" tables
+(starting numbers borrowed); PeSTO's machine-tuned tables (strongest start,
+but someone else's tuned work).
+**Why:** Charlie wants it built and understood, and wants it tunable. Every
+number can be explained, and the tuner is a small, real machine-learning
+step whose gain SPRT can measure.
+**Cost:** a weaker start than PeSTO until tuning.
+
+## 2026-10-20: Simple time budget; search thread only for `stop` (PR #7)
+**Decision:** spend about one twentieth of the remaining time plus most of
+the increment per move. The native UCI layer searches on a second thread so
+it can hear `stop`; the core stays single-threaded and clock-free.
+**Alternatives:** time use that adapts to how complicated the position is
+(Charlie's idea, parked for later); polling input from inside the search
+(not possible in a browser).
+**Why:** simple and safe now; smarter time use is a strength change, so it
+waits for SPRT.
