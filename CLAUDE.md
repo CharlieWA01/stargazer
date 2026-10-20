@@ -71,6 +71,10 @@ cargo build --lib --target wasm32-unknown-unknown   # the browser build must kee
 - `src/bitboard.rs`: sets of squares as 64-bit numbers; the bit tricks live here
 - `src/board.rs`: squares, pieces and a position (hybrid: bitboards plus a
   64-square array), read from and written as FEN
+- `src/attacks.rs`: ready-made tables of knight, king and pawn attacks,
+  built at compile time
+- `src/movegen.rs`: the `Move` type and pseudo-legal move generation
+  (knights, kings, pawns so far)
 - `src/uci.rs`: UCI protocol handling (handshake, `position`, and `d` to
   print the board)
 - `docs/DESIGN.md`: the architecture, section by section; the source of truth
