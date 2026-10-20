@@ -185,3 +185,22 @@ it can hear `stop`; the core stays single-threaded and clock-free.
 (not possible in a browser).
 **Why:** simple and safe now; smarter time use is a strength change, so it
 waits for SPRT.
+
+## 2026-10-20: Draw rules and how the search is driven (PR #8)
+**Decision:** (1) insufficient material (king vs king, or a lone knight or
+bishop) is scored as a draw, alongside repetition and the 50-move rule.
+(2) Inside the search a position seen once before is already a draw.
+(3) The search takes two callbacks, `should_stop` (asked every 2,048
+positions) and `on_depth` (after each finished depth, which can end the
+search), and never reads a clock itself. (4) Until clocks are handled, `go`
+without a depth searches 5 half-moves deep.
+**Alternatives:** (1) leave insufficient material out of Milestone 2;
+(2) wait for a true threefold repetition; (3) pass a deadline into the
+search; (4) refuse `go` without a depth.
+**Why:** (1) it's cheap, and otherwise the engine thinks it's winning a dead
+draw. (2) is the standard shortcut: a position that can be repeated once can
+be repeated again, and waiting for three wastes search on lines that are
+already drawn. (3) keeps the core free of clocks, which the browser build
+handles differently from the native one. (4) lets a GUI get a move from
+the engine now; depth 5 takes a fraction of a second in a release build.
+**Cost:** none of note; (4) is temporary and goes away in step 3.

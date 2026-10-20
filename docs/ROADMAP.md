@@ -27,8 +27,9 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 ### Milestone 2 steps
 
 - [x] Evaluation: material and tapered piece-square tables, our own values (#7)
-- [ ] Search: alpha-beta, iterative deepening, quiescence, captures first,
-      mate and draw detection
+- [x] Search: alpha-beta, iterative deepening, quiescence, captures first,
+      mate and draw detection (repetition, 50-move rule, insufficient
+      material); UCI `go depth N` and `eval` (#8)
 - [ ] Full UCI: clocks, `stop`, `info`, `bestmove`; plays in a GUI
 
 ## Release names (proposal)
@@ -57,9 +58,11 @@ Which milestone or strength level earns each name is still to be decided.
 - NNUE evaluation (Milestone 6); the evaluation is built to be swappable.
 - Magic bitboards for sliding pieces, and fully legal move generation, if
   `bench` shows either is worth it.
-- Position-aware time management (Charlie's idea): spend more time when
-  the position is complicated or the best move keeps changing between
-  depths. A strength change, so measured by SPRT (Milestone 4).
+- Position-aware time management (Charlie's idea): use the search's own
+  uncertainty as the measure of difficulty. Spend more time when the best
+  move keeps changing between depths or the score suddenly drops; move
+  early when one move is clearly best or forced. All inside a soft target
+  and a hard ceiling. Each rule kept only if SPRT shows a gain (Milestone 4).
 - Push from 1800 to 2000: more search tricks, a richer evaluation, Texel
   tuning (see `docs/DECISIONS.md`, 2026-10-20).
 - Multithreading (Lazy SMP), native build only.
@@ -68,8 +71,16 @@ Which milestone or strength level earns each name is still to be decided.
 
 ## Known limitations
 
-- Knows the rules completely but doesn't choose moves yet: `go` only
-  supports `go perft N`. Search and evaluation are Milestone 2.
+- No clock handling or `stop` yet: `go` searches to a fixed depth
+  (`go depth N`, or 5 by default), which a GUI's time control ignores.
+  That's Milestone 2 step 3.
+- About 800,000 positions a second. Every position generates all its legal
+  moves, quiescence included, and repetitions are found by comparing whole
+  positions; Zobrist hashing (with the transposition table) will speed both.
+- After a two-square pawn move the en passant square is always recorded,
+  even when no enemy pawn could capture, so that position never counts as
+  a repeat. Rare and harmless (a draw claim might be missed).
+- Insufficient material covers king vs king and a lone minor piece only.
 - No `bench` command yet; `go perft 6` is the rough speed check.
 - The browser build, when it exists, will be single-threaded and so a little
   weaker than the Lichess bot.

@@ -3,18 +3,30 @@
 //!
 //! So far this handles the startup handshake, setting up a position
 //! (`position startpos` or `position fen ...`, optionally followed by
-//! `moves ...`), `d`, which prints the current board, and `go perft N`,
-//! which counts move sequences. It doesn't search for a best move yet.
+//! `moves ...`), `go depth N` (search N half-moves deep and answer with
+//! `bestmove`), `go perft N` (count move sequences), `d` (print the board)
+//! and `eval` (print the evaluation). Clocks and `stop` come next
+//! (ROADMAP.md, Milestone 2 step 3); until then, `go` without a depth
+//! searches to `DEFAULT_DEPTH`.
 
 use std::io::{BufRead, Write};
+use std::time::Instant;
 
-use crate::board::Position;
+use crate::board::{Color, Position};
+use crate::eval::evaluate;
 use crate::movegen::legal_moves;
 use crate::perft::divide;
+use crate::search::{Report, mate_in, search};
+
+/// How deep `go` searches when it isn't given a depth (until clocks are
+/// handled). Takes well under a second in a release build.
+const DEFAULT_DEPTH: u32 = 5;
 
 /// Read UCI commands line by line and reply until `quit` or end of input.
 pub fn run(input: impl BufRead, mut output: impl Write) {
-    let mut position = Position::startpos();
+    // Every position of the game so far, the current one last: the search
+    // needs the earlier ones for the repetition rule.
+    let mut game = vec![Position::startpos()];
 
     for line in input.lines() {
         let Ok(line) = line else { break };
@@ -29,39 +41,30 @@ pub fn run(input: impl BufRead, mut output: impl Write) {
             "isready" => {
                 writeln!(output, "readyok").ok();
             }
-            "ucinewgame" => position = Position::startpos(),
+            "ucinewgame" => game = vec![Position::startpos()],
             "position" => match parse_position(&line) {
-                Ok(new_position) => position = new_position,
+                Ok(new_game) => game = new_game,
                 // UCI has no error reply, so explain with an "info string"
                 // and keep the old position.
                 Err(reason) => {
                     writeln!(output, "info string invalid position: {reason}").ok();
                 }
             },
-            // `go perft N`: count every move sequence N moves deep, listed by
-            // first move (a debugging tool many engines share).
-            "go" => {
-                let mut words = line.split_whitespace().skip(1);
-                if words.next() == Some("perft") {
-                    match words.next().and_then(|n| n.parse().ok()) {
-                        Some(depth) => {
-                            let split = divide(&position, depth);
-                            for (mv, count) in &split {
-                                writeln!(output, "{mv}: {count}").ok();
-                            }
-                            let total: u64 = split.iter().map(|(_, count)| count).sum();
-                            writeln!(output).ok();
-                            writeln!(output, "Nodes searched: {total}").ok();
-                        }
-                        None => {
-                            writeln!(output, "info string usage: go perft <depth>").ok();
-                        }
-                    }
-                }
-            }
+            "go" => go(&line, &game, &mut output),
             // Not part of UCI, but most engines have it: print the board.
             "d" => {
-                writeln!(output, "{position}").ok();
+                writeln!(output, "{}", current(&game)).ok();
+            }
+            // Also not UCI: the evaluation of the current position, without
+            // looking ahead, shown from White's side like most tools do.
+            "eval" => {
+                let position = current(&game);
+                let for_white = match position.side_to_move {
+                    Color::White => evaluate(position),
+                    Color::Black => -evaluate(position),
+                };
+                let pawns = f64::from(for_white) / 100.0;
+                writeln!(output, "Evaluation: {pawns:+.2} (White's view)").ok();
             }
             "quit" => break,
             // The UCI spec says to ignore anything we don't understand.
@@ -72,9 +75,73 @@ pub fn run(input: impl BufRead, mut output: impl Write) {
     }
 }
 
+fn current(game: &[Position]) -> &Position {
+    game.last().expect("the game always has a current position")
+}
+
+/// `go perft N` counts every move sequence N moves deep, listed by first
+/// move (a debugging tool many engines share). Any other `go` searches,
+/// printing an `info` line after each depth and then `bestmove`.
+fn go(line: &str, game: &[Position], output: &mut impl Write) {
+    let words: Vec<&str> = line.split_whitespace().skip(1).collect();
+    let number_after = |word: &str| {
+        let at = words.iter().position(|&w| w == word)?;
+        words.get(at + 1)?.parse::<u32>().ok()
+    };
+
+    if words.first() == Some(&"perft") {
+        match number_after("perft") {
+            Some(depth) => {
+                let split = divide(current(game), depth);
+                for (mv, count) in &split {
+                    writeln!(output, "{mv}: {count}").ok();
+                }
+                let total: u64 = split.iter().map(|(_, count)| count).sum();
+                writeln!(output).ok();
+                writeln!(output, "Nodes searched: {total}").ok();
+            }
+            None => {
+                writeln!(output, "info string usage: go perft <depth>").ok();
+            }
+        }
+        return;
+    }
+
+    let depth = number_after("depth").unwrap_or(DEFAULT_DEPTH);
+    let started = Instant::now();
+    let best = search(game, depth, &mut || false, &mut |report| {
+        writeln!(output, "{}", info_line(report, started)).ok();
+        output.flush().ok();
+        true
+    });
+    match best {
+        Some(mv) => writeln!(output, "bestmove {mv}").ok(),
+        // No legal move (checkmate or stalemate): UCI's "null move".
+        None => writeln!(output, "bestmove 0000").ok(),
+    };
+}
+
+/// `info depth 5 score cp 30 nodes 77045 time 92 nps 837445 pv b1c3 ...`
+fn info_line(report: &Report, started: Instant) -> String {
+    let score = match mate_in(report.score) {
+        Some(moves) => format!("mate {moves}"),
+        None => format!("cp {}", report.score),
+    };
+    let millis = started.elapsed().as_millis() as u64;
+    let nps = report.nodes * 1000 / millis.max(1);
+    let pv: Vec<String> = report.pv.iter().map(|mv| mv.to_string()).collect();
+    format!(
+        "info depth {} score {score} nodes {} time {millis} nps {nps} pv {}",
+        report.depth,
+        report.nodes,
+        pv.join(" ")
+    )
+}
+
 /// Read a `position` command: `position startpos` or `position fen <FEN>`,
-/// optionally followed by `moves e2e4 e7e5 ...`.
-fn parse_position(line: &str) -> Result<Position, String> {
+/// optionally followed by `moves e2e4 e7e5 ...`. Returns every position of
+/// the game, the current one last.
+fn parse_position(line: &str) -> Result<Vec<Position>, String> {
     let rest = line
         .trim_start()
         .strip_prefix("position")
@@ -92,14 +159,16 @@ fn parse_position(line: &str) -> Result<Position, String> {
         return Err(format!("expected startpos or fen, got \"{setup}\""));
     };
     // Play each move in turn, accepting only legal ones.
+    let mut game = vec![position];
     for text in moves.split_whitespace() {
         let mv = legal_moves(&position)
             .into_iter()
             .find(|mv| mv.to_string() == text)
             .ok_or_else(|| format!("{text} is not a legal move here"))?;
         position = position.make_move(mv);
+        game.push(position);
     }
-    Ok(position)
+    Ok(game)
 }
 
 #[cfg(test)]
@@ -179,5 +248,36 @@ mod tests {
     #[test]
     fn ignores_unknown_commands() {
         assert_eq!(respond("xyzzy\nisready\n"), "readyok\n");
+    }
+
+    #[test]
+    fn go_depth_searches_and_answers_with_bestmove() {
+        // Back-rank mate in one.
+        let reply = respond("position fen 6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1\ngo depth 2\n");
+        assert!(reply.contains("info depth 1 score mate 1 "), "{reply}");
+        assert!(reply.contains("info depth 2 "), "{reply}");
+        assert!(reply.ends_with("bestmove a1a8\n"), "{reply}");
+    }
+
+    #[test]
+    fn go_with_no_legal_moves_answers_the_null_move() {
+        let reply = respond("position fen 7k/5Q2/6K1/8/8/8/8/8 b - - 0 1\ngo depth 3\n");
+        assert_eq!(reply, "bestmove 0000\n");
+    }
+
+    #[test]
+    fn eval_is_shown_from_whites_side() {
+        assert_eq!(respond("eval\n"), "Evaluation: +0.00 (White's view)\n");
+        // Black to move and a queen down: still positive, because it's
+        // White who is better.
+        let reply = respond("position fen 4k3/8/8/8/8/8/8/3QK3 b - - 0 1\neval\n");
+        let pawns: f64 = reply
+            .trim_start_matches("Evaluation: ")
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap();
+        assert!(pawns > 8.0, "{reply}");
     }
 }

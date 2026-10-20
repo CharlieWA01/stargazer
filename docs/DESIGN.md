@@ -96,7 +96,8 @@ $0). So:
 - **In Milestone 2:** quiescence search (play out captures before judging,
   so it never stops mid-exchange), captures first ordered best-first
   (MVV-LVA), checkmate and stalemate scoring (quicker mates score higher),
-  and draws by repetition and the 50-move rule.
+  and draws by repetition, the 50-move rule and insufficient material. Inside
+  the search a single repeat counts as a draw. Built in PR #8.
 - **Later (Milestone 4), each only if SPRT shows a gain:** transposition
   table (with Zobrist hashing), killer and history moves, null-move
   pruning, late move reductions, check extensions, aspiration windows,

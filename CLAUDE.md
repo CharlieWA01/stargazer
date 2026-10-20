@@ -79,8 +79,10 @@ cargo build --lib --target wasm32-unknown-unknown   # the browser build must kee
   blended between middlegame and endgame); tables built from chess rules
 - `src/perft.rs`: perft and divide, with the six standard positions as tests
   (deep run: `cargo test --release -- --ignored`; see `docs/runbooks/perft.md`)
+- `src/search.rs`: choosing a move (alpha-beta, iterative deepening,
+  quiescence, mate and draw rules); clock-free, asks `should_stop`
 - `src/uci.rs`: UCI protocol handling (handshake, `position ... moves`,
-  `d` to print the board, `go perft N`)
+  `go depth N`, `go perft N`, `d` to print the board, `eval`)
 - `docs/DESIGN.md`: the architecture, section by section; the source of truth
 - `docs/DECISIONS.md`: dated decisions with alternatives and reasons
 - `docs/ROADMAP.md`: milestones, release names, parking lot
