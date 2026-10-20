@@ -6,6 +6,7 @@
 //! - `attacks`: ready-made tables of where knights, kings and pawns attack
 //! - `movegen`: listing the moves in a position
 //! - `eval`: scoring a position (material and where the pieces stand)
+//! - `search`: looking ahead to choose a move (alpha-beta, iterative deepening)
 //! - `perft`: counting move sequences, to prove move generation correct
 //! - `uci`: the text protocol GUIs and Lichess use to talk to the engine
 //!
@@ -17,6 +18,7 @@ pub mod board;
 pub mod eval;
 pub mod movegen;
 pub mod perft;
+pub mod search;
 pub mod uci;
 
 pub const NAME: &str = "Stargazer";

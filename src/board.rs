@@ -525,6 +525,32 @@ impl Position {
         self.is_attacked(self.king_square(color), color.opponent())
     }
 
+    /// Is this the same position as `other` for the repetition rule? The
+    /// same pieces on the same squares, the same side to move, and the same
+    /// castling and en passant rights. The move counters don't matter.
+    pub fn repeats(&self, other: &Position) -> bool {
+        self.squares == other.squares
+            && self.side_to_move == other.side_to_move
+            && self.castling == other.castling
+            && self.en_passant == other.en_passant
+    }
+
+    /// Is neither side able to checkmate, whatever happens? True for king
+    /// against king, and king and one knight or bishop against king.
+    /// (Rarer dead draws, like bishops on the same colour, aren't counted.)
+    pub fn insufficient_material(&self) -> bool {
+        let count = |kind| {
+            Color::BOTH
+                .iter()
+                .map(|&color| self.pieces(Piece::new(color, kind)).count())
+                .sum::<u32>()
+        };
+        let heavy_or_pawns =
+            count(PieceKind::Pawn) + count(PieceKind::Rook) + count(PieceKind::Queen);
+        let minors = count(PieceKind::Knight) + count(PieceKind::Bishop);
+        heavy_or_pawns == 0 && minors <= 1
+    }
+
     /// Play a move and return the new position, leaving this one untouched
     /// ("copy-make", DESIGN.md section 2). To take the move back, just keep
     /// using the old position.
@@ -881,5 +907,33 @@ mod tests {
         assert_eq!(lines[7], "1  R N B Q K B N R");
         assert_eq!(lines[8], "   a b c d e f g h");
         assert_eq!(lines[10], format!("FEN: {START_FEN}"));
+    }
+
+    #[test]
+    fn insufficient_material() {
+        let dead = |fen| Position::from_fen(fen).unwrap().insufficient_material();
+        assert!(dead("4k3/8/8/8/8/8/8/4K3 w - - 0 1")); // king vs king
+        assert!(dead("4k3/8/8/8/8/8/8/2N1K3 w - - 0 1")); // and a knight
+        assert!(dead("4k3/8/8/2b5/8/8/8/4K3 w - - 0 1")); // and a bishop
+        assert!(!dead("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1")); // a pawn can queen
+        assert!(!dead("4k3/8/8/8/8/8/8/R3K3 w - - 0 1")); // a rook can mate
+        assert!(!dead("4k3/8/8/8/8/8/8/1NN1K3 w - - 0 1")); // two minors: not counted
+    }
+
+    #[test]
+    fn repeats_ignores_the_move_counters() {
+        let start = Position::startpos();
+        let mut later = start;
+        for (from, to) in [("g1", "f3"), ("g8", "f6"), ("f3", "g1"), ("f6", "g8")] {
+            let mv = Move::new(Square::parse(from).unwrap(), Square::parse(to).unwrap());
+            later = later.make_move(mv);
+        }
+        assert!(later.repeats(&start));
+        assert_ne!(later.fullmove_number, start.fullmove_number);
+        let after_one = start.make_move(Move::new(
+            Square::parse("g1").unwrap(),
+            Square::parse("f3").unwrap(),
+        ));
+        assert!(!after_one.repeats(&start));
     }
 }
