@@ -7,8 +7,8 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 |---|---|---|
 | 0 | **Skeleton** | Builds, passes CI, answers the UCI handshake. *(done)* |
 | 1 | **Foundation** | Board representation and legal move generation pass the perft suite. *(done 2026-10-20)* |
-| 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. *(current; design decided 2026-10-20)* |
-| 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. |
+| 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. *(done 2026-10-20)* |
+| 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. *(next)* |
 | 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. |
 | 5 | **Going public** | Running as a Lichess bot with a real rating. |
 | 6 | **Stretch** | NNUE evaluation, multithreading. |
