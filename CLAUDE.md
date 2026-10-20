@@ -61,13 +61,18 @@ cargo build --release              # optimized build (always benchmark this one)
 cargo test                         # unit tests
 cargo fmt                          # format
 cargo clippy --all-targets -- -D warnings
+cargo build --lib --target wasm32-unknown-unknown   # the browser build must keep compiling
 ```
 
 ## Layout
 
 - `src/main.rs`: entry point, hands stdin/stdout to the UCI loop
 - `src/lib.rs`: library root (engine name, version, modules)
-- `src/uci.rs`: UCI protocol handling (handshake only, so far)
+- `src/bitboard.rs`: sets of squares as 64-bit numbers; the bit tricks live here
+- `src/board.rs`: squares, pieces and a position (hybrid: bitboards plus a
+  64-square array), read from and written as FEN
+- `src/uci.rs`: UCI protocol handling (handshake, `position`, and `d` to
+  print the board)
 - `docs/DESIGN.md`: the architecture, section by section; the source of truth
 - `docs/DECISIONS.md`: dated decisions with alternatives and reasons
 - `docs/ROADMAP.md`: milestones, release names, parking lot

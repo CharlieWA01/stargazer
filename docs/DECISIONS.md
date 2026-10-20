@@ -117,3 +117,14 @@ every PR; deep runs before each release, doubling as the `bench` command.
 (bugs reach `main` unnoticed).
 **Why:** CI catches rule bugs on every change in under a minute; the deep
 run catches the rare bug that only shows several moves in.
+
+## 2026-10-20: CI builds the browser version on every PR (PR #5)
+**Decision:** `rust-toolchain.toml` includes the WebAssembly target, and CI
+builds the library for it on every PR.
+**Alternatives:** check the browser build only when the portfolio tile is
+built (Milestone 2 or later).
+**Why:** the "runs in a browser" rule is easy to break by accident (a clock
+read, a thread). A failing CI step catches it the day it happens instead of
+months later. The first board code already compiles for the browser.
+**Cost:** about half a minute more CI per PR, and a one-time download of the
+WebAssembly standard library (rustup does it automatically).
