@@ -1,6 +1,7 @@
 # Roadmap
 
 Milestones are rough and will be refined during the architecture discussions.
+Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -32,3 +33,18 @@ Magnitudes are apparent brightness as seen from Earth (lower is brighter).
 | Sirius | −1.46 | The big one |
 
 Which milestone or strength level earns each name is still to be decided.
+
+## Parking lot
+
+- NNUE evaluation (Milestone 6); the evaluation is built to be swappable.
+- Push from 1800 to 2000: more search tricks, a richer evaluation, Texel
+  tuning (see `docs/DECISIONS.md`, 2026-10-20).
+- Multithreading (Lazy SMP), native build only.
+- A board widget for the browser page: write one or vendor a library
+  (check its licence).
+
+## Known limitations
+
+- Plays no chess yet: only the UCI handshake.
+- The browser build, when it exists, will be single-threaded and so a little
+  weaker than the Lichess bot.

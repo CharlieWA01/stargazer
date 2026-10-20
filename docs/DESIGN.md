@@ -1,8 +1,9 @@
 # Stargazer design
 
-This is the source of truth for architecture decisions. Each section is either
-**Open** (still being discussed) or **Decided** (with the date and reasoning).
-Code for a component isn't written until its section is Decided.
+This is the source of truth for the architecture. Each section is either
+**Open** (still being discussed) or **Decided** (with the date). Code for a
+component isn't written until its section is Decided. The dated record of
+each decision, with alternatives and reasons, is in `DECISIONS.md`.
 
 ## Settled so far
 
@@ -116,22 +117,6 @@ $0). So:
 
 ## Decision log
 
-Record decisions here as they're made, newest first.
-
-### 2026-10-20: Goals, targets, and the board
-**Decision:** keep Rust, UCI and "from scratch". Aim for about 1800 on
-Lichess with code Charlie understands; NNUE is a stretch goal. Stargazer must
-also run in a browser. The board is a hybrid of bitboards and a 64-square
-array. The repo stays private for now.
-**Why:** Rust compiles cleanly to WebAssembly and its compiler catches bugs
-early. UCI plugs into GUIs, lichess-bot, fastchess and the browser tile with
-one interface. 1800 doesn't need a neural network. The hybrid gives
-bitboard speed while keeping the code readable outside one tested module.
-Rejected: a mailbox-only board (slower, hard to switch away from later) and
-bitboards only (less readable).
-
-<!--
-### YYYY-MM-DD: Short title
-**Decision:** what we chose.
-**Why:** the reasoning and the alternatives we rejected.
--->
+Dated decisions, with the alternatives and the reasons, live in
+[`DECISIONS.md`](DECISIONS.md). This file holds the current state of each
+part of the design; `DECISIONS.md` holds how it got there.

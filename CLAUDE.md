@@ -3,6 +3,32 @@
 Stargazer is a UCI chess engine written in Rust, built from scratch (no
 borrowed engine code).
 
+Start of a session: read `docs/ROADMAP.md`, `docs/DESIGN.md` and
+`docs/DECISIONS.md` before proposing work.
+
+## Documenting is part of every task
+
+Claude's memory does not carry over between sessions, so this repo is the
+memory. Follow `docs/DOCS-STANDARD.md` (shared with Charlie's other project
+repos). A task isn't done until its docs are updated **in the same PR**:
+
+1. **Journal:** add or extend `docs/journal/YYYY-MM-DD-<topic>.md` using the
+   template in `docs/journal/README.md`.
+2. **Decisions:** real choices go in `docs/DECISIONS.md` (newest at the
+   bottom; correct old entries by marking them superseded), and the matching
+   `docs/DESIGN.md` section is updated.
+3. **Roadmap:** tick off finished items; park side ideas; note limitations.
+4. **Interview stories:** add or extend one in `docs/interview/README.md`
+   when the work makes a good story.
+5. **Runbooks:** repeatable procedures (perft, SPRT, releases) go in
+   `docs/runbooks/`.
+6. **Portfolio:** update `docs/PORTFOLIO.md` when the headline facts change.
+
+Never edit `docs/HISTORY.md` by hand; a workflow appends to it after each
+merge. The `docs-check` workflow fails PRs that change code without touching
+`docs/`; fill in the PR template's checklist. End every GitHub comment Claude
+posts with `— Claude` (comments appear under Charlie's account).
+
 ## How we work
 
 - **Charlie is the architect and infrastructure engineer.** Charlie makes the
@@ -42,5 +68,8 @@ cargo clippy --all-targets -- -D warnings
 - `src/main.rs`: entry point, hands stdin/stdout to the UCI loop
 - `src/lib.rs`: library root (engine name, version, modules)
 - `src/uci.rs`: UCI protocol handling (handshake only, so far)
-- `docs/DESIGN.md`: architecture decisions; the source of truth
-- `docs/ROADMAP.md`: milestones and release names
+- `docs/DESIGN.md`: the architecture, section by section; the source of truth
+- `docs/DECISIONS.md`: dated decisions with alternatives and reasons
+- `docs/ROADMAP.md`: milestones, release names, parking lot
+- `docs/journal/`, `docs/interview/`, `docs/PORTFOLIO.md`, `docs/HISTORY.md`:
+  the record (see `docs/DOCS-STANDARD.md`)
