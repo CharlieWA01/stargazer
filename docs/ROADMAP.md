@@ -16,7 +16,7 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 ### Milestone 1 steps
 
 - [x] The board: hybrid bitboards plus 64-square array, FEN in and out,
-      UCI `position` and `d` (PR #5)
+      UCI `position` and `d` (PR #4)
 - [ ] Knight, king and pawn moves
 - [ ] Sliding pieces (ray walking), castling, en passant, promotion; making
       a move (copy-make)
