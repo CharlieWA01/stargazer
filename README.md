@@ -9,9 +9,9 @@ eventually, as a Lichess bot.
 
 ## Status
 
-**Pre-alpha: project skeleton.** The engine answers the UCI handshake but does
-not play chess yet. Architecture decisions are being worked out in
-[`docs/DESIGN.md`](docs/DESIGN.md).
+**Pre-alpha: Milestone 1 (Foundation).** The engine answers the UCI handshake
+but does not play chess yet. The board design is decided; the rest of the
+architecture is being worked out in [`docs/DESIGN.md`](docs/DESIGN.md).
 
 ## Building and running
 
@@ -26,5 +26,7 @@ cargo test                     # run the tests
 ## Docs
 
 - [`docs/DESIGN.md`](docs/DESIGN.md): architecture decisions, open and settled
+- [`docs/DECISIONS.md`](docs/DECISIONS.md): every decision, with alternatives and reasons
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): milestones and the release naming scheme
+- [`docs/PORTFOLIO.md`](docs/PORTFOLIO.md): one-page summary
 - [`CLAUDE.md`](CLAUDE.md): how this project is developed, and context for AI sessions
