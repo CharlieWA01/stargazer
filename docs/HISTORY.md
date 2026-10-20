@@ -8,3 +8,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 |---|---|---|
 | 2026-10-18 | [#1](https://github.com/CharlieWA01/stargazer/pull/1) | Add project skeleton |
 | 2026-10-20 | [#2](https://github.com/CharlieWA01/stargazer/pull/2) | Record goals, browser target and board design decisions |
+| 2026-10-20 | [#3](https://github.com/CharlieWA01/stargazer/pull/3) | Adopt the shared documentation standard |
