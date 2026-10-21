@@ -33,12 +33,18 @@ bounds 0 to 10 Elo, 16 vCPU. The right answer is "fail" (no gain).
   identical copies on the same opening often play the same game twice with
   colours swapped. Those pairs carry no information, which leaves about 47
   that do. A result this far from 0 happens by chance about 2 times in 100.
-  Most likely luck, but unproven: a self-test run to the end should give
-  "fail".
+  A 200-game match in the cloud session also favoured the first-listed
+  engine (+22.6 ± 38), so the next check was whether fastchess favours
+  whichever engine is listed first. With 800 games of the same engine
+  against itself it didn't: the first-listed copy scored -5.2 ± 17.4
+  (313 wins, 325 losses, 162 draws). So the +25 was luck, not a bias in
+  the rig.
 
 ## How it was verified
 - The workflow log and report (summary page of the run).
 - Charlie's `describe-tasks` output and greps of `fastchess.log` from S3.
+- 800 local games (1+0.01, 3 at a time) for the first-listed check: no
+  time losses.
 
 ## Impact
 The rig works on AWS. Next: the faster image build, then a complete
