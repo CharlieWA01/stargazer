@@ -63,6 +63,7 @@ cargo fmt                          # format
 cargo clippy --all-targets -- -D warnings
 cargo build --lib --target wasm32-unknown-unknown   # the browser build must keep compiling
 python3 tools/selfplay.py target/release/stargazer  # after search, time or UCI changes
+python3 -m unittest discover -s rig -v              # after changing the test rig
 ./target/release/stargazer bench   # node count must not change for speed-only changes
 ```
 
@@ -88,6 +89,8 @@ python3 tools/selfplay.py target/release/stargazer  # after search, time or UCI 
 - `src/uci.rs`: UCI protocol handling (handshake, `position ... moves`,
   `go` with clocks, `movetime`, `depth`, `infinite`, `stop`; `go perft N`,
   `d` to print the board, `eval`); the search runs on its own thread
+- `rig/`: the SPRT test container (`Dockerfile`, `run_test.py` and its
+  tests); see `docs/runbooks/sprt.md`
 - `tools/selfplay.py`: engine-vs-itself games under a clock (no time
   losses, no illegal moves); see `docs/runbooks/play-it.md`
 - `docs/DESIGN.md`: the architecture, section by section; the source of truth

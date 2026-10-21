@@ -266,3 +266,20 @@ for hours and must not be. Regular Fargate always-on is about $29 a month
 for 1 vCPU, over the budget; on a schedule it's about $4. The homelab mini
 PC would be free.
 **Cost:** none now.
+
+## 2026-10-21: How the test container is built (PR #11)
+**Decision:** a Debian 13 ("trixie") image with fastchess compiled from a
+pinned release and the opening book downloaded from a pinned commit and
+checked by hash. The engines are normal (glibc) builds from GitHub's Ubuntu
+24.04 machines. The run script is Python with no extra packages. Games that
+are clearly decided are adjudicated with Stockfish's testing rules.
+**Alternatives:** Debian 12 with fully static (musl) engines, which run on
+any Linux; a prebuilt fastchess download; no adjudication.
+**Why:** the static build searched about 30% slower (390k vs 560k
+positions a second), which would quietly make every test shorter than
+8+0.08 in practice; Debian 12's C library is too old for engines built on
+Ubuntu 24.04. Building fastchess ourselves works the same on ARM and x86.
+Adjudication saves time in long lost or dead-drawn endgames and doesn't
+change who's stronger.
+**Cost:** none. Building fastchess adds about a minute to an image build,
+which happens only when `rig/` changes.

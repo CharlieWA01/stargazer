@@ -153,6 +153,18 @@ $0). So:
     AWS keys (OIDC).
   - **Rule:** a strength change merges only with a passing SPRT result
     linked in its PR.
+  - **The test container: built 2026-10-21 (PR #11).** `rig/Dockerfile`
+    holds fastchess (pinned release, built for whatever CPU runs it), the
+    8moves_v3 book (pinned, hash-checked) and `rig/run_test.py`, which
+    fetches the two engines, records each one's `bench`, plays until the
+    SPRT decides and writes `verdict.json` (pass, fail, inconclusive or
+    error), the games and the log. It stops cleanly on AWS's stop signal or
+    an 8-hour deadline, keeping the games played so far. The test engine
+    is listed first, so a positive Elo means the new version is stronger.
+    Clearly decided games end early (resign at 6 pawns for 3 moves, draw
+    after move 34 within 0.2 pawns for 8 moves), as Stockfish's testing
+    does. The `Test rig` workflow builds the image and plays a tiny match
+    in it whenever `rig/` changes.
 - Benchmarking: **built 2026-10-21 (PR #11).** `bench` (a UCI command, or
   `stargazer bench`) searches 10 fixed positions to depth 5 and prints
   `Bench: <nodes> nodes <speed> nps`. The node count fingerprints a build: a

@@ -1,0 +1,52 @@
+name: Test rig
+
+# Checks the SPRT test container (rig/) whenever it changes: the run
+# script's unit tests, then a real build of the image and a tiny match
+# inside it (the engine against itself, 8 very fast games, no AWS).
+# This is x86; the SPRT workflow builds the same Dockerfile for ARM.
+
+on:
+  pull_request:
+    paths: ["rig/**", ".github/workflows/rig.yml"]
+  push:
+    branches: [main]
+    paths: ["rig/**", ".github/workflows/rig.yml"]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run script unit tests
+        run: python3 -m unittest discover -s rig -v
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the engine
+        run: cargo build --release
+
+      - name: Build the test container
+        run: docker build -t stargazer-rig rig
+
+      - name: Play a tiny match inside it
+        run: |
+          mkdir -p work/engines
+          cp target/release/stargazer work/engines/base
+          cp target/release/stargazer work/engines/test
+          docker run --rm -v "$PWD/work:/work" \
+            -e STARGAZER_TC=1+0.01 -e STARGAZER_ROUNDS=4 -e STARGAZER_CONCURRENCY=2 \
+            stargazer-rig
+
+      - name: Check the verdict file
+        run: |
+          python3 - <<'EOF'
+          import json
+          report = json.load(open("work/results/verdict.json"))
+          print(json.dumps(report, indent=2))
+          # 4 rounds = 8 games, too few for the SPRT to decide anything.
+          assert report["verdict"] == "inconclusive", report["verdict"]
+          assert report["results"]["games"] == 8, report["results"]
+          bench = report["bench"]
+          assert bench["base"] == bench["test"] and bench["base"], bench
+          EOF
