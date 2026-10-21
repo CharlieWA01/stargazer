@@ -1,0 +1,41 @@
+name: SPRT report
+
+# The verdict of a test started by "Run SPRT" that took longer than that
+# workflow waited. Give it the run id from that workflow's summary
+# (sprt-<number>-<attempt>); it posts the verdict, or the progress so far,
+# on the summary page and on the PR the test was started for.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Run id, e.g. sprt-1234567890-1"
+        required: true
+
+permissions:
+  id-token: write       # sign in to AWS with OIDC
+  contents: read
+  pull-requests: write  # post the verdict on the PR
+
+jobs:
+  report:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the run id
+        env:
+          RUN_ID: ${{ inputs.run_id }}
+        run: '[[ "$RUN_ID" =~ ^sprt-[0-9]+-[0-9]+$ ]] || { echo "bad run id"; exit 1; }'
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.STARGAZER_RUNNER_ROLE_ARN }}
+          aws-region: us-east-2
+      - name: Report
+        env:
+          RUN_ID: ${{ inputs.run_id }}
+          BUCKET: ${{ vars.STARGAZER_RESULTS_BUCKET }}
+          CLUSTER: ${{ vars.STARGAZER_CLUSTER }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 rig/report.py "$RUN_ID"

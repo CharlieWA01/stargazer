@@ -7,14 +7,44 @@ DECISIONS.md (2026-10-21).
 
 ## On AWS (the normal way)
 
-*Coming in the next PR: a "Run SPRT" button in GitHub Actions that builds
-both versions, starts the test on Fargate Spot and posts the verdict on the
-PR.* Until AWS raises the sandbox's Fargate Spot limit from 6 vCPUs to 16,
-tests run at 4 vCPU / 8 GB.
+1. Push the change to a branch and open its PR.
+2. GitHub, **Actions** tab, **Run SPRT**, **Run workflow**. Fill in:
+   - **test**: the branch (or tag, or commit) with the change
+   - **base**: what to compare against, normally `main`
+   - **elo0 / elo1**: `0` and `10` for a strength change; `-5` and `0`
+     for a clean-up that should change nothing
+   - **pr**: the PR's number, so the verdict is posted there
+   - leave the rest: 8+0.08, 4 vCPU (AWS allows at most 6 Spot vCPUs in
+     the sandbox until the request for 16 is approved), wait 30 minutes
+3. The workflow builds both versions for ARM (a few minutes; ten more if
+   `rig/` changed and the container has to be rebuilt), starts the test on
+   Fargate Spot, then waits up to 30 minutes. A clear result (often a
+   change that's worse) arrives in that time and is posted on the PR.
+4. Otherwise the PR gets a "still running" note with the run id
+   (`sprt-<number>-<attempt>`, also on the workflow's summary page). Later,
+   run **SPRT report** with that run id to post the verdict. Tests stop by
+   themselves after 8 hours at most.
+
+**Stopping a test early:** AWS console, ECS, cluster `cwa-stargazer-runner`,
+Tasks, select it, Stop. It saves what it has and reports "inconclusive".
+
+**If something goes wrong:** the workflow's log shows each step. The
+container's own output is in CloudWatch Logs, group `/cwa/stargazer-runner`.
+A task that stopped without a verdict (out of memory, say) is reported as
+an error with AWS's stop reason.
+
+**What it costs:** Fargate Spot ARM is roughly 6 cents an hour at 4 vCPU,
+so under 50 cents for an 8-hour test. GitHub bills private repos for
+Actions time: each test uses about 10 to 40 minutes of the 2,000 free
+minutes a month, and a report about 1.
 
 ## What the test container does
 
 The image is `rig/Dockerfile`; the script it runs is `rig/run_test.py`.
+The workflows are `.github/workflows/sprt.yml` (Run SPRT) and
+`sprt-report.yml` (SPRT report); both use `rig/report.py` to write the
+report. The container comes from the workflow's own version of the repo,
+not from the versions being tested, so old commits can be tested too.
 
 1. Fetches `engines/base` and `engines/test` from
    `s3://<results bucket>/runs/<run id>/`.
