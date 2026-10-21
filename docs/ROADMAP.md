@@ -38,14 +38,15 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 - [x] Design decided: Fargate Spot, fastchess, balanced book, 8+0.08,
       SPRT bounds, manual start, results on the PR and in S3 (#11)
 - [x] `bench`: a fixed search whose node count fingerprints a build (#11)
-- [ ] AWS infrastructure in cloud-homelab (its own thread): image registry,
+- [x] AWS infrastructure in cloud-homelab (its own thread): image registry,
       Fargate Spot cluster, results bucket, GitHub OIDC role (cloud-homelab
-      PR #20, waiting for `terraform apply`). The sandbox account allows 6
-      Fargate Spot vCPUs until AWS approves the request for 16, so tests
-      run at 4 vCPU for now.
+      PR #20, applied 2026-10-21). The sandbox account's Fargate Spot
+      limit was raised from 6 to 16 vCPUs the same day: one full-size test
+      at a time.
 - [x] The test container: fastchess, opening book, run script; tested
       locally, and a tiny match in the real image on every `rig/` change (#11)
-- [ ] GitHub Actions: build both engines for ARM, start the test, post the verdict
+- [x] GitHub Actions: build both engines for ARM, start the test, post the
+      verdict ("Run SPRT", plus "SPRT report" for long tests) (#12)
 - [ ] First real test: the engine against itself must show no difference
 
 ## Release names

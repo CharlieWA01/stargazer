@@ -1,0 +1,233 @@
+name: Run SPRT
+
+# The Run button for a strength test (docs/runbooks/sprt.md). Builds the
+# old ("base") and new ("test") versions of the engine for ARM, uploads
+# them to S3, and starts one test container on AWS Fargate Spot. It then
+# waits a while: a quick verdict is posted here (and on the PR, if one is
+# given); a longer test keeps running, and the "SPRT report" workflow
+# posts its verdict later.
+#
+# AWS access is through GitHub's OIDC sign-in to a role (no stored keys).
+# The repository variables come from cloud-homelab's Terraform outputs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "New version: branch, tag or commit"
+        required: true
+      base:
+        description: "Old version to compare against"
+        default: main
+      elo0:
+        description: "SPRT lower bound (Elo)"
+        default: "0"
+      elo1:
+        description: "SPRT upper bound (Elo)"
+        default: "10"
+      tc:
+        description: "Time control, seconds+increment"
+        default: "8+0.08"
+      vcpus:
+        description: "CPUs for the test (1, 2, 4, 8 or 16). AWS allows 16 at once: one full-size test at a time"
+        default: "16"
+      pr:
+        description: "Pull request number to post the verdict on (optional)"
+        required: false
+      wait_minutes:
+        description: "How long to wait for a verdict before leaving it to the report workflow"
+        default: "30"
+
+permissions:
+  id-token: write       # sign in to AWS with OIDC
+  contents: read
+  pull-requests: write  # post the verdict on the PR
+
+env:
+  AWS_REGION: us-east-2
+  RUN_ID: sprt-${{ github.run_id }}-${{ github.run_attempt }}
+  # Inputs reach scripts only through environment variables, never pasted
+  # into the script text, so odd characters in them can't run as commands.
+  TEST_REF: ${{ inputs.test }}
+  BASE_REF: ${{ inputs.base }}
+  PR: ${{ inputs.pr }}
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Check the inputs
+        env:
+          VCPUS: ${{ inputs.vcpus }}
+          ELO0: ${{ inputs.elo0 }}
+          ELO1: ${{ inputs.elo1 }}
+          TC: ${{ inputs.tc }}
+          PR: ${{ inputs.pr }}
+          WAIT: ${{ inputs.wait_minutes }}
+        run: |
+          case "$VCPUS" in 1|2|4|8|16) ;; *) echo "vcpus must be 1, 2, 4, 8 or 16"; exit 1;; esac
+          [[ "$ELO0" =~ ^-?[0-9]+(\.[0-9]+)?$ && "$ELO1" =~ ^-?[0-9]+(\.[0-9]+)?$ ]] || { echo "bad bounds"; exit 1; }
+          [[ "$TC" =~ ^[0-9]+(\.[0-9]+)?\+[0-9]+(\.[0-9]+)?$ ]] || { echo "bad time control"; exit 1; }
+          [[ -z "$PR" || "$PR" =~ ^[0-9]+$ ]] || { echo "bad PR number"; exit 1; }
+          [[ "$WAIT" =~ ^[0-9]+$ && "$WAIT" -le 100 ]] || { echo "wait_minutes must be 0 to 100"; exit 1; }
+
+      # The workflow's own version of the repo, for the rig (rig/): the test
+      # container and the report script. Old engine versions may not have it.
+      - uses: actions/checkout@v4
+        with:
+          path: self
+
+      # --- Build both engines for ARM ---------------------------------------
+      - name: Check out the new version
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.test }}
+          path: test
+      - name: Check out the old version
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base }}
+          path: base
+      - name: Install the ARM cross-compiler
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q gcc-aarch64-linux-gnu
+      - name: Build both engines
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+        run: |
+          mkdir engines
+          for version in base test; do
+            (cd "$version" && rustup target add aarch64-unknown-linux-gnu \
+              && cargo build --release --target aarch64-unknown-linux-gnu)
+            cp "$version/target/aarch64-unknown-linux-gnu/release/stargazer" "engines/$version"
+          done
+          file engines/*
+          echo "BASE_SHA=$(git -C base rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "TEST_SHA=$(git -C test rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      # --- Sign in to AWS, upload the engines --------------------------------
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.STARGAZER_RUNNER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Upload the engines
+        env:
+          BUCKET: ${{ vars.STARGAZER_RESULTS_BUCKET }}
+        run: |
+          for version in base test; do
+            aws s3 cp "engines/$version" "s3://$BUCKET/runs/$RUN_ID/engines/$version" --only-show-errors
+          done
+
+      # --- The test container: rebuilt only when rig/ has changed -----------
+      # The image is tagged with a fingerprint of the rig/ folder. Tags can't be overwritten except "current", which the
+      # task definition runs; it's moved to this image before each test.
+      # QEMU lets this x86 machine build an ARM image (slowly: about ten
+      # minutes, and only when rig/ has changed).
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@v3
+      - name: Find or build the test container
+        env:
+          REPOSITORY: ${{ vars.STARGAZER_IMAGE_REPOSITORY }}
+        run: |
+          tag="rig-$(cd self && git ls-files -s rig | sha256sum | cut -c1-16)"
+          name="${REPOSITORY#*/}"
+          registry="${REPOSITORY%%/*}"
+          if aws ecr batch-get-image --repository-name "$name" --image-ids imageTag="$tag" \
+               --query 'images[0].imageId.imageTag' --output text | grep -q "$tag"; then
+            echo "Image $tag already built"
+          else
+            aws ecr get-login-password | docker login --username AWS --password-stdin "$registry"
+            docker buildx build --platform linux/arm64 --provenance=false \
+              -t "$REPOSITORY:$tag" --push self/rig
+          fi
+          manifest=$(aws ecr batch-get-image --repository-name "$name" --image-ids imageTag="$tag" \
+            --query 'images[0].imageManifest' --output text)
+          current=$(aws ecr batch-get-image --repository-name "$name" --image-ids imageTag=current \
+            --query 'images[0].imageManifest' --output text 2>/dev/null || true)
+          if [ "$manifest" != "$current" ]; then
+            # "Already exists" means "current" already points here: fine.
+            aws ecr put-image --repository-name "$name" --image-tag current \
+              --image-manifest "$manifest" > /dev/null 2> put-image.err \
+              || grep -q ImageAlreadyExistsException put-image.err \
+              || { cat put-image.err; exit 1; }
+          fi
+          echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
+
+      # --- Start the test -----------------------------------------------------
+      - name: Start the test on Fargate Spot
+        env:
+          CLUSTER: ${{ vars.STARGAZER_CLUSTER }}
+          FAMILY: ${{ vars.STARGAZER_TASK_DEFINITION_FAMILY }}
+          SUBNETS: ${{ vars.STARGAZER_SUBNETS }}
+          SECURITY_GROUP: ${{ vars.STARGAZER_SECURITY_GROUP }}
+          BUCKET: ${{ vars.STARGAZER_RESULTS_BUCKET }}
+          VCPUS: ${{ inputs.vcpus }}
+          ELO0: ${{ inputs.elo0 }}
+          ELO1: ${{ inputs.elo1 }}
+          TC: ${{ inputs.tc }}
+        run: |
+          # Fargate pairs each CPU count with memory: 2 GB per vCPU here.
+          cpu=$((VCPUS * 1024)); memory=$((VCPUS * 2048))
+          overrides=$(CPU=$cpu MEMORY=$memory python3 - <<'EOF'
+          import json, os
+          e = os.environ
+          settings = {"STARGAZER_RUN_ID": e["RUN_ID"], "STARGAZER_ELO0": e["ELO0"],
+                      "STARGAZER_ELO1": e["ELO1"], "STARGAZER_TC": e["TC"]}
+          print(json.dumps({"cpu": e["CPU"], "memory": e["MEMORY"], "containerOverrides": [{
+              "name": "runner",
+              "environment": [{"name": k, "value": v} for k, v in settings.items()]}]}))
+          EOF
+          )
+          network="awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUP],assignPublicIp=ENABLED}"
+          task=$(aws ecs run-task --cluster "$CLUSTER" --task-definition "$FAMILY" \
+            --network-configuration "$network" --overrides "$overrides" \
+            --query 'tasks[0].taskArn' --output text)
+          [ -n "$task" ] && [ "$task" != "None" ] || { echo "AWS didn't start the task"; exit 1; }
+          echo "TASK_ARN=$task" >> "$GITHUB_ENV"
+          # What was asked for, saved with the results, so the report
+          # workflow can find the task and the PR later.
+          TASK_ARN="$task" python3 - <<'EOF' > request.json
+          import json, os
+          e = os.environ
+          print(json.dumps({
+              "task_arn": e["TASK_ARN"], "test": e["TEST_REF"], "test_sha": e["TEST_SHA"],
+              "base": e["BASE_REF"], "base_sha": e["BASE_SHA"], "pr": e["PR"],
+              "elo0": e["ELO0"], "elo1": e["ELO1"], "tc": e["TC"], "vcpus": e["VCPUS"],
+              "image": e["IMAGE_TAG"],
+              "workflow_run": f"{e['GITHUB_SERVER_URL']}/{e['GITHUB_REPOSITORY']}/actions/runs/{e['GITHUB_RUN_ID']}",
+          }, indent=2))
+          EOF
+          aws s3 cp request.json "s3://$BUCKET/runs/$RUN_ID/request.json" --only-show-errors
+          {
+            echo "## SPRT started: \`$RUN_ID\`"
+            echo "- test: \`$TEST_REF\` ($TEST_SHA)"
+            echo "- base: \`$BASE_REF\` ($BASE_SHA)"
+            echo "- bounds [$ELO0, $ELO1] Elo, $TC, $VCPUS vCPU, image \`$IMAGE_TAG\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # --- Wait a while for a verdict -----------------------------------------
+      - name: Wait for the verdict
+        env:
+          CLUSTER: ${{ vars.STARGAZER_CLUSTER }}
+          WAIT: ${{ inputs.wait_minutes }}
+        run: |
+          end=$(( $(date +%s) + WAIT * 60 ))
+          while [ "$(date +%s)" -lt "$end" ]; do
+            status=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+              --query 'tasks[0].lastStatus' --output text)
+            echo "$(date -u +%H:%M) task is $status"
+            [ "$status" = "STOPPED" ] && break
+            sleep 60
+          done
+
+      - name: Report
+        env:
+          BUCKET: ${{ vars.STARGAZER_RESULTS_BUCKET }}
+          CLUSTER: ${{ vars.STARGAZER_CLUSTER }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 self/rig/report.py "$RUN_ID"

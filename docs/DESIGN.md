@@ -165,6 +165,12 @@ $0). So:
     after move 34 within 0.2 pawns for 8 moves), as Stockfish's testing
     does. The `Test rig` workflow builds the image and plays a tiny match
     in it whenever `rig/` changes.
+  - **The workflows: built 2026-10-21 (PR #12).** "Run SPRT" cross-builds
+    both engines for ARM on an x86 GitHub machine, uploads them, rebuilds
+    the container only when `rig/` has changed (tagged with a fingerprint
+    of `rig/`), starts the task at 16 vCPU (adjustable) and waits up to 30
+    minutes. "SPRT report" posts a longer test's verdict later. Both write
+    the same report (`rig/report.py`) to the workflow summary and the PR.
 - Benchmarking: **built 2026-10-21 (PR #11).** `bench` (a UCI command, or
   `stargazer bench`) searches 10 fixed positions to depth 5 and prints
   `Bench: <nodes> nodes <speed> nps`. The node count fingerprints a build: a

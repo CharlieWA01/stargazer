@@ -283,3 +283,30 @@ Adjudication saves time in long lost or dead-drawn endgames and doesn't
 change who's stronger.
 **Cost:** none. Building fastchess adds about a minute to an image build,
 which happens only when `rig/` changes.
+
+## 2026-10-21: The Run SPRT workflow waits 30 minutes, then hands over (PR #12)
+**Decision:** "Run SPRT" waits up to 30 minutes for a verdict (a setting
+on each run, 0 to 100). After that, a separate "SPRT report" workflow,
+started by hand with the run id, posts the verdict.
+**Alternatives:** wait for the whole test, up to about 5.5 hours (the
+original plan); never wait, and always press Report.
+**Why:** Stargazer is a private repo, and GitHub bills private repos for
+Actions time even while a job only waits: the free plan has 2,000 minutes
+a month, and waiting out whole tests would use them in about six tests.
+Changes that make the engine worse usually fail within 30 minutes, so
+those verdicts still arrive on their own.
+**Cost:** at most about 40 Actions minutes per test, about 1 per report.
+Recommended by Claude while Charlie's answer was pending; change it on the
+form or here if Charlie picks otherwise.
+
+## 2026-10-21: How the workflow builds for ARM (PR #12)
+**Decision:** the engines are cross-compiled for ARM on GitHub's ordinary
+x86 machines, and the container is built for ARM with QEMU (an emulator),
+only when `rig/` has changed. Images are tagged with a fingerprint of
+`rig/`; the tag `current`, which the AWS task runs, is moved to it before
+each test.
+**Alternatives:** GitHub's ARM machines (to our knowledge free only for
+public repos); building the container on every run.
+**Why:** cross-compiling Rust is quick and reliable; emulated builds are
+slow (about ten minutes) but rare, since the container seldom changes.
+**Cost:** none beyond Actions minutes.
