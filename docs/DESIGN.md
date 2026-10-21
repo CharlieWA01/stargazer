@@ -134,9 +134,29 @@ $0). So:
 - Perft suite: **decided 2026-10-20: both.** Shallow depths (about 4) of
   the six standard positions run in CI on every PR; deep runs (5 to 6) are a
   separate command run before each release, which also serves as `bench`.
-- Strength testing: fastchess or cutechess-cli for SPRT matches; where it runs
-  (local machine vs. a cloud box) and with what opening book.
-- Benchmarking: a fixed `bench` command so speed regressions are visible.
+- Strength testing: **decided 2026-10-21.**
+  - **Where:** AWS ECS Fargate Spot on ARM (Graviton), us-east-2. One
+    container per test, up to 16 vCPU, paid per second only while it runs.
+    Infrastructure is Terraform in cloud-homelab.
+  - **Match runner:** fastchess. **Openings:** a balanced book of short
+    openings, each played with both colours. UHO (openings where one side
+    starts better) later, once draws become common.
+  - **Games:** 8 seconds + 0.08 per move; 40 + 0.4 only to double-check a
+    big change.
+  - **SPRT:** 95% confidence both ways (alpha = beta = 0.05). Bounds 0 to
+    10 Elo while gains are big, 0 to 5 later, and -5 to 0 for clean-ups
+    that should change nothing.
+  - **Flow:** a manual GitHub Actions workflow builds both engine versions
+    for ARM, uploads them to S3 and starts the task. The task runs the match
+    and writes games, logs and a verdict to S3 (kept 90 days). The workflow
+    posts the verdict on the PR. No GitHub token in the container; no stored
+    AWS keys (OIDC).
+  - **Rule:** a strength change merges only with a passing SPRT result
+    linked in its PR.
+- Benchmarking: **built 2026-10-21 (PR #11).** `bench` (a UCI command, or
+  `stargazer bench`) searches 10 fixed positions to depth 5 and prints
+  `Bench: <nodes> nodes <speed> nps`. The node count fingerprints a build: a
+  speed-only change must leave it unchanged.
 
 ### 6. Deployment
 - Lichess bot via lichess-bot; where it's hosted (home server, cheap VPS).
@@ -145,6 +165,10 @@ $0). So:
   then). The bot only connects out to Lichess, so nothing is exposed. Likely
   host: the planned homelab mini PC (no extra cost); a small always-on cloud
   server would be about $5 to $15 a month (Lambda can't hold the connection).
+  **Not Fargate Spot** (decided 2026-10-21): a reclaimed machine would
+  abandon live games. Regular Fargate works but costs about $29 a month
+  always-on for 1 vCPU (N. Virginia rates), so if it's Fargate it runs on a
+  schedule (about $4 a month for 4 hours an evening). Decided in Milestone 5.
 - Portfolio tile (decided 2026-10-20): **both** a "play it here" page on the
   portfolio site, with the engine running in the visitor's browser (see
   "Runs in a browser"), and a link to the Lichess bot's profile to show its

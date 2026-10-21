@@ -5,7 +5,8 @@
 //! (optionally followed by `moves ...`), `go` with a clock (`wtime btime
 //! winc binc movestogo`), `go movetime N`, `go depth N` and `go infinite`,
 //! `stop`, and `quit`. Extras most engines share: `go perft N` (count move
-//! sequences), `d` (print the board) and `eval` (print the evaluation).
+//! sequences), `d` (print the board), `eval` (print the evaluation) and
+//! `bench` (a fixed search; its node count fingerprints the build).
 //!
 //! The search runs on its own thread, so this loop keeps reading commands
 //! while it thinks: `stop` and `isready` are answered straight away.
@@ -107,6 +108,15 @@ pub fn run<W: Write + Send + 'static>(input: impl BufRead, output: W) {
                 let pawns = f64::from(for_white) / 100.0;
                 say(&output, format!("Evaluation: {pawns:+.2} (White's view)"));
             }
+            // `bench` or `bench <depth>`: see `bench.rs`.
+            "bench" => {
+                let depth = line
+                    .split_whitespace()
+                    .nth(1)
+                    .and_then(|d| d.parse().ok())
+                    .unwrap_or(crate::bench::BENCH_DEPTH);
+                say(&output, bench_report(depth));
+            }
             "quit" => return,
             // `stop` was handled above. The UCI spec says to ignore anything
             // we don't understand.
@@ -123,6 +133,17 @@ pub fn run<W: Write + Send + 'static>(input: impl BufRead, output: W) {
             search.thread.join().ok();
         }
     }
+}
+
+/// `bench` as one line, in the form testing tools read:
+/// `Bench: 2457379 nodes 569000 nps`.
+pub fn bench_report(depth: u32) -> String {
+    let result = crate::bench::run(depth);
+    format!(
+        "Bench: {} nodes {} nps",
+        result.nodes,
+        result.nodes_per_second()
+    )
 }
 
 fn current(game: &[Position]) -> &Position {
@@ -589,5 +610,14 @@ mod tests {
         assert!(!budget.out_of_time(2_999) && budget.out_of_time(3_000));
         // No clock: no time limit.
         assert_eq!(time_budget(&GoLimits::default(), Color::White), None);
+    }
+
+    #[test]
+    fn bench_prints_nodes_and_speed() {
+        let reply = respond("bench 2\n");
+        let words: Vec<&str> = reply.split_whitespace().collect();
+        assert_eq!(words[0], "Bench:");
+        assert!(words[1].parse::<u64>().unwrap() > 0, "{reply}");
+        assert_eq!((words[2], words[4]), ("nodes", "nps"), "{reply}");
     }
 }
