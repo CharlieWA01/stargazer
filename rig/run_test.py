@@ -138,7 +138,11 @@ def fastchess_command(run, settings):
         # pawn for 8 moves. Saves time without changing results.
         "-resign", "movecount=3", "score=600",
         "-draw", "movenumber=34", "movecount=8", "score=20",
+        # Each move also records the engine's node count, speed and how long
+        # fastchess waited for its reply, to spot one engine being treated
+        # differently (a slow start, a busy CPU).
         "-pgnout", f"file={run.results / 'games.pgn'}", "notation=san",
+        "nodes=true", "nps=true", "latency=true",
         "-ratinginterval", "10",
     ]
 

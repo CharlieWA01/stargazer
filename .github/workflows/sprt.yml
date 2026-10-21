@@ -34,6 +34,9 @@ on:
       pr:
         description: "Pull request number to post the verdict on (optional)"
         required: false
+      rounds:
+        description: "Most rounds to play (a round is one opening, both colours); the SPRT usually stops sooner"
+        default: "20000"
       wait_minutes:
         description: "How long to wait for a verdict before leaving it to the report workflow"
         default: "30"
@@ -65,7 +68,9 @@ jobs:
           TC: ${{ inputs.tc }}
           PR: ${{ inputs.pr }}
           WAIT: ${{ inputs.wait_minutes }}
+          ROUNDS: ${{ inputs.rounds }}
         run: |
+          [[ "$ROUNDS" =~ ^[0-9]+$ && "$ROUNDS" -ge 1 && "$ROUNDS" -le 50000 ]] || { echo "rounds must be 1 to 50000"; exit 1; }
           case "$VCPUS" in 1|2|4|8|16) ;; *) echo "vcpus must be 1, 2, 4, 8 or 16"; exit 1;; esac
           [[ "$ELO0" =~ ^-?[0-9]+(\.[0-9]+)?$ && "$ELO1" =~ ^-?[0-9]+(\.[0-9]+)?$ ]] || { echo "bad bounds"; exit 1; }
           [[ "$TC" =~ ^[0-9]+(\.[0-9]+)?\+[0-9]+(\.[0-9]+)?$ ]] || { echo "bad time control"; exit 1; }
@@ -169,6 +174,7 @@ jobs:
           ELO0: ${{ inputs.elo0 }}
           ELO1: ${{ inputs.elo1 }}
           TC: ${{ inputs.tc }}
+          ROUNDS: ${{ inputs.rounds }}
         run: |
           # Fargate pairs each CPU count with memory: 2 GB per vCPU here.
           cpu=$((VCPUS * 1024)); memory=$((VCPUS * 2048))
@@ -176,7 +182,7 @@ jobs:
           import json, os
           e = os.environ
           settings = {"STARGAZER_RUN_ID": e["RUN_ID"], "STARGAZER_ELO0": e["ELO0"],
-                      "STARGAZER_ELO1": e["ELO1"], "STARGAZER_TC": e["TC"]}
+                      "STARGAZER_ELO1": e["ELO1"], "STARGAZER_TC": e["TC"], "STARGAZER_ROUNDS": e["ROUNDS"]}
           print(json.dumps({"cpu": e["CPU"], "memory": e["MEMORY"], "containerOverrides": [{
               "name": "runner",
               "environment": [{"name": k, "value": v} for k, v in settings.items()]}]}))

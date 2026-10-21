@@ -14,7 +14,7 @@ DECISIONS.md (2026-10-21).
    - **elo0 / elo1**: `0` and `10` for a strength change; `-5` and `0`
      for a clean-up that should change nothing
    - **pr**: the PR's number, so the verdict is posted there
-   - leave the rest: 8+0.08, 16 vCPU, wait 30 minutes. AWS allows 16
+   - leave the rest: 8+0.08, 16 vCPU, 20000 rounds, wait 30 minutes. AWS allows 16
      Fargate Spot vCPUs at once in the sandbox, so run one full-size test
      at a time (a second one would be refused)
 3. The workflow builds both versions for ARM (a few minutes, plus a few
