@@ -17,14 +17,19 @@ DECISIONS.md (2026-10-21).
    - leave the rest: 8+0.08, 16 vCPU, wait 30 minutes. AWS allows 16
      Fargate Spot vCPUs at once in the sandbox, so run one full-size test
      at a time (a second one would be refused)
-3. The workflow builds both versions for ARM (a few minutes; ten more if
-   `rig/` changed and the container has to be rebuilt), starts the test on
+3. The workflow builds both versions for ARM (a few minutes, plus a few
+   more if `rig/` changed and the container has to be rebuilt), starts the test on
    Fargate Spot, then waits up to 30 minutes. A clear result (often a
    change that's worse) arrives in that time and is posted on the PR.
 4. Otherwise the PR gets a "still running" note with the run id
    (`sprt-<number>-<attempt>`, also on the workflow's summary page). Later,
    run **SPRT report** with that run id to post the verdict. Tests stop by
    themselves after 8 hours at most.
+
+**If AWS interrupts it:** Spot capacity can be taken back at any time
+(the first real test lost it after 8.5 minutes). The report then says
+"inconclusive: the task was told to stop", with the games so far. Press
+Run SPRT again; the test starts from scratch.
 
 **Stopping a test early:** AWS console, ECS, cluster `cwa-stargazer-runner`,
 Tasks, select it, Stop. It saves what it has and reports "inconclusive".

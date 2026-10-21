@@ -50,3 +50,37 @@ jobs:
           bench = report["bench"]
           assert bench["base"] == bench["test"] and bench["base"], bench
           EOF
+
+  # The same image built for ARM, as AWS runs it, and a 2-game match inside
+  # it under emulation (slow, so long games and few of them).
+  arm-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the engine for ARM
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q gcc-aarch64-linux-gnu
+          cargo build --release --target aarch64-unknown-linux-gnu
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the test container for ARM
+        run: docker buildx build --platform linux/arm64 --load -t stargazer-rig-arm rig
+      - name: Play a tiny match inside it
+        run: |
+          mkdir -p work/engines
+          cp target/aarch64-unknown-linux-gnu/release/stargazer work/engines/base
+          cp target/aarch64-unknown-linux-gnu/release/stargazer work/engines/test
+          docker run --rm --platform linux/arm64 -v "$PWD/work:/work" \
+            -e STARGAZER_TC=10+0.1 -e STARGAZER_ROUNDS=1 -e STARGAZER_CONCURRENCY=2 \
+            stargazer-rig-arm
+          python3 -c "
+          import json; r = json.load(open('work/results/verdict.json')); print(r)
+          assert r['results']['games'] == 2, r"

@@ -4,9 +4,16 @@
 # See docs/runbooks/sprt.md and DESIGN.md section 5.
 
 # --- Stage 1: build fastchess, the program that runs the games ---------------
-FROM debian:trixie-slim AS fastchess
+# This stage runs on the build machine's own CPU ($BUILDPLATFORM) and
+# cross-compiles for the target, because compiling C++ under ARM emulation
+# took over half an hour. TARGETARCH and BUILDARCH are set by Docker.
+FROM --platform=$BUILDPLATFORM debian:trixie-slim AS fastchess
+ARG TARGETARCH
+ARG BUILDARCH
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates g++ git make \
+ && if [ "$TARGETARCH" = arm64 ] && [ "$BUILDARCH" != arm64 ]; then \
+      apt-get install -y --no-install-recommends g++-aarch64-linux-gnu; fi \
  && rm -rf /var/lib/apt/lists/*
 # Pinned to a release tag and checked against its commit, so every image
 # runs the same match program.
@@ -16,12 +23,16 @@ RUN git clone --depth 1 --branch "$FASTCHESS_TAG" https://github.com/Disservin/f
  && test "$(git -C /src rev-parse HEAD)" = "$FASTCHESS_COMMIT"
 # NATIVE= turns off -march=native: the image is built on one machine and
 # run on another, so it mustn't assume the build machine's CPU.
-RUN make -C /src -j"$(nproc)" NATIVE= && strip /src/fastchess
+RUN if [ "$TARGETARCH" = arm64 ] && [ "$BUILDARCH" != arm64 ]; then \
+      prefix=aarch64-linux-gnu-; else prefix=; fi \
+ && make -C /src -j"$(nproc)" NATIVE= CXX="${prefix}g++" \
+ && "${prefix}strip" /src/fastchess
 
 # --- Stage 2: fetch the opening book -----------------------------------------
 # 8moves_v3: 34,700 balanced openings, 8 moves each side, public domain (CC0),
 # from official-stockfish/books. Pinned to a commit and checked by hash.
-FROM debian:trixie-slim AS book
+# Only files, so it also runs on the build machine's own CPU.
+FROM --platform=$BUILDPLATFORM debian:trixie-slim AS book
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates curl unzip \
  && rm -rf /var/lib/apt/lists/*

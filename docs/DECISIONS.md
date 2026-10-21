@@ -309,4 +309,8 @@ each test.
 public repos); building the container on every run.
 **Why:** cross-compiling Rust is quick and reliable; emulated builds are
 slow (about ten minutes) but rare, since the container seldom changes.
+**Correction (2026-10-21, after the first run):** the emulated build took
+31 minutes, almost all of it compiling fastchess. fastchess is now
+cross-compiled too; only installing the final image's packages runs
+under emulation.
 **Cost:** none beyond Actions minutes.
