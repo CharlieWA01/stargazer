@@ -29,8 +29,8 @@ on:
         description: "Time control, seconds+increment"
         default: "8+0.08"
       vcpus:
-        description: "CPUs for the test (1, 2, 4, 8 or 16; the AWS limit is 4 for now)"
-        default: "4"
+        description: "CPUs for the test (1, 2, 4, 8 or 16). AWS allows 16 at once: one full-size test at a time"
+        default: "16"
       pr:
         description: "Pull request number to post the verdict on (optional)"
         required: false

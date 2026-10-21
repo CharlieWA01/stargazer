@@ -45,8 +45,10 @@ and posts the verdict (Milestone 3, step "GitHub Actions").
   2,000 minutes in about six tests. The workflow now waits 30 minutes by
   default, and the Report workflow covers the rest (DECISIONS.md). Charlie
   was asked to confirm.
-- **Quota.** The sandbox allows 6 Fargate Spot vCPUs until AWS approves
-  16, so the default is 4 vCPU / 8 GB, with 2 GB per vCPU at any size.
+- **Quota.** The sandbox allowed only 6 Fargate Spot vCPUs, so the
+  workflow first defaulted to 4 vCPU. AWS raised it to 16 the same day,
+  so the default is now 16 vCPU / 32 GB (2 GB per vCPU at any size). Only
+  one full-size test fits at a time.
 - **Moving the `current` tag** to the image it already points at can make
   ECR answer "already exists". The workflow treats that as success.
 

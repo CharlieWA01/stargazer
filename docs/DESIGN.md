@@ -168,7 +168,7 @@ $0). So:
   - **The workflows: built 2026-10-21 (PR #12).** "Run SPRT" cross-builds
     both engines for ARM on an x86 GitHub machine, uploads them, rebuilds
     the container only when `rig/` has changed (tagged with a fingerprint
-    of `rig/`), starts the task at 4 vCPU (adjustable) and waits up to 30
+    of `rig/`), starts the task at 16 vCPU (adjustable) and waits up to 30
     minutes. "SPRT report" posts a longer test's verdict later. Both write
     the same report (`rig/report.py`) to the workflow summary and the PR.
 - Benchmarking: **built 2026-10-21 (PR #11).** `bench` (a UCI command, or

@@ -14,8 +14,9 @@ DECISIONS.md (2026-10-21).
    - **elo0 / elo1**: `0` and `10` for a strength change; `-5` and `0`
      for a clean-up that should change nothing
    - **pr**: the PR's number, so the verdict is posted there
-   - leave the rest: 8+0.08, 4 vCPU (AWS allows at most 6 Spot vCPUs in
-     the sandbox until the request for 16 is approved), wait 30 minutes
+   - leave the rest: 8+0.08, 16 vCPU, wait 30 minutes. AWS allows 16
+     Fargate Spot vCPUs at once in the sandbox, so run one full-size test
+     at a time (a second one would be refused)
 3. The workflow builds both versions for ARM (a few minutes; ten more if
    `rig/` changed and the container has to be rebuilt), starts the test on
    Fargate Spot, then waits up to 30 minutes. A clear result (often a
@@ -33,8 +34,8 @@ container's own output is in CloudWatch Logs, group `/cwa/stargazer-runner`.
 A task that stopped without a verdict (out of memory, say) is reported as
 an error with AWS's stop reason.
 
-**What it costs:** Fargate Spot ARM is roughly 6 cents an hour at 4 vCPU,
-so under 50 cents for an 8-hour test. GitHub bills private repos for
+**What it costs:** Fargate Spot ARM is roughly 20 cents an hour at 16
+vCPU, so under $2 for an 8-hour test (most finish much sooner). GitHub bills private repos for
 Actions time: each test uses about 10 to 40 minutes of the 2,000 free
 minutes a month, and a report about 1.
 
