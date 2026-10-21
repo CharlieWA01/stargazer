@@ -18,3 +18,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-20 | [#10](https://github.com/CharlieWA01/stargazer/pull/10) | docs: Milestone 2 done, the first version is Polaris |
 | 2026-10-20 | [#11](https://github.com/CharlieWA01/stargazer/pull/11) | Milestone 3: design decisions, a bench command, and the test container |
 | 2026-10-20 | [#12](https://github.com/CharlieWA01/stargazer/pull/12) | Run SPRT button and SPRT report workflows |
+| 2026-10-20 | [#13](https://github.com/CharlieWA01/stargazer/pull/13) | Faster ARM test image (cross-compile fastchess), and an ARM build check |
