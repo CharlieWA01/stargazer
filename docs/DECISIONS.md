@@ -229,3 +229,57 @@ named Polaris, the first star in the release-name list.
 that plays. Charlie chose it.
 **Cost:** none. How releases are tagged and built is still open (DESIGN.md
 section 6), so no tag or version bump yet.
+
+## 2026-10-21: Strength tests run on AWS Fargate Spot (PR #11)
+**Decision:** SPRT matches run as one-off containers on ECS Fargate Spot
+(ARM, us-east-2), started from GitHub Actions, with the infrastructure in
+cloud-homelab's Terraform.
+**Alternatives:** a cheap always-on VPS ($5 to $10 a month, 2 cores, slow
+for long tests); EC2 Spot (cheapest per hour, but a machine image to look
+after and a sign-off per launch); Charlie's Chromebook (ties it up for hours).
+**Why:** pay per second only while a test runs (about $0.20 an hour for 16
+vCPU at Spot prices, so cents for an early test), nothing to patch, and it
+fits cloud-homelab's "serverless and managed first" rule. Charlie also
+wanted it on AWS for the resume.
+**Cost:** a few cents a month idle (image and results storage), plus about
+$0.10 to $1.20 per test. Spot can interrupt a test; it restarts.
+
+## 2026-10-21: How a strength test is run (PR #11)
+**Decision:** fastchess; a balanced opening book (UHO later); 8+0.08 games
+(40+0.4 to double-check big changes); SPRT at 95% confidence with bounds
+0 to 10 Elo now, 0 to 5 later, -5 to 0 for clean-ups; a manual Run button in
+GitHub Actions; GitHub Actions builds both engines and uploads them to S3;
+the verdict on the PR, games and logs in S3 for 90 days.
+**Alternatives:** cutechess-cli; UHO from the start; longer games for every
+test; starting tests from a PR label; building engines inside the container.
+**Why:** each is the simpler or cheaper choice at our current strength (see
+the Milestone 3 design doc in the journal). The container never needs
+access to the private repo, and nothing costs money unless Charlie starts it.
+**Cost:** none beyond the tests themselves.
+
+## 2026-10-21: Testing and the Lichess bot run on different hosts (PR #11)
+**Decision:** a hybrid. Fargate Spot is for testing (and later the Texel
+tuner); the Lichess bot gets a steady host, chosen in Milestone 5.
+**Alternatives:** one host for both.
+**Why:** testing is bursty and can be interrupted; the bot holds live games
+for hours and must not be. Regular Fargate always-on is about $29 a month
+for 1 vCPU, over the budget; on a schedule it's about $4. The homelab mini
+PC would be free.
+**Cost:** none now.
+
+## 2026-10-21: How the test container is built (PR #11)
+**Decision:** a Debian 13 ("trixie") image with fastchess compiled from a
+pinned release and the opening book downloaded from a pinned commit and
+checked by hash. The engines are normal (glibc) builds from GitHub's Ubuntu
+24.04 machines. The run script is Python with no extra packages. Games that
+are clearly decided are adjudicated with Stockfish's testing rules.
+**Alternatives:** Debian 12 with fully static (musl) engines, which run on
+any Linux; a prebuilt fastchess download; no adjudication.
+**Why:** the static build searched about 30% slower (390k vs 560k
+positions a second), which would quietly make every test shorter than
+8+0.08 in practice; Debian 12's C library is too old for engines built on
+Ubuntu 24.04. Building fastchess ourselves works the same on ARM and x86.
+Adjudication saves time in long lost or dead-drawn endgames and doesn't
+change who's stronger.
+**Cost:** none. Building fastchess adds about a minute to an image build,
+which happens only when `rig/` changes.

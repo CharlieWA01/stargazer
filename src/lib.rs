@@ -1,6 +1,7 @@
 //! Stargazer: a UCI chess engine.
 //!
 //! Modules so far:
+//! - `bench`: a fixed search whose node count fingerprints a build
 //! - `bitboard`: sets of squares packed into 64-bit numbers (the bit tricks live here)
 //! - `board`: pieces, squares and a full position, read from and written as FEN
 //! - `attacks`: ready-made tables of where knights, kings and pawns attack
@@ -13,6 +14,7 @@
 //! The architecture behind them is in `docs/DESIGN.md`.
 
 pub mod attacks;
+pub mod bench;
 pub mod bitboard;
 pub mod board;
 pub mod eval;

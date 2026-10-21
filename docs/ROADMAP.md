@@ -8,7 +8,7 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 | 0 | **Skeleton** | Builds, passes CI, answers the UCI handshake. *(done)* |
 | 1 | **Foundation** | Board representation and legal move generation pass the perft suite. *(done 2026-10-20)* |
 | 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. *(done 2026-10-20)* |
-| 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. *(next)* |
+| 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. *(current; design decided 2026-10-21)* |
 | 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. |
 | 5 | **Going public** | Running as a Lichess bot with a real rating. |
 | 6 | **Stretch** | NNUE evaluation, multithreading. |
@@ -32,6 +32,21 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
       material); UCI `go depth N` and `eval` (#8)
 - [x] Full UCI: clocks, `stop`, `info`, `bestmove`; plays in a GUI and
       against itself under a clock with no losses on time (#9)
+
+### Milestone 3 steps
+
+- [x] Design decided: Fargate Spot, fastchess, balanced book, 8+0.08,
+      SPRT bounds, manual start, results on the PR and in S3 (#11)
+- [x] `bench`: a fixed search whose node count fingerprints a build (#11)
+- [ ] AWS infrastructure in cloud-homelab (its own thread): image registry,
+      Fargate Spot cluster, results bucket, GitHub OIDC role (cloud-homelab
+      PR #20, waiting for `terraform apply`). The sandbox account allows 6
+      Fargate Spot vCPUs until AWS approves the request for 16, so tests
+      run at 4 vCPU for now.
+- [x] The test container: fastchess, opening book, run script; tested
+      locally, and a tiny match in the real image on every `rig/` change (#11)
+- [ ] GitHub Actions: build both engines for ARM, start the test, post the verdict
+- [ ] First real test: the engine against itself must show no difference
 
 ## Release names
 
@@ -88,6 +103,5 @@ a release is tagged and built (DESIGN.md section 6).
   even when no enemy pawn could capture, so that position never counts as
   a repeat. Rare and harmless (a draw claim might be missed).
 - Insufficient material covers king vs king and a lone minor piece only.
-- No `bench` command yet; `go perft 6` is the rough speed check.
 - The browser build, when it exists, will be single-threaded and so a little
   weaker than the Lichess bot.
