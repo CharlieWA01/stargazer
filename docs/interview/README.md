@@ -76,3 +76,29 @@ that way.
   catch the bugs they're for. The browser build will reuse the same
   search unchanged. Lesson: a timing test that can't fail is worse than
   none, because it looks like protection.
+
+## The engine that beat itself: proving a test rig is fair
+**Tags:** Testing, Cost, Process
+
+- **Situation:** I built a cloud rig that plays two versions of the
+  engine against each other on AWS Fargate Spot and decides with a
+  statistical test (SPRT) whether a change made it stronger. Its first
+  job was a sanity check: the engine against an identical copy, where the
+  only right answer is "no difference". It came back +25 Elo twice, and
+  the second time the test declared the copy stronger.
+- **Task:** Find out whether the rig was biased before trusting it with a
+  single real change, without spending much.
+- **Action:** Treated it as an experiment, not a hunch. Added two
+  things to the rig: a fixed number of games, so a test couldn't stop at
+  a lucky moment, and per-move records of each engine's speed, depth and
+  response time. Then ran 2,000 games of the engine against itself, about
+  25 cents of Spot time. It came out +7.3 ± 7.2, borderline. My
+  hypothesis was that one engine got more CPU time, so I compared about
+  92,000 moves per side: speed, depth and time use were identical, which
+  ruled it out. A second 2,000-game run gave +1.0 ± 7.5.
+- **Result:** The rig is fair (about +4 ± 5 over 4,000 games, which
+  includes 0), and the false pass was chance plus stopping early, which
+  the test's 5% error rate allows. Along the way the per-move data
+  showed the engine wasting up to a second on some moves, now the first
+  improvement to test. Lesson: check the measuring tool with a case where
+  you know the answer, and change one thing at a time when it disagrees.

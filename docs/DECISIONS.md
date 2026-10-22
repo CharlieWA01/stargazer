@@ -314,3 +314,22 @@ slow (about ten minutes) but rare, since the container seldom changes.
 cross-compiled too; only installing the final image's packages runs
 under emulation.
 **Cost:** none beyond Actions minutes.
+
+## 2026-10-22: The rig is accepted as fair (#15)
+**Decision:** the test rig is trusted for strength tests. The +25 Elo
+self-test results of 2026-10-21 are treated as bad luck, not a bug.
+**Evidence:** two fixed 2,000-game self-matches on AWS, `main` against
+`main`: +7.3 ± 7.2 and +1.0 ± 7.5 (about +4 ± 5 together). The game
+files show identical speed, depth and time use for both copies.
+**Alternatives:** keep investigating fastchess's handling of the first-
+and second-listed engines (no mechanism found to look for); run every
+future test twice with the engines' order swapped (doubles the cost).
+**Why:** with identical conditions on every measured number and a
+combined result that includes 0, more digging would chase noise. The
+earlier false pass is explained by chance plus a test that stops the
+moment it crosses the line, which SPRT's 5% error rate allows for.
+**Practice from now on:** re-run a 2,000-game self-match whenever `rig/`
+or the AWS setup changes, and treat a pass that is only just over the
+line with suspicion (Charlie: "something to keep an eye on").
+**Cost:** about 25 cents and 50 minutes per self-match.
+
