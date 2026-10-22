@@ -69,4 +69,5 @@ bounds 0 to 10 Elo, 16 vCPU. The right answer is "fail" (no gain).
 
 ## Impact
 The rig works on AWS. Next: the faster image build, then a complete
-self-test.
+self-test. (Done: see 2026-10-22-self-match.md. Two 2,000-game
+self-matches came out at +7.3 and +1.0, so the +25s were bad luck.)

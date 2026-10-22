@@ -11,15 +11,20 @@ Lichess as a bot, and playable in any visitor's browser on my portfolio site
 through WebAssembly.
 
 ## Status
-Milestone 2 of 6 done (2026-10-20): the first playable version, named
-Polaris, plays full games in any
-chess GUI under a real clock. Every rule of chess is proven by perft (six
+Milestone 3 of 6 done (2026-10-22). Milestone 2 (2026-10-20) was the
+first playable version, named Polaris: it plays full games in any chess
+GUI under a real clock. Every rule of chess is proven by perft (six
 standard test positions, up to 119 million positions deep, all exact). It
 looks ahead with alpha-beta search (depth 6 from the start in under a
 second, about 800,000 positions a second) and judges positions with an
 evaluation whose every number is our own. Its first opponent, me (about
-1000 on Lichess), lost. Next: an SPRT testing rig, so every strength change
-is measured (Milestone 3).
+1000 on Lichess), lost. Milestone 3 is the testing rig: one button in
+GitHub builds two versions, plays them against each other on AWS Fargate
+Spot (16 ARM CPUs, about 2,000 games in 50 minutes for roughly 25 cents)
+and posts a statistical verdict (SPRT) on the pull request. It was proven
+fair by playing the engine against itself: +1.0 ± 7.5 Elo over 2,000
+games. Next: making it stronger, one measured change at a time
+(Milestone 4).
 
 ## What makes it interesting
 - **Two targets from one codebase:** a native engine (chess GUIs, Lichess

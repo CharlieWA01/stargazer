@@ -8,8 +8,8 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 | 0 | **Skeleton** | Builds, passes CI, answers the UCI handshake. *(done)* |
 | 1 | **Foundation** | Board representation and legal move generation pass the perft suite. *(done 2026-10-20)* |
 | 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. *(done 2026-10-20)* |
-| 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. *(current; design decided 2026-10-21)* |
-| 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. |
+| 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. *(done 2026-10-22)* |
+| 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. *(next)* |
 | 5 | **Going public** | Running as a Lichess bot with a real rating. |
 | 6 | **Stretch** | NNUE evaluation, multithreading. |
 
@@ -47,7 +47,9 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
       locally, and a tiny match in the real image on every `rig/` change (#11)
 - [x] GitHub Actions: build both engines for ARM, start the test, post the
       verdict ("Run SPRT", plus "SPRT report" for long tests) (#12)
-- [ ] First real test: the engine against itself must show no difference
+- [x] First real test: the engine against itself must show no difference.
+      Two 2,000-game self-matches on AWS: +7.3 ± 7.2 and +1.0 ± 7.5,
+      with identical speed and depth for both copies (#14, #15)
 
 ## Release names
 
@@ -87,6 +89,23 @@ a release is tagged and built (DESIGN.md section 6).
 - Multithreading (Lazy SMP), native build only.
 - A board widget for the browser page: write one or vendor a library
   (check its licence).
+- Don't throw away thinking time: on about 2% of moves the engine spends
+  up to a second on a depth it can't finish (seen in the self-match game
+  files). Either stop before starting a depth that can't finish, or use
+  the best move found so far in the unfinished depth. A good first SPRT
+  test.
+- Give it a personality (Charlie's idea, 2026-10-21), after 1800 and each
+  measured with SPRT so the strength cost is known:
+  - a style knob, such as an attacking evaluation (king attacks, pawn
+    storms, pawns given for activity), as a UCI option
+  - contempt: treat a draw as slightly bad, so it keeps playing
+  - a signature opening repertoire
+  - Lichess chat in the star theme (Milestone 5)
+  - "watch it think" in the browser: candidate moves drawn as a
+    constellation of arrows, plus an evaluation bar
+  - difficulty levels named after stars
+- Hide the AWS account ID in the SPRT workflow logs (task ARN, bucket
+  name) before the repo goes public.
 
 ## Known limitations
 
