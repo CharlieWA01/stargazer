@@ -102,3 +102,7 @@ that way.
   showed the engine wasting up to a second on some moves, now the first
   improvement to test. Lesson: check the measuring tool with a case where
   you know the answer, and change one thing at a time when it disagrees.
+- **Follow-up (2026-10-23):** that wasted time was the first real change
+  tested on the rig. Keeping the best move from a search that runs out of
+  time, about a dozen lines of code, passed at +44 ± 22 Elo in 503 games.
+  The data collected to check the rig found the engine's first big gain.

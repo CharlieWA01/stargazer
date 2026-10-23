@@ -107,7 +107,10 @@ $0). So:
   increment, and a ceiling of three times the target. Both stay 50 ms
   inside the clock. Inside a depth the search stops at the ceiling; between
   depths it starts another only if under half the target, because each
-  depth takes several times longer than the last. Also `go depth`,
+  depth takes several times longer than the last. A depth cut short by the
+  ceiling still counts for the moves it finished: last depth's best move is
+  searched first, so if another finished move beats it, that move is
+  played (Milestone 4, 2026-10-23). Also `go depth`,
   `go movetime`, `go infinite`. Built in PR #9. Smarter, position-aware
   time use is parked (ROADMAP.md).
 - **`stop` and threads:** the core stays single-threaded and clock-free; it

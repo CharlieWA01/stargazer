@@ -69,8 +69,9 @@ pub fn mate_in(score: i32) -> Option<i32> {
 ///   the repetition rule).
 /// - `max_depth`: the deepest iteration to run, in half-moves.
 /// - `should_stop`: asked now and then during depth 2 and later; once it
-///   answers yes, the unfinished depth is thrown away. Depth 1 always
-///   finishes, so there's always a move.
+///   answers yes, the search stops. Moves already finished in the
+///   unfinished depth still count: if one beat last depth's best move, it
+///   is played. Depth 1 always finishes, so there's always a move.
 /// - `on_depth`: called after each finished depth; return false to stop
 ///   there (the caller's time check between depths).
 ///
@@ -99,6 +100,14 @@ pub fn search(
         let mut pv = Vec::new();
         let score = searcher.negamax(root, depth, 0, -INFINITY, INFINITY, &mut pv, &previous_pv);
         if searcher.stopped {
+            // Out of time partway through this depth. Last depth's best
+            // move was searched first, so a best line here means that move
+            // was finished at this depth and either it held up or another
+            // move beat it: either way, a better-informed choice than last
+            // depth's. Only an unfinished move is thrown away.
+            if let Some(&mv) = pv.first() {
+                best_move = mv;
+            }
             break;
         }
         if let Some(&mv) = pv.first() {
@@ -489,6 +498,57 @@ mod tests {
         assert!(asked > 0);
         assert_eq!(depths[0], 1);
         assert!(depths.len() < 20);
+    }
+
+    /// Search to `max_depth`, stopping at the `stop_at`-th time the search
+    /// asks whether to stop (never, if `None`). Returns the move played,
+    /// and for each finished depth: how many times it had asked by then,
+    /// and that depth's best move.
+    fn search_counting(
+        fen: &str,
+        max_depth: u32,
+        stop_at: Option<u64>,
+    ) -> (Move, Vec<(u64, Move)>) {
+        let asked = std::cell::Cell::new(0);
+        let mut depths = Vec::new();
+        let best = search(
+            &[position(fen)],
+            max_depth,
+            &mut || {
+                asked.set(asked.get() + 1);
+                stop_at.is_some_and(|n| asked.get() >= n)
+            },
+            &mut |report| {
+                depths.push((asked.get(), report.pv[0]));
+                true
+            },
+        )
+        .unwrap();
+        (best, depths)
+    }
+
+    #[test]
+    fn a_better_move_found_in_an_unfinished_depth_is_played() {
+        // Here depth 4 likes d2-d4 and depth 5 changes its mind to c4-c5.
+        let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
+        let (_, depths) = search_counting(fen, 5, None);
+        let (asked_after_4, best_at_4) = depths[3];
+        let (asked_after_5, best_at_5) = depths[4];
+        assert_ne!(best_at_4, best_at_5);
+
+        // Out of time at the last check of depth 5, just before it would
+        // have finished: c4-c5 has already beaten d2-d4, so it's played
+        // even though depth 5 never completed.
+        let (best, finished) = search_counting(fen, 5, Some(asked_after_5));
+        assert_eq!(finished.len(), 4);
+        assert_eq!(best, best_at_5);
+
+        // Out of time at the first check of depth 5, while d2-d4 (tried
+        // first) is still being searched: nothing at depth 5 is finished,
+        // so depth 4's move stands.
+        let (best, finished) = search_counting(fen, 5, Some(asked_after_4 + 1));
+        assert_eq!(finished.len(), 4);
+        assert_eq!(best, best_at_4);
     }
 
     #[test]
