@@ -55,6 +55,9 @@ count (2457379).
   passes; `bench` gives 2457379 nodes, unchanged.
 - `tools/selfplay.py`: three games, no time losses or illegal moves.
   `cargo fmt`, clippy, WASM build.
+- No SPRT of its own (Charlie's call): the search is identical and the
+  only effect is the small slowdown, so 2b's SPRT measures fingerprints
+  and table together against the `main` before this PR.
 
 ## Impact
 Nothing changes in play. Every position now carries a fingerprint, ready

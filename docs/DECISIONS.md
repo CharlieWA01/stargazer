@@ -384,5 +384,7 @@ and GUIs expect to be able to set. (5) simplest, usually within a few Elo
 at this stage; smarter replacement is a later SPRT test. (7) the
 fingerprint pushed `Position` over 256 bytes and cost 10 to 12% speed;
 packed rights bring it back to about 4%. Charlie approved (1) to (6).
+(8) 2a merges without its own SPRT; 2b's test is run against the `main`
+before 2a, so it measures both together (Charlie, after the 4% was found).
 **Cost:** about 4% speed until the table uses the fingerprints; 16 MB of
 memory per engine.
