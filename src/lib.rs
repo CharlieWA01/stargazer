@@ -10,6 +10,7 @@
 //! - `search`: looking ahead to choose a move (alpha-beta, iterative deepening)
 //! - `perft`: counting move sequences, to prove move generation correct
 //! - `uci`: the text protocol GUIs and Lichess use to talk to the engine
+//! - `zobrist`: fingerprints for positions, for spotting repeats quickly
 //!
 //! The architecture behind them is in `docs/DESIGN.md`.
 
@@ -22,6 +23,7 @@ pub mod movegen;
 pub mod perft;
 pub mod search;
 pub mod uci;
+pub mod zobrist;
 
 pub const NAME: &str = "Stargazer";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

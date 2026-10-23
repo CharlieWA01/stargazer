@@ -102,6 +102,33 @@ mod tests {
         check_up_to(6);
     }
 
+    /// Every position reachable in `depth` moves keeps its fingerprint in
+    /// step with its pieces and rights (`is_consistent` recomputes it).
+    /// Returns how many positions were checked.
+    fn check_fingerprints(position: &Position, depth: u32) -> u64 {
+        assert!(position.is_consistent(), "{}", position.to_fen());
+        if depth == 0 {
+            return 1;
+        }
+        legal_moves(position)
+            .into_iter()
+            .map(|mv| check_fingerprints(&position.make_move(mv), depth - 1))
+            .sum::<u64>()
+            + 1
+    }
+
+    /// The step-by-step fingerprint equals one worked out from scratch,
+    /// through every capture, castle, en passant and promotion in the six
+    /// positions' trees, three moves deep.
+    #[test]
+    fn fingerprints_stay_right_after_every_move() {
+        let checked: u64 = POSITIONS
+            .iter()
+            .map(|(_, fen, _)| check_fingerprints(&Position::from_fen(fen).unwrap(), 3))
+            .sum();
+        assert!(checked > 200_000, "{checked}");
+    }
+
     #[test]
     fn divide_adds_up_to_perft() {
         let position = Position::startpos();

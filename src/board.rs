@@ -20,6 +20,7 @@ use std::fmt;
 use crate::attacks::{bishop_attacks, king_attacks, knight_attacks, pawn_attacks, rook_attacks};
 use crate::bitboard::Bitboard;
 use crate::movegen::Move;
+use crate::zobrist;
 
 /// White or Black.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -170,12 +171,35 @@ impl fmt::Display for Square {
 
 /// Which castling moves are still possible, as far as king and rook moves
 /// go (castling through check is a separate question, asked when moving).
+///
+/// The four rights are four bits of one byte, which keeps `Position` small
+/// (it's copied for every move tried, so its size shows in the speed).
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub struct CastlingRights {
-    pub white_kingside: bool,
-    pub white_queenside: bool,
-    pub black_kingside: bool,
-    pub black_queenside: bool,
+pub struct CastlingRights(u8);
+
+impl CastlingRights {
+    pub const WHITE_KINGSIDE: CastlingRights = CastlingRights(1);
+    pub const WHITE_QUEENSIDE: CastlingRights = CastlingRights(2);
+    pub const BLACK_KINGSIDE: CastlingRights = CastlingRights(4);
+    pub const BLACK_QUEENSIDE: CastlingRights = CastlingRights(8);
+
+    /// Are all of `rights` still held?
+    pub const fn has(self, rights: CastlingRights) -> bool {
+        self.0 & rights.0 == rights.0
+    }
+
+    pub fn insert(&mut self, rights: CastlingRights) {
+        self.0 |= rights.0;
+    }
+
+    pub fn remove(&mut self, rights: CastlingRights) {
+        self.0 &= !rights.0;
+    }
+
+    /// The rights as a number from 0 to 15 (for the fingerprint).
+    pub const fn bits(self) -> usize {
+        self.0 as usize
+    }
 }
 
 /// The standard starting position, in FEN.
@@ -199,6 +223,9 @@ pub struct Position {
     pub halfmove_clock: u16,
     /// The move number, starting at 1 and going up after each Black move.
     pub fullmove_number: u16,
+    /// The position's fingerprint (see `zobrist`): kept up to date by every
+    /// change, so it's never worked out from scratch during a search.
+    hash: u64,
 }
 
 /// Why a FEN string couldn't be read.
@@ -249,6 +276,7 @@ impl Position {
             en_passant: None,
             halfmove_clock: 0,
             fullmove_number: 1,
+            hash: 0,
         }
     }
 
@@ -277,21 +305,44 @@ impl Position {
         self.occupied[0] | self.occupied[1]
     }
 
-    /// Place a piece on an empty square, updating both the bitboards and
-    /// the 64-square array.
+    /// The position's fingerprint: equal for positions that are the same
+    /// for the repetition rule (pieces, side to move, castling and en
+    /// passant rights; not the move counters).
+    pub fn hash(&self) -> u64 {
+        self.hash
+    }
+
+    /// The fingerprint worked out from scratch. Only for building a
+    /// position and for tests; moves update `hash` step by step instead.
+    fn compute_hash(&self) -> u64 {
+        let mut hash = zobrist::castling(self.castling)
+            ^ zobrist::en_passant(self.en_passant)
+            ^ zobrist::side_to_move(self.side_to_move);
+        for square in (0..64).map(Square::from_index) {
+            if let Some(piece) = self.piece_on(square) {
+                hash ^= zobrist::piece(piece, square);
+            }
+        }
+        hash
+    }
+
+    /// Place a piece on an empty square, updating the bitboards, the
+    /// 64-square array and the fingerprint.
     fn put_piece(&mut self, piece: Piece, square: Square) {
         debug_assert!(self.squares[square.index()].is_none());
         self.pieces[piece.color.index()][piece.kind.index()].insert(square);
         self.occupied[piece.color.index()].insert(square);
         self.squares[square.index()] = Some(piece);
+        self.hash ^= zobrist::piece(piece, square);
     }
 
-    /// Lift the piece off a square, updating both the bitboards and the
-    /// 64-square array.
+    /// Lift the piece off a square, updating the bitboards, the 64-square
+    /// array and the fingerprint.
     fn remove_piece(&mut self, square: Square) -> Option<Piece> {
         let piece = self.squares[square.index()].take()?;
         self.pieces[piece.color.index()][piece.kind.index()].remove(square);
         self.occupied[piece.color.index()].remove(square);
+        self.hash ^= zobrist::piece(piece, square);
         Some(piece)
     }
 
@@ -360,16 +411,16 @@ impl Position {
         if castling != "-" {
             for c in castling.chars() {
                 let right = match c {
-                    'K' => &mut position.castling.white_kingside,
-                    'Q' => &mut position.castling.white_queenside,
-                    'k' => &mut position.castling.black_kingside,
-                    'q' => &mut position.castling.black_queenside,
+                    'K' => CastlingRights::WHITE_KINGSIDE,
+                    'Q' => CastlingRights::WHITE_QUEENSIDE,
+                    'k' => CastlingRights::BLACK_KINGSIDE,
+                    'q' => CastlingRights::BLACK_QUEENSIDE,
                     _ => return Err(FenError::BadCastling(castling.to_string())),
                 };
-                if *right {
+                if position.castling.has(right) {
                     return Err(FenError::BadCastling(castling.to_string()));
                 }
-                *right = true;
+                position.castling.insert(right);
             }
         }
 
@@ -400,6 +451,7 @@ impl Position {
             return Err(FenError::TooManyFields);
         }
 
+        position.hash = position.compute_hash();
         Ok(position)
     }
 
@@ -435,10 +487,10 @@ impl Position {
 
         let c = self.castling;
         let rights: String = [
-            (c.white_kingside, 'K'),
-            (c.white_queenside, 'Q'),
-            (c.black_kingside, 'k'),
-            (c.black_queenside, 'q'),
+            (c.has(CastlingRights::WHITE_KINGSIDE), 'K'),
+            (c.has(CastlingRights::WHITE_QUEENSIDE), 'Q'),
+            (c.has(CastlingRights::BLACK_KINGSIDE), 'k'),
+            (c.has(CastlingRights::BLACK_QUEENSIDE), 'q'),
         ]
         .iter()
         .filter(|(allowed, _)| *allowed)
@@ -458,9 +510,13 @@ impl Position {
     }
 
     /// Check that the bitboards and the 64-square array agree on every
-    /// square. Tests call this after every change; a disagreement would be
-    /// a bug in `put_piece` or `remove_piece`.
+    /// square, and that the fingerprint matches the position. Tests call
+    /// this after every change; a disagreement would be a bug in
+    /// `put_piece`, `remove_piece` or `make_move`.
     pub fn is_consistent(&self) -> bool {
+        if self.hash != self.compute_hash() {
+            return false;
+        }
         let mut seen = Bitboard::EMPTY;
         for color in Color::BOTH {
             let mut all_of_color = Bitboard::EMPTY;
@@ -528,11 +584,10 @@ impl Position {
     /// Is this the same position as `other` for the repetition rule? The
     /// same pieces on the same squares, the same side to move, and the same
     /// castling and en passant rights. The move counters don't matter.
+    /// Comparing fingerprints answers that with one comparison instead of
+    /// 64 squares (wrong only by a 1-in-2^64 accident).
     pub fn repeats(&self, other: &Position) -> bool {
-        self.squares == other.squares
-            && self.side_to_move == other.side_to_move
-            && self.castling == other.castling
-            && self.en_passant == other.en_passant
+        self.hash == other.hash
     }
 
     /// Is neither side able to checkmate, whatever happens? True for king
@@ -560,6 +615,9 @@ impl Position {
     pub fn make_move(&self, mv: Move) -> Position {
         let mut next = *self;
         let us = self.side_to_move;
+        // The en passant right always ends with this move: take it out of
+        // the fingerprint now (a new one is put in below, if any).
+        next.hash ^= zobrist::en_passant(self.en_passant);
         let moving = self
             .piece_on(mv.from)
             .expect("a move starts from a square with a piece on it");
@@ -617,6 +675,10 @@ impl Position {
             next.fullmove_number += 1;
         }
         next.side_to_move = us.opponent();
+        // Swap the old castling rights' number for the new one (the same
+        // number twice cancels out when nothing changed).
+        next.hash ^= zobrist::castling(self.castling) ^ zobrist::castling(next.castling);
+        next.hash ^= zobrist::en_passant(next.en_passant) ^ zobrist::side_to_move(Color::Black); // the side to move changed
         next
     }
 
@@ -632,17 +694,17 @@ impl Position {
         let rights = &mut self.castling;
         match square {
             E1 => {
-                rights.white_kingside = false;
-                rights.white_queenside = false;
+                rights.remove(CastlingRights::WHITE_KINGSIDE);
+                rights.remove(CastlingRights::WHITE_QUEENSIDE);
             }
             E8 => {
-                rights.black_kingside = false;
-                rights.black_queenside = false;
+                rights.remove(CastlingRights::BLACK_KINGSIDE);
+                rights.remove(CastlingRights::BLACK_QUEENSIDE);
             }
-            H1 => rights.white_kingside = false,
-            A1 => rights.white_queenside = false,
-            H8 => rights.black_kingside = false,
-            A8 => rights.black_queenside = false,
+            H1 => rights.remove(CastlingRights::WHITE_KINGSIDE),
+            A1 => rights.remove(CastlingRights::WHITE_QUEENSIDE),
+            H8 => rights.remove(CastlingRights::BLACK_KINGSIDE),
+            A8 => rights.remove(CastlingRights::BLACK_QUEENSIDE),
             _ => {}
         }
     }
@@ -710,7 +772,8 @@ mod tests {
             8
         );
         assert_eq!(p.side_to_move, Color::White);
-        assert!(p.castling.white_kingside && p.castling.black_queenside);
+        assert!(p.castling.has(CastlingRights::WHITE_KINGSIDE));
+        assert!(p.castling.has(CastlingRights::BLACK_QUEENSIDE));
         assert_eq!(p.en_passant, None);
         assert!(p.is_consistent());
     }
@@ -918,6 +981,48 @@ mod tests {
         assert!(!dead("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1")); // a pawn can queen
         assert!(!dead("4k3/8/8/8/8/8/8/R3K3 w - - 0 1")); // a rook can mate
         assert!(!dead("4k3/8/8/8/8/8/8/1NN1K3 w - - 0 1")); // two minors: not counted
+    }
+
+    /// Play moves given as (from, to) square names.
+    fn play(mut position: Position, moves: &[(&str, &str)]) -> Position {
+        for &(from, to) in moves {
+            position = position.make_move(Move::new(sq(from), sq(to)));
+        }
+        position
+    }
+
+    #[test]
+    fn the_same_position_by_another_move_order_has_the_same_fingerprint() {
+        let start = Position::startpos();
+        let one = play(start, &[("g1", "f3"), ("d7", "d5"), ("d2", "d4")]);
+        let other = play(start, &[("d2", "d4"), ("d7", "d5"), ("g1", "f3")]);
+        // Even the en passant square differs here: the second order ends
+        // with a knight move, the first with a pawn's double step (d3).
+        assert_ne!(one.hash(), other.hash());
+        let one = play(one, &[("b8", "c6")]);
+        let other = play(other, &[("b8", "c6")]);
+        assert_eq!(one.hash(), other.hash());
+        assert_eq!(
+            one.hash(),
+            Position::from_fen(&one.to_fen()).unwrap().hash()
+        );
+    }
+
+    #[test]
+    fn side_to_move_castling_and_en_passant_change_the_fingerprint() {
+        let base = "r3k2r/8/8/3pP3/8/8/8/R3K2R w KQkq d6 0 1";
+        let hash = |fen: &str| Position::from_fen(fen).unwrap().hash();
+        let reference = hash(base);
+        for different in [
+            "r3k2r/8/8/3pP3/8/8/8/R3K2R b KQkq d6 0 1",
+            "r3k2r/8/8/3pP3/8/8/8/R3K2R w Kkq d6 0 1",
+            "r3k2r/8/8/3pP3/8/8/8/R3K2R w KQkq - 0 1",
+            "r3k2r/8/8/3pP3/8/8/8/R4K1R w kq d6 0 1",
+        ] {
+            assert_ne!(hash(different), reference, "{different}");
+        }
+        // The move counters don't count.
+        assert_eq!(hash("r3k2r/8/8/3pP3/8/8/8/R3K2R w KQkq d6 7 30"), reference);
     }
 
     #[test]

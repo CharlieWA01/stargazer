@@ -37,6 +37,9 @@ each square. Both are updated on every move and must always agree.
   chess names (`knight_attacks(square)`, `pawn_pushes(pawns)`), each with its
   own tests. Search and evaluation call those and read like chess.
 - The risk of the two copies disagreeing is caught by perft.
+- Each position also carries its fingerprint (section 3, transposition
+  table), kept up to date by the same two functions that place and lift
+  pieces.
 
 Considered and rejected:
 - **Mailbox only:** easiest to read, but a few times slower (rough estimate)
@@ -113,6 +116,23 @@ $0). So:
   played (Milestone 4, 2026-10-23). Also `go depth`,
   `go movetime`, `go infinite`. Built in PR #9. Smarter, position-aware
   time use is parked (ROADMAP.md).
+- **Transposition table: decided 2026-10-23** (built in two steps).
+  - **Fingerprints (Zobrist hashing), step 2a, built:** a fixed random
+    64-bit number for each piece on each square, for each combination of
+    castling rights, for each en passant file and for Black to move,
+    generated when the engine is compiled from a fixed seed (our own
+    SplitMix64, no crate). A position's fingerprint is their XOR, updated
+    step by step as pieces move. Repetitions are spotted by comparing
+    fingerprints. Castling rights are four bits of one byte so `Position`
+    stays at 256 bytes (it's copied for every move tried).
+  - **The table, step 2b:** 16 MB by default, set by a UCI `Hash` option
+    (1 to 1024 MB), the same size in the browser build. Each slot holds
+    the fingerprint, best move, score, depth and whether the score is
+    exact or a bound; mate scores are stored relative to the position.
+    When full, the newest result replaces the old one. The stored move is
+    tried first everywhere; the stored score ends a search early only when
+    deep enough and its bound allows, never at the root. Kept between
+    moves, cleared on `ucinewgame`.
 - **`stop` and threads:** the core stays single-threaded and clock-free; it
   is handed a stop signal and a time limit and checks them every few
   thousand positions. The native UCI layer runs the search on a second
