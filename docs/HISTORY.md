@@ -23,3 +23,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-21 | [#15](https://github.com/CharlieWA01/stargazer/pull/15) | docs: the test rig is proven fair; Milestone 3 done |
 | 2026-10-23 | [#16](https://github.com/CharlieWA01/stargazer/pull/16) | Search: keep the best move from a depth that runs out of time |
 | 2026-10-23 | [#17](https://github.com/CharlieWA01/stargazer/pull/17) | Run SPRT: print AWS's reason and retry a refused start; cache the ARM cross-compiler |
+| 2026-10-23 | [#18](https://github.com/CharlieWA01/stargazer/pull/18) | Zobrist fingerprints for positions (transposition table, step 2a) |
