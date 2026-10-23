@@ -37,6 +37,14 @@ throwing away the work done in a depth that runs out of time.
   the clock is spent, so it belongs to the time rework.
 
 ## Problems and fixes
+- **The first test run never started.** AWS returned no task when asked
+  to start it, and the workflow prints only "AWS didn't start the task",
+  not AWS's reason (most likely no Fargate Spot capacity for 16 ARM vCPUs
+  at that moment). Rerun as attempt 2, which started and passed. Both runs
+  also spent 20+ minutes installing the ARM cross-compiler from a slow
+  GitHub package mirror (normally a minute or two). Charlie wants to move
+  to regular Fargate; the follow-up is Spot first with an on-demand
+  fallback, logging AWS's reason, and a faster cross-compiler install.
 - Writing a test for "time ran out partway through a depth" without a
   clock. The search asks `should_stop` every 2,048 positions and is
   fully repeatable, so the test first runs unstopped and counts the asks,
@@ -55,9 +63,18 @@ throwing away the work done in a depth that runs out of time.
 - `tools/selfplay.py`: three games at 10+0.1, 3+0 and 1+0.01, no time
   losses or illegal moves.
 - `cargo fmt`, clippy, WASM build.
-- SPRT: to come (bounds 0 to 10, 8+0.08). Agreed beforehand: if it
-  fails, it's parked and not rerun until it passes.
+- **SPRT on AWS (`sprt-40005388225-2`): pass.** +43.8 ± 22.1 Elo over
+  503 games (232 wins, 101 draws, 170 losses), bounds 0 to 10, 8+0.08,
+  16 vCPU; both bench counts 2457379. The SPRT stops as soon as it
+  crosses the line, which tends to overstate the size of a gain, so the
+  true number is probably lower than +44. But even the low end of the
+  range (+22) is well clear of 0: a solid pass, not a borderline one.
+  More than the "+5 or so" guessed beforehand. A likely reason: the moves
+  where a deeper search changes its mind are the critical ones, and those
+  are exactly the moves that used to lose their unfinished depth.
 
 ## Impact
 On the roughly 2% of moves that used to end with a binned depth, the
 engine now plays what it learned in that time. Time use is unchanged.
+Measured gain: +44 ± 22 Elo for about a dozen lines of code. Test cost:
+under an hour of Fargate Spot, well under $1.

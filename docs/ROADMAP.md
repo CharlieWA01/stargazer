@@ -55,7 +55,8 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 
 Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
 
-- [ ] Keep the best move from a depth that runs out of time (in review)
+- [x] Keep the best move from a depth that runs out of time: SPRT pass,
+      +43.8 ± 22.1 Elo over 503 games (#16)
 - [ ] Transposition table with Zobrist hashing (table size, replacement
       and the browser build's size to decide first)
 - [ ] Killer and history moves
@@ -122,6 +123,10 @@ a release is tagged and built (DESIGN.md section 6).
   - "watch it think" in the browser: candidate moves drawn as a
     constellation of arrows, plus an evaluation bar
   - difficulty levels named after stars
+- SPRT rig reliability (Charlie, 2026-10-23): fall back to regular
+  Fargate when Spot has no room or takes a test back, print AWS's reason
+  when a task won't start, and speed up the ARM cross-compiler install
+  (20+ minutes on a slow package mirror). Needs a cloud-homelab change.
 - Hide the AWS account ID in the SPRT workflow logs (task ARN, bucket
   name) before the repo goes public.
 
