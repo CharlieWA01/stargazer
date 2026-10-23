@@ -125,7 +125,7 @@ $0). So:
     step by step as pieces move. Repetitions are spotted by comparing
     fingerprints. Castling rights are four bits of one byte so `Position`
     stays at 256 bytes (it's copied for every move tried).
-  - **The table, step 2b:** 16 MB by default, set by a UCI `Hash` option
+  - **The table, step 2b, built 2026-10-23:** 16 MB by default, set by a UCI `Hash` option
     (1 to 1024 MB), the same size in the browser build. Each slot holds
     the fingerprint, best move, score, depth and whether the score is
     exact or a bound; mate scores are stored relative to the position.

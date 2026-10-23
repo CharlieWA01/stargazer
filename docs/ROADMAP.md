@@ -58,9 +58,10 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
 - [x] Keep the best move from a depth that runs out of time: SPRT pass,
       +43.8 ± 22.1 Elo over 503 games (#16)
 - [ ] Transposition table (design decided 2026-10-23):
-  - [ ] 2a: Zobrist fingerprints; repetitions found by fingerprint
-        (same search, bench 2457379; in review)
-  - [ ] 2b: the table itself, with a UCI `Hash` option
+  - [x] 2a: Zobrist fingerprints; repetitions found by fingerprint
+        (same search, bench 2457379; #18, no SPRT of its own)
+  - [ ] 2b: the table itself, with a UCI `Hash` option (bench 1275902;
+        in review, SPRT together with 2a)
 - [ ] Killer and history moves
 - [ ] Principal variation search and aspiration windows
 - [ ] Null-move pruning
@@ -148,8 +149,9 @@ a release is tagged and built (DESIGN.md section 6).
   machines). Every position generates all its legal moves, quiescence
   included, and tries each one in full (fingerprint included) to check it
   is legal; that, not the repetition check, is where the time goes. The
-  fingerprints cost about 4% of speed; the transposition table (2b) is
-  where they pay for themselves.
+  fingerprints cost about 4% of speed; the transposition table (2b) more
+  than pays it back by searching far fewer positions (a quarter as many
+  at depth 7).
 - After a two-square pawn move the en passant square is always recorded,
   even when no enemy pawn could capture, so that position never counts as
   a repeat. Rare and harmless (a draw claim might be missed).

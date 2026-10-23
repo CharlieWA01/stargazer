@@ -4,7 +4,8 @@
 //! Handles the startup handshake, `position startpos` or `position fen ...`
 //! (optionally followed by `moves ...`), `go` with a clock (`wtime btime
 //! winc binc movestogo`), `go movetime N`, `go depth N` and `go infinite`,
-//! `stop`, and `quit`. Extras most engines share: `go perft N` (count move
+//! `stop`, `quit`, and one option, `setoption name Hash value <MB>` (the
+//! transposition table's size, 1 to 1024 MB). Extras most engines share: `go perft N` (count move
 //! sequences), `d` (print the board), `eval` (print the evaluation) and
 //! `bench` (a fixed search; its node count fingerprints the build).
 //!
@@ -23,6 +24,7 @@ use crate::eval::evaluate;
 use crate::movegen::legal_moves;
 use crate::perft::divide;
 use crate::search::{MAX_PLY, Report, mate_in, search};
+use crate::tt::{self, Table};
 
 /// How deep a bare `go` (no clock, depth or time) searches. Handy when
 /// typing commands by hand; well under a second in a release build.
@@ -34,6 +36,12 @@ const SAFETY_MARGIN_MS: u64 = 50;
 
 /// Output shared between this loop and the search thread.
 type Output<W> = Arc<Mutex<W>>;
+
+/// The transposition table, kept from move to move and lent to each search.
+type SharedTable = Arc<Mutex<Table>>;
+
+/// The `Hash` option's limits, in megabytes.
+const MAX_HASH_MB: usize = 1024;
 
 /// Print one line and send it at once (GUIs wait for whole lines).
 fn say<W: Write>(output: &Output<W>, text: impl Display) {
@@ -64,6 +72,7 @@ pub fn run<W: Write + Send + 'static>(input: impl BufRead, output: W) {
     // needs the earlier ones for the repetition rule.
     let mut game = vec![Position::startpos()];
     let mut thinking: Option<Thinking> = None;
+    let table: SharedTable = Arc::new(Mutex::new(Table::new(tt::DEFAULT_MB)));
 
     for line in input.lines() {
         let Ok(line) = line else { break };
@@ -71,8 +80,10 @@ pub fn run<W: Write + Send + 'static>(input: impl BufRead, output: W) {
 
         // A GUI shouldn't change the position or start a new search while
         // we think, but if one does, finish the current search first.
-        if matches!(command, "ucinewgame" | "position" | "go" | "stop" | "quit")
-            && let Some(search) = thinking.take()
+        if matches!(
+            command,
+            "ucinewgame" | "position" | "go" | "stop" | "quit" | "setoption"
+        ) && let Some(search) = thinking.take()
         {
             search.stop();
         }
@@ -84,17 +95,35 @@ pub fn run<W: Write + Send + 'static>(input: impl BufRead, output: W) {
                     format!("id name {} {}", crate::NAME, crate::VERSION),
                 );
                 say(&output, format!("id author {}", crate::AUTHOR));
+                say(
+                    &output,
+                    format!(
+                        "option name Hash type spin default {} min 1 max {MAX_HASH_MB}",
+                        tt::DEFAULT_MB
+                    ),
+                );
                 say(&output, "uciok");
             }
             "isready" => say(&output, "readyok"),
-            "ucinewgame" => game = vec![Position::startpos()],
+            "ucinewgame" => {
+                game = vec![Position::startpos()];
+                // A new game: last game's positions are no use.
+                table.lock().unwrap().clear();
+            }
+            "setoption" => match parse_hash_option(&line) {
+                Some(megabytes) => *table.lock().unwrap() = Table::new(megabytes),
+                None => say(
+                    &output,
+                    "info string unknown option (only Hash is supported)",
+                ),
+            },
             "position" => match parse_position(&line) {
                 Ok(new_game) => game = new_game,
                 // UCI has no error reply, so explain with an "info string"
                 // and keep the old position.
                 Err(reason) => say(&output, format!("info string invalid position: {reason}")),
             },
-            "go" => thinking = go(&line, &game, &output),
+            "go" => thinking = go(&line, &game, &table, &output),
             // Not part of UCI, but most engines have it: print the board.
             "d" => say(&output, current(&game)),
             // Also not UCI: the evaluation of the current position, without
@@ -229,6 +258,18 @@ fn time_budget(limits: &GoLimits, side: Color) -> Option<TimeBudget> {
     Some(TimeBudget { soft, hard })
 }
 
+/// `setoption name Hash value 64`: the table size in megabytes, kept
+/// between 1 and 1024. `None` for any other option or a bad value.
+fn parse_hash_option(line: &str) -> Option<usize> {
+    let words: Vec<&str> = line.split_whitespace().collect();
+    match words.as_slice() {
+        ["setoption", "name", name, "value", value] if name.eq_ignore_ascii_case("hash") => {
+            value.parse().ok().map(|mb: usize| mb.clamp(1, MAX_HASH_MB))
+        }
+        _ => None,
+    }
+}
+
 /// `go perft N` counts every move sequence N moves deep, listed by first
 /// move (a debugging tool many engines share). Any other `go` starts a
 /// search on its own thread, which prints an `info` line after each depth
@@ -236,6 +277,7 @@ fn time_budget(limits: &GoLimits, side: Color) -> Option<TimeBudget> {
 fn go<W: Write + Send + 'static>(
     line: &str,
     game: &[Position],
+    table: &SharedTable,
     output: &Output<W>,
 ) -> Option<Thinking> {
     let words: Vec<&str> = line.split_whitespace().skip(1).collect();
@@ -266,6 +308,7 @@ fn go<W: Write + Send + 'static>(
 
     let stop = Arc::new(AtomicBool::new(false));
     let game = game.to_vec();
+    let table = Arc::clone(table);
     let output = Arc::clone(output);
     let thread_stop = Arc::clone(&stop);
     let thread = thread::spawn(move || {
@@ -275,6 +318,7 @@ fn go<W: Write + Send + 'static>(
         let best = search(
             &game,
             max_depth,
+            &mut table.lock().unwrap(),
             // Inside a depth: stop when told to, or at the hard limit.
             &mut || {
                 stop.load(Ordering::Relaxed)
@@ -424,6 +468,25 @@ mod tests {
         let reply = respond("uci\n");
         assert!(reply.starts_with("id name Stargazer"));
         assert!(reply.ends_with("uciok\n"));
+    }
+
+    #[test]
+    fn the_hash_option_is_offered_and_understood() {
+        assert!(
+            respond("uci\n").contains("option name Hash type spin default 16 min 1 max 1024\n")
+        );
+        assert_eq!(parse_hash_option("setoption name Hash value 64"), Some(64));
+        assert_eq!(parse_hash_option("setoption name hash value 0"), Some(1));
+        assert_eq!(
+            parse_hash_option("setoption name Hash value 99999"),
+            Some(1024)
+        );
+        assert_eq!(parse_hash_option("setoption name Hash value lots"), None);
+        assert_eq!(parse_hash_option("setoption name Ponder value true"), None);
+        // A search still works after resizing and after a new game.
+        let reply = respond("setoption name Hash value 1\nucinewgame\ngo depth 3\n");
+        assert!(reply.contains("bestmove "), "{reply}");
+        assert!(respond("setoption name Ponder value true\n").starts_with("info string"));
     }
 
     #[test]

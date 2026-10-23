@@ -12,6 +12,7 @@ use std::time::Instant;
 
 use crate::board::Position;
 use crate::search::search;
+use crate::tt::{self, Table};
 
 /// How deep each position is searched, in half-moves.
 pub const BENCH_DEPTH: u32 = 5;
@@ -47,13 +48,23 @@ impl Bench {
 pub fn run(depth: u32) -> Bench {
     let started = Instant::now();
     let mut nodes = 0;
+    // One table of the default size, emptied before each position so each
+    // count depends only on that position.
+    let mut table = Table::new(tt::DEFAULT_MB);
     for fen in POSITIONS {
         let position = Position::from_fen(fen).expect("bench positions are valid");
+        table.clear();
         let mut last = 0;
-        search(&[position], depth, &mut || false, &mut |report| {
-            last = report.nodes;
-            true
-        });
+        search(
+            &[position],
+            depth,
+            &mut table,
+            &mut || false,
+            &mut |report| {
+                last = report.nodes;
+                true
+            },
+        );
         nodes += last;
     }
     Bench {
