@@ -67,7 +67,10 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
 - [ ] Late move reductions and check extensions
 - [ ] Time-management rework, rule by rule, once the search has settled
       (see the parking lot's position-aware idea; also "don't start a
-      depth that can't finish")
+      depth that can't finish"; and sudden death: with no increment the
+      clock shrinks about 5% a move, so a long game ends at depth 1 or 2,
+      as in Charlie's 5+0 game against PyChess on 2026-10-23, lost on
+      time after being a queen up at move 44)
 - [ ] Evaluation terms: mobility, pawn structure, king safety (design
       section first)
 - [ ] Texel tuning (design section first)
