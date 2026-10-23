@@ -61,11 +61,20 @@ jobs:
         with:
           targets: aarch64-unknown-linux-gnu
       - uses: Swatinem/rust-cache@v2
+      # The cross-compiler's packages, cached as in sprt.yml (slow mirror).
+      - uses: actions/cache@v4
+        with:
+          path: ~/apt-archives
+          key: apt-arm-cross-${{ github.run_id }}
+          restore-keys: apt-arm-cross-
       - name: Build the engine for ARM
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: |
-          sudo apt-get update -q && sudo apt-get install -y -q gcc-aarch64-linux-gnu
+          mkdir -p ~/apt-archives/partial
+          sudo apt-get update -q
+          sudo apt-get install -y -q -o Dir::Cache::Archives="$HOME/apt-archives" \
+            gcc-aarch64-linux-gnu
           cargo build --release --target aarch64-unknown-linux-gnu
       - uses: docker/setup-qemu-action@v3
         with:

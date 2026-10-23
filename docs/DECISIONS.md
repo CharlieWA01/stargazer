@@ -351,3 +351,15 @@ the standard fix, a few lines, and leaves the clock rules unchanged, so
 the test measures only this. (3) the gain is probably small; rerunning a
 failed test until it passes would turn SPRT's 5% error into much more.
 **Cost:** none beyond the test (about $0.10 to $1.20).
+
+## 2026-10-23: Stay on Fargate Spot; retry a refused start
+**Decision:** strength tests stay on Fargate Spot. When AWS declines to
+start a test, the workflow prints AWS's reason and retries twice, a minute
+apart. The ARM cross-compiler's packages are kept in GitHub's cache.
+**Alternatives:** regular (on-demand) Fargate for every test, or as an
+automatic fallback when Spot has no room (needs a cloud-homelab change
+and an on-demand vCPU quota).
+**Why:** Charlie's call. The failure that prompted it wasn't a reclaim,
+and Spot's problems so far (two reclaims, one refused start, in six runs)
+each cost only a rerun. On-demand is roughly three times the price.
+**Cost:** none. Revisit if Spot keeps failing.

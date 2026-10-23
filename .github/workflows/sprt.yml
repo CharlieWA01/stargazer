@@ -94,10 +94,21 @@ jobs:
         with:
           ref: ${{ inputs.base }}
           path: base
+      # The compiler's packages (about 45 MB) are kept in GitHub's cache:
+      # Ubuntu's mirror can be very slow (on 2026-10-23 it took 18 minutes),
+      # and apt only downloads what isn't in the cache already.
+      - name: Restore the cross-compiler's packages
+        uses: actions/cache@v4
+        with:
+          path: ~/apt-archives
+          key: apt-arm-cross-${{ github.run_id }}
+          restore-keys: apt-arm-cross-
       - name: Install the ARM cross-compiler
         run: |
+          mkdir -p ~/apt-archives/partial
           sudo apt-get update -q
-          sudo apt-get install -y -q gcc-aarch64-linux-gnu
+          sudo apt-get install -y -q -o Dir::Cache::Archives="$HOME/apt-archives" \
+            gcc-aarch64-linux-gnu
       - name: Build both engines
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
@@ -189,10 +200,24 @@ jobs:
           EOF
           )
           network="awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUP],assignPublicIp=ENABLED}"
-          task=$(aws ecs run-task --cluster "$CLUSTER" --task-definition "$FAMILY" \
-            --network-configuration "$network" --overrides "$overrides" \
-            --query 'tasks[0].taskArn' --output text)
-          [ -n "$task" ] && [ "$task" != "None" ] || { echo "AWS didn't start the task"; exit 1; }
+          # AWS can decline to start a task without an error (for example
+          # when Spot has no room just then); it then lists failures with a
+          # reason. Print the reason and try again a minute later, 3 tries.
+          task=""
+          for attempt in 1 2 3; do
+            aws ecs run-task --cluster "$CLUSTER" --task-definition "$FAMILY" \
+              --network-configuration "$network" --overrides "$overrides" \
+              --output json > run-task.json
+            task=$(python3 -c 'import json; t = json.load(open("run-task.json"))["tasks"]; print(t[0]["taskArn"] if t else "")')
+            [ -n "$task" ] && break
+            # Only the reason and detail: the failure's ARN holds the account ID.
+            echo "AWS didn't start the task (try $attempt of 3):"
+            python3 -c 'import json
+          for f in json.load(open("run-task.json")).get("failures", []):
+              print("-", f.get("reason"), f.get("detail") or "")' | tee -a "$GITHUB_STEP_SUMMARY"
+            [ "$attempt" -lt 3 ] && sleep 60
+          done
+          [ -n "$task" ] || { echo "AWS didn't start the task after 3 tries"; exit 1; }
           echo "TASK_ARN=$task" >> "$GITHUB_ENV"
           # What was asked for, saved with the results, so the report
           # workflow can find the task and the PR later.
