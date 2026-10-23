@@ -21,3 +21,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-20 | [#13](https://github.com/CharlieWA01/stargazer/pull/13) | Faster ARM test image (cross-compile fastchess), and an ARM build check |
 | 2026-10-20 | [#14](https://github.com/CharlieWA01/stargazer/pull/14) | Run SPRT: a rounds input, and per-move nodes/speed/latency in game files |
 | 2026-10-21 | [#15](https://github.com/CharlieWA01/stargazer/pull/15) | docs: the test rig is proven fair; Milestone 3 done |
+| 2026-10-23 | [#16](https://github.com/CharlieWA01/stargazer/pull/16) | Search: keep the best move from a depth that runs out of time |
