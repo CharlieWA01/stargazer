@@ -333,3 +333,21 @@ or the AWS setup changes, and treat a pass that is only just over the
 line with suspicion (Charlie: "something to keep an eye on").
 **Cost:** about 25 cents and 50 minutes per self-match.
 
+
+## 2026-10-23: How Milestone 4 is ordered, and the first step
+**Decision:** (1) Milestone 4 goes step by step, one PR and one SPRT test
+each: unfinished-depth fix, transposition table, killer and history moves,
+PVS and aspiration windows, null-move pruning, late move reductions and
+check extensions, a time-management rework, evaluation terms, Texel
+tuning. (2) First step: when time runs out partway through a depth, play
+the best move among the root moves already finished (Charlie chose this,
+option A). (3) A failed SPRT for this step means it's parked, not rerun.
+**Alternatives:** (2) don't start a depth that can't finish (option B);
+rework all of time management first, which Charlie asked about.
+**Why:** (1) the search tricks bring the biggest gains, and each changes
+how fast a search grows from one depth to the next, which time rules have
+to be tuned against, so the time rework waits until they're in. (2) is
+the standard fix, a few lines, and leaves the clock rules unchanged, so
+the test measures only this. (3) the gain is probably small; rerunning a
+failed test until it passes would turn SPRT's 5% error into much more.
+**Cost:** none beyond the test (about $0.10 to $1.20).

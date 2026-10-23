@@ -9,7 +9,7 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 | 1 | **Foundation** | Board representation and legal move generation pass the perft suite. *(done 2026-10-20)* |
 | 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. *(done 2026-10-20)* |
 | 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. *(done 2026-10-22)* |
-| 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. *(next)* |
+| 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. *(started 2026-10-23)* |
 | 5 | **Going public** | Running as a Lichess bot with a real rating. |
 | 6 | **Stretch** | NNUE evaluation, multithreading. |
 
@@ -51,6 +51,24 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
       Two 2,000-game self-matches on AWS: +7.3 ± 7.2 and +1.0 ± 7.5,
       with identical speed and depth for both copies (#14, #15)
 
+### Milestone 4 steps
+
+Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
+
+- [ ] Keep the best move from a depth that runs out of time (in review)
+- [ ] Transposition table with Zobrist hashing (table size, replacement
+      and the browser build's size to decide first)
+- [ ] Killer and history moves
+- [ ] Principal variation search and aspiration windows
+- [ ] Null-move pruning
+- [ ] Late move reductions and check extensions
+- [ ] Time-management rework, rule by rule, once the search has settled
+      (see the parking lot's position-aware idea; also "don't start a
+      depth that can't finish")
+- [ ] Evaluation terms: mobility, pawn structure, king safety (design
+      section first)
+- [ ] Texel tuning (design section first)
+
 ## Release names
 
 Releases are named after stars, starting dim and getting brighter as the
@@ -83,7 +101,8 @@ a release is tagged and built (DESIGN.md section 6).
   uncertainty as the measure of difficulty. Spend more time when the best
   move keeps changing between depths or the score suddenly drops; move
   early when one move is clearly best or forced. All inside a soft target
-  and a hard ceiling. Each rule kept only if SPRT shows a gain (Milestone 4).
+  and a hard ceiling. Each rule kept only if SPRT shows a gain. Scheduled
+  as Milestone 4's time-management rework, after the pruning steps.
 - Push from 1800 to 2000: more search tricks, a richer evaluation, Texel
   tuning (see `docs/DECISIONS.md`, 2026-10-20).
 - Multithreading (Lazy SMP), native build only.
@@ -91,9 +110,8 @@ a release is tagged and built (DESIGN.md section 6).
   (check its licence).
 - Don't throw away thinking time: on about 2% of moves the engine spends
   up to a second on a depth it can't finish (seen in the self-match game
-  files). Either stop before starting a depth that can't finish, or use
-  the best move found so far in the unfinished depth. A good first SPRT
-  test.
+  files). Using the unfinished depth's best move is Milestone 4's first
+  step; not starting such a depth at all is part of the time rework.
 - Give it a personality (Charlie's idea, 2026-10-21), after 1800 and each
   measured with SPRT so the strength cost is known:
   - a style knob, such as an attacking evaluation (king attacks, pawn
