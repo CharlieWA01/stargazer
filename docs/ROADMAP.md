@@ -123,10 +123,10 @@ a release is tagged and built (DESIGN.md section 6).
   - "watch it think" in the browser: candidate moves drawn as a
     constellation of arrows, plus an evaluation bar
   - difficulty levels named after stars
-- SPRT rig reliability (Charlie, 2026-10-23): fall back to regular
-  Fargate when Spot has no room or takes a test back, print AWS's reason
-  when a task won't start, and speed up the ARM cross-compiler install
-  (20+ minutes on a slow package mirror). Needs a cloud-homelab change.
+- Regular Fargate as a fallback when Spot has no room or takes a test
+  back. Charlie decided to stay on Spot for now (2026-10-23); revisit if
+  Spot keeps failing (3 problems in the first 6 runs). AWS's reason is now
+  printed and the start is retried (#17), so the next failure says why.
 - Hide the AWS account ID in the SPRT workflow logs (task ARN, bucket
   name) before the repo goes public.
 

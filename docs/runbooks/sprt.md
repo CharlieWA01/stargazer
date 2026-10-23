@@ -26,6 +26,11 @@ DECISIONS.md (2026-10-21).
    run **SPRT report** with that run id to post the verdict. Tests stop by
    themselves after 8 hours at most.
 
+**If AWS won't start it:** sometimes AWS declines to start the task (most
+likely no Spot room just then). The workflow prints AWS's reason in the
+log and on the summary page, and tries again a minute later, three tries
+in all. If all three fail, read the reason and press Run SPRT again later.
+
 **If AWS interrupts it:** Spot capacity can be taken back at any time
 (the first real test lost it after 8.5 minutes). The report then says
 "inconclusive: the task was told to stop", with the games so far. Press
