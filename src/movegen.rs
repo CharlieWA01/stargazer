@@ -13,7 +13,7 @@ use crate::attacks::{
     bishop_attacks, king_attacks, knight_attacks, pawn_attacks, queen_attacks, rook_attacks,
 };
 use crate::bitboard::Bitboard;
-use crate::board::{Color, Piece, PieceKind, Position, Square};
+use crate::board::{CastlingRights, Color, Piece, PieceKind, Position, Square};
 
 /// A move, written the way UCI writes it: from-square, to-square, and the
 /// piece a pawn becomes if it promotes (`e2e4`, `e7e8q`).
@@ -140,12 +140,12 @@ fn castling_moves(position: &Position, moves: &mut Vec<Move>) {
     };
     let (kingside, queenside) = match us {
         Color::White => (
-            position.castling.white_kingside,
-            position.castling.white_queenside,
+            position.castling.has(CastlingRights::WHITE_KINGSIDE),
+            position.castling.has(CastlingRights::WHITE_QUEENSIDE),
         ),
         Color::Black => (
-            position.castling.black_kingside,
-            position.castling.black_queenside,
+            position.castling.has(CastlingRights::BLACK_KINGSIDE),
+            position.castling.has(CastlingRights::BLACK_QUEENSIDE),
         ),
     };
     let king = Square::new(4, rank);

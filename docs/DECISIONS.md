@@ -363,3 +363,26 @@ and an on-demand vCPU quota).
 and Spot's problems so far (two reclaims, one refused start, in six runs)
 each cost only a rerun. On-demand is roughly three times the price.
 **Cost:** none. Revisit if Spot keeps failing.
+
+## 2026-10-23: Transposition table design
+**Decision:** (1) built in two PRs: Zobrist fingerprints first (no change
+to the search; bench must stay equal), then the table. (2) Our own fixed
+random numbers (SplitMix64, fixed seed, made at compile time). (3) 16 MB
+by default with a UCI `Hash` option (1 to 1024 MB), the same size in the
+browser. (4) Slots hold fingerprint, best move, score, depth and bound
+type; mate scores stored relative to the position. (5) Always replace
+when full. (6) Stored move tried first everywhere; stored score used to
+end a search early only when deep enough, never at the root; table kept
+between moves, cleared on `ucinewgame`. (7) Castling rights packed into
+one byte so `Position` stays 256 bytes.
+**Alternatives:** one PR; a random-number crate; a bigger default table;
+depth-preferred or two-entry replacement; four `bool`s for castling.
+**Why:** (1) proves the fingerprints right before anything relies on
+them. (2) keeps the engine core dependency-free and bench repeatable.
+(3) about a million slots, plenty at our speed, and the size lichess-bot
+and GUIs expect to be able to set. (5) simplest, usually within a few Elo
+at this stage; smarter replacement is a later SPRT test. (7) the
+fingerprint pushed `Position` over 256 bytes and cost 10 to 12% speed;
+packed rights bring it back to about 4%. Charlie approved (1) to (6).
+**Cost:** about 4% speed until the table uses the fingerprints; 16 MB of
+memory per engine.
