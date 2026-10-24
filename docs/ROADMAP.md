@@ -64,7 +64,8 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
   - [x] 2b: the table itself, with a UCI `Hash` option (bench 1275902;
         #19)
 - [ ] Killer and history moves (design decided 2026-10-24; two PRs):
-  - [ ] 3a: killer moves (bench 1162141; in review)
+  - [x] 3a: killer moves: SPRT pass, +45.3 ± 22.8 Elo over 588 games
+        (bench 1162141; #21)
   - [ ] 3b: history moves
 - [ ] Principal variation search and aspiration windows
 - [ ] Null-move pruning

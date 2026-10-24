@@ -135,7 +135,7 @@ $0). So:
     moves, cleared on `ucinewgame`.
 - **Killer and history moves: decided 2026-10-24** (two PRs, each with
   its own SPRT).
-  - **Killers, step 3a, built 2026-10-24:** at each ply the search keeps
+  - **Killers, step 3a, built 2026-10-24** (SPRT: +45 Elo): at each ply the search keeps
     the last two quiet moves (not captures or promotions) that refuted a
     position there, newest first, and tries them right after the
     captures. A killer that happens to capture in the new position is

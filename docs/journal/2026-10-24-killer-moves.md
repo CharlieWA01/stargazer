@@ -50,7 +50,9 @@ in DESIGN.md section 3 and DECISIONS.md (2026-10-24).
   397,000 (killers), about 2% slower; the saving in positions is larger.
 - `cargo fmt`, clippy, WASM build, deep perft unchanged (move generation
   untouched).
-- SPRT: to come, bounds 0 to 10 at 8+0.08 against `main`.
+- SPRT (2026-10-24), bounds 0 to 10 at 8+0.08 against `main`: **pass,
+  +45.3 ± 22.8 Elo over 588 games** (275 wins, 116 draws, 197 losses;
+  run `sprt-40047251474-1`), in about 15 minutes.
 
 ## Impact
 The search wastes less time on quiet moves that a sibling position has
