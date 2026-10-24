@@ -24,9 +24,10 @@ Spot (16 ARM CPUs, about 2,000 games in 50 minutes for roughly 25 cents)
 and posts a statistical verdict (SPRT) on the pull request. It was proven
 fair by playing the engine against itself: +1.0 ± 7.5 Elo over 2,000
 games. Milestone 4 makes it stronger one measured change at a time: the
-first two (keeping the best move from an unfinished search, and a
-transposition table that remembers searched positions) passed at +44 and
-+136 Elo.
+first three (keeping the best move from an unfinished search, a
+transposition table that remembers searched positions, and killer moves)
+passed at +44, +136 and +45 Elo. On 2026-10-23 it beat PyChess's engine
+at full strength for the first time.
 
 ## What makes it interesting
 - **Two targets from one codebase:** a native engine (chess GUIs, Lichess

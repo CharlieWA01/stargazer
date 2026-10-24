@@ -112,3 +112,7 @@ that way.
   first half showed a 10 to 12% slowdown; the cause was the position
   record growing past 256 bytes, fixed by packing four castling flags
   into one byte. Measure the cost of each half, not just the total.
+- **Follow-up (2026-10-24):** the third, killer moves (trying first the
+  quiet moves that just refuted a neighbouring position), passed at +45 ±
+  23 Elo in 588 games. Three changes, about +225 Elo in total, each one
+  measured on its own before it merged.

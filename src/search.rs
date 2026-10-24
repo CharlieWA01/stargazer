@@ -18,6 +18,10 @@
 //! - **Captures first, best first:** take the most valuable piece with the
 //!   least valuable attacker first ("MVV-LVA"). Good moves first means
 //!   more cut-offs.
+//! - **Killer moves:** a quiet move (not a capture) that refuted one
+//!   position will often refute its neighbours at the same depth too:
+//!   if ...Qh4 punished a3, it probably punishes h3 as well. The last two
+//!   such moves at each depth are tried right after the captures.
 //! - **Transposition table:** remember each position's result (see `tt`),
 //!   so a position reached again by another move order isn't searched
 //!   again, and its best move is tried first when it is.
@@ -43,6 +47,10 @@ const INFINITY: i32 = 32_000;
 pub const MAX_PLY: usize = 128;
 /// How often, in positions, to ask whether to stop.
 const CHECK_EVERY: u64 = 2048;
+
+/// The two most recent quiet moves that refuted a position at one ply,
+/// newest first.
+type Killers = [Option<Move>; 2];
 
 /// What a finished depth found, for `info` lines.
 #[derive(Clone, Debug)]
@@ -99,6 +107,7 @@ pub fn search(
         stopped: false,
         should_stop,
         table,
+        killers: [[None; 2]; MAX_PLY + 1],
     };
     let mut best_move = first_legal;
     let mut previous_pv = Vec::new();
@@ -145,6 +154,8 @@ struct Searcher<'a> {
     stopped: bool,
     should_stop: &'a mut dyn FnMut() -> bool,
     table: &'a mut Table,
+    /// Killer moves for each ply, kept across depths of one search.
+    killers: [Killers; MAX_PLY + 1],
 }
 
 impl Searcher<'_> {
@@ -223,7 +234,7 @@ impl Searcher<'_> {
             .first()
             .copied()
             .or(remembered.and_then(|f| f.best_move));
-        let moves = ordered(position, moves, first);
+        let moves = ordered(position, moves, first, self.killers[ply]);
         let alpha_at_start = alpha;
         let mut best = -INFINITY;
         let mut best_move = None;
@@ -261,7 +272,9 @@ impl Searcher<'_> {
             }
             if alpha >= beta {
                 // The opponent won't allow this line; no need to look at
-                // our other moves here.
+                // our other moves here. Remember the refutation, in case
+                // it refutes the neighbouring positions too.
+                self.remember_killer(position, ply, mv);
                 break;
             }
         }
@@ -308,7 +321,7 @@ impl Searcher<'_> {
             moves.retain(|&mv| is_capture(position, mv) || mv.promotion.is_some());
         }
 
-        for mv in ordered(position, moves, None) {
+        for mv in ordered(position, moves, None, [None; 2]) {
             let next = position.make_move(mv);
             let score = -self.quiescence(&next, ply + 1, -beta, -alpha);
             if self.stopped {
@@ -321,6 +334,20 @@ impl Searcher<'_> {
             }
         }
         best
+    }
+
+    /// `mv` refuted `position`: if it's a quiet move, make it this ply's
+    /// newest killer. Captures and promotions are left out; they're
+    /// already tried early.
+    fn remember_killer(&mut self, position: &Position, ply: usize, mv: Move) {
+        if is_capture(position, mv) || mv.promotion.is_some() {
+            return;
+        }
+        let killers = &mut self.killers[ply];
+        if killers[0] != Some(mv) {
+            killers[1] = killers[0];
+            killers[0] = Some(mv);
+        }
     }
 
     /// Has this position appeared before, since the last capture or pawn
@@ -365,8 +392,14 @@ fn order_value(kind: PieceKind) -> i32 {
 
 /// Put the moves most likely to be best first: last iteration's best move,
 /// then captures (biggest victim first, cheapest attacker first among
-/// equal victims) and promotions, then the quiet moves.
-fn ordered(position: &Position, mut moves: Vec<Move>, best_first: Option<Move>) -> Vec<Move> {
+/// equal victims) and promotions, then the killer moves (newest first),
+/// then the other quiet moves.
+fn ordered(
+    position: &Position,
+    mut moves: Vec<Move>,
+    best_first: Option<Move>,
+    killers: Killers,
+) -> Vec<Move> {
     let priority = |mv: &Move| {
         if Some(*mv) == best_first {
             return 1_000;
@@ -385,6 +418,15 @@ fn ordered(position: &Position, mut moves: Vec<Move>, best_first: Option<Move>) 
         }
         if let Some(kind) = mv.promotion {
             priority += 10 * order_value(kind);
+        }
+        // A killer is quiet where it was found, but here the same move
+        // may capture; then it's already ranked as a capture.
+        if priority == 0 {
+            if Some(*mv) == killers[0] {
+                priority = 15;
+            } else if Some(*mv) == killers[1] {
+                priority = 14;
+            }
         }
         priority
     };
@@ -510,6 +552,7 @@ mod tests {
             stopped: false,
             should_stop: &mut never,
             table: &mut table,
+            killers: [[None; 2]; MAX_PLY + 1],
         };
         searcher.is_repetition(position)
     }
@@ -634,6 +677,82 @@ mod tests {
         // Searching the same position again with what's already in the
         // table is quicker still.
         assert!(nodes(&mut table) < first);
+    }
+
+    /// Find the legal move written `text` (like "e2e4") in `position`.
+    fn find_move(position: &Position, text: &str) -> Move {
+        legal_moves(position)
+            .into_iter()
+            .find(|m| m.to_string() == text)
+            .unwrap()
+    }
+
+    #[test]
+    fn killers_come_after_captures_and_before_other_quiet_moves() {
+        // White can take the pawn on d5 with the e4 pawn or the knight
+        // on c3; every other move is quiet.
+        let board = position("4k3/8/8/3p4/4P3/2N5/8/4K3 w - - 0 1");
+        let killers = [
+            Some(find_move(&board, "c3b5")),
+            Some(find_move(&board, "e1f2")),
+        ];
+        let order: Vec<String> = ordered(&board, legal_moves(&board), None, killers)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        assert_eq!(&order[..4], ["e4d5", "c3d5", "c3b5", "e1f2"]);
+        // Without killers those two quiet moves are nowhere near the front.
+        let plain: Vec<String> = ordered(&board, legal_moves(&board), None, [None; 2])
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        assert_ne!(&plain[..4], &order[..4]);
+    }
+
+    #[test]
+    fn a_killer_that_captures_here_is_ranked_as_a_capture() {
+        // Three captures: exd5 (pawn takes pawn), Nxd5 and Rxa5 (rook
+        // takes pawn, the most expensive attacker, so last). Nxd5 may
+        // have been a quiet killer elsewhere, but here it captures: it
+        // keeps its place among the captures rather than dropping to the
+        // killers' place after them.
+        let board = position("4k3/8/8/p2p4/4P3/2N5/8/R3K3 w - - 0 1");
+        let killers = [Some(find_move(&board, "c3d5")), None];
+        let order: Vec<String> = ordered(&board, legal_moves(&board), None, killers)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        assert_eq!(&order[..3], ["e4d5", "c3d5", "a1a5"]);
+    }
+
+    #[test]
+    fn only_quiet_refutations_become_killers_newest_first() {
+        let board = position("4k3/8/8/3p4/4P3/2N5/8/4K3 w - - 0 1");
+        let mut never = || false;
+        let mut table = Table::new(1);
+        let mut searcher = Searcher {
+            path: Vec::new(),
+            nodes: 0,
+            may_stop: false,
+            stopped: false,
+            should_stop: &mut never,
+            table: &mut table,
+            killers: [[None; 2]; MAX_PLY + 1],
+        };
+        let (quiet, other_quiet, capture) = (
+            find_move(&board, "c3b5"),
+            find_move(&board, "e1f2"),
+            find_move(&board, "e4d5"),
+        );
+        searcher.remember_killer(&board, 3, capture);
+        assert_eq!(searcher.killers[3], [None, None]);
+        searcher.remember_killer(&board, 3, quiet);
+        searcher.remember_killer(&board, 3, quiet); // no duplicate
+        assert_eq!(searcher.killers[3], [Some(quiet), None]);
+        searcher.remember_killer(&board, 3, other_quiet);
+        assert_eq!(searcher.killers[3], [Some(other_quiet), Some(quiet)]);
+        // Other plies keep their own.
+        assert_eq!(searcher.killers[2], [None, None]);
     }
 
     #[test]
