@@ -64,7 +64,9 @@ extensions"). Builds on 6a (check extensions).
   New bench fingerprint **343857**.
 - Depth reached in one second: start position 9 (was 8), a calm
   middlegame 8 (was 6), Kiwipete 6 (was 4).
-- SPRT: see the PR and the roadmap.
+- SPRT against `main` (0 to 10, 8+0.08, 16 vCPU): **pass**, +113.4 ±
+  36.5 Elo over 264 games (136 wins, 74 draws, 54 losses), the second
+  biggest gain after the transposition table.
 
 ## Impact
 The engine now spends its time on the moves that matter and reaches
