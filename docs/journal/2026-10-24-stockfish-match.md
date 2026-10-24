@@ -48,7 +48,11 @@ match" button on the AWS test rig (DECISIONS.md, 2026-10-24).
 - Local trial runs of `run_test.py` in match mode: 16 games at 2+0.02
   against Stockfish 1800 (8 wins, 8 losses), and 20 games against 1500
   (16 wins, 1 draw, 3 losses). Both reported correctly.
-- A longer local preview: PREVIEW
+- A longer local preview (200 games at 10+0.1 against Stockfish 1800)
+  was too slow on the 4-CPU session machine and stalled when the session
+  went idle. Its first games went 15 wins, 7 losses (22 games): far too
+  few to quote, but in line with a rating somewhere above 1800. The
+  first real number will come from AWS.
 - The workflows parse as YAML. They can only run on GitHub once merged
   (a new workflow's button appears only from `main`), so the first real
   match follows the merge.
