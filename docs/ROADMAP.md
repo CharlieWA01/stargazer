@@ -1,7 +1,8 @@
 # Roadmap
 
 Milestones are rough and will be refined during the architecture discussions.
-Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
+Goal: about 2000 (raised from 1800 on 2026-10-24, once a first match
+against Stockfish measured about 1900; DECISIONS.md). Design state: `docs/DESIGN.md`.
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -84,8 +85,11 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
       clock shrinks about 5% a move, so a long game ends at depth 1 or 2,
       as in Charlie's 5+0 game against PyChess on 2026-10-23, lost on
       time after being a queen up at move 44)
-- [ ] Evaluation terms: mobility, pawn structure, king safety (design
-      section first)
+- [ ] Evaluation terms: mobility, pawn structure, king safety, and a
+      "mop-up" term for won endgames (drive the losing king to the edge,
+      bring your own king close; Charlie's endgame point, 2026-10-24,
+      after the queen-up shuffling game against PyChess) (design section
+      first)
 - [ ] Texel tuning (design section first)
 
 ## Release names
@@ -122,16 +126,17 @@ a release is tagged and built (DESIGN.md section 6).
   early when one move is clearly best or forced. All inside a soft target
   and a hard ceiling. Each rule kept only if SPRT shows a gain. Scheduled
   as Milestone 4's time-management rework, after the pruning steps.
-- Push from 1800 to 2000: more search tricks, a richer evaluation, Texel
-  tuning (see `docs/DECISIONS.md`, 2026-10-20).
 - Multithreading (Lazy SMP), native build only.
+- Endgame tablebases (Syzygy): perfect play with 7 or fewer pieces, for
+  the Lichess bot. Search extensions for endgames (passed pawn pushes,
+  singular extensions) after check extensions.
 - A board widget for the browser page: write one or vendor a library
   (check its licence).
 - Don't throw away thinking time: on about 2% of moves the engine spends
   up to a second on a depth it can't finish (seen in the self-match game
   files). Using the unfinished depth's best move is done (#16, +44 Elo);
   not starting such a depth at all is part of the time rework.
-- Give it a personality (Charlie's idea, 2026-10-21), after 1800 and each
+- Give it a personality (Charlie's idea, 2026-10-21), after 2000 and each
   measured with SPRT so the strength cost is known:
   - a style knob, such as an attacking evaluation (king attacks, pawn
     storms, pawns given for activity), as a UCI option

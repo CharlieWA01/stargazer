@@ -21,6 +21,7 @@ scratch is the point of the project.
 below).
 
 ## 2026-10-20: Goal: about 1800 on Lichess, with code Charlie understands (PR #2)
+*Amended 2026-10-24: the goal is now about 2000 (see that day's entry).*
 **Decision:** "done" is an engine with a Lichess rating around 1800 whose
 design Charlie can explain. Understanding first, strength second. 2000 is a
 possible later push.
@@ -511,3 +512,19 @@ size and cost as the standard SPRTs already approved.
 Stockfish (a few tens of MB with its network file) and is rebuilt once.
 The rating is rough (±30 Elo at 400 games, and Stockfish's levels were
 set at longer games).
+
+## 2026-10-24: Goal raised to about 2000
+**Decision:** the strength goal is now about 2000 (Charlie's call),
+after the first match against Stockfish measured about 1900 (1902 ± 35
+against Stockfish 1800, 400 games). Understanding the code still comes
+first.
+**Alternatives:** keep 1800 and call strength done; aim higher (2200+).
+**Why:** 1800 is already passed with the classic design, and the 2026-10-20
+entry already named 2000 as reachable without changing it: the rest of
+Milestone 4 (null-move pruning, late move reductions, time rework,
+evaluation terms, Texel tuning) is the path. 2200+ would likely need
+NNUE, which is Milestone 6.
+**Cost:** none in money; more Milestone 4 steps and SPRTs. The measured
+number is on Stockfish's (CCRL-tied) scale; the Lichess bot rating comes
+in Milestone 5 and may read differently.
+
