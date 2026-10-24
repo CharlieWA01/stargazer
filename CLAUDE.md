@@ -88,10 +88,12 @@ python3 -m unittest discover -s rig -v              # after changing the test ri
   and the transposition table
 - `src/tt.rs`: the transposition table (the search's memory of positions)
 - `src/search.rs`: choosing a move (alpha-beta, iterative deepening,
-  quiescence, mate and draw rules); clock-free, asks `should_stop`
+  quiescence, mate and draw rules, the transposition table); clock-free,
+  asks `should_stop`
 - `src/uci.rs`: UCI protocol handling (handshake, `position ... moves`,
   `go` with clocks, `movetime`, `depth`, `infinite`, `stop`; `go perft N`,
-  `d` to print the board, `eval`); the search runs on its own thread
+  `d` to print the board, `eval`, `setoption name Hash`, `ucinewgame`);
+  the search runs on its own thread
 - `rig/`: the SPRT test container (`Dockerfile`, `run_test.py`), the
   report the workflows post (`report.py`), and their tests; started by the
   "Run SPRT" and "SPRT report" workflows; see `docs/runbooks/sprt.md`

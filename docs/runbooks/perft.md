@@ -24,7 +24,7 @@ go perft 5
 ```
 Prints the count after each first move, then `Nodes searched: 4865609`.
 `go perft 6` from the start position should give `119060324` (about 7
-seconds on a cloud machine; a useful rough speed check until `bench` exists).
+seconds on a cloud machine). For speed, use `stargazer bench` instead.
 
 ## When a count is wrong
 1. Run the same position and depth in a trusted engine, used only as a
