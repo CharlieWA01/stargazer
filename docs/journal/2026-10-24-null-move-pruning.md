@@ -76,7 +76,9 @@ move has only a king and pawns.
 - `cargo fmt`, `cargo clippy --all-targets -- -D warnings`, the WASM
   build, and `tools/selfplay.py` (three games under 10+0.1, 3+0 and
   1+0.01: no time losses, no illegal moves) all pass.
-- SPRT: see the roadmap entry and the PR.
+- SPRT against `main` (0 to 10, 8+0.08, 16 vCPU): **pass**, +73.2 ±
+  29.1 Elo over 392 games (188 wins, 98 draws, 106 losses), the biggest
+  gain since the transposition table.
 
 ## Impact
 The engine skips most of the hopeless positions in its search, reaching

@@ -170,7 +170,8 @@ $0). So:
     gets the full window. If time runs out after a "better than
     expected" miss, that move is played (it beat the last best); after a
     "worse than expected" miss, the last finished depth's move stands.
-- **Null-move pruning: decided 2026-10-24, step 5, built 2026-10-24**:
+- **Null-move pruning: decided 2026-10-24, step 5, built 2026-10-24** (SPRT:
+  +73 Elo):
   if a position already looks good enough (evaluation at least beta),
   the side to move passes and the reply is searched R = 3 + depth/4
   half-moves shallower with a zero-width window; if still good enough,

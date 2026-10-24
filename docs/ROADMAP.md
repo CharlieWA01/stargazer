@@ -77,8 +77,8 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
         1,572 games (bench 987309; #23)
   - [x] 4b: aspiration windows: SPRT pass, +7.8 ± 6.0 Elo over 6,282
         games (bench 924579; #25)
-- [ ] Null-move pruning (R = 3 + depth/4, decided 2026-10-24; bench
-      942397; in review)
+- [x] Null-move pruning (R = 3 + depth/4, decided 2026-10-24): SPRT
+      pass, +73.2 ± 29.1 Elo over 392 games (bench 942397; #28)
 - [ ] Late move reductions and check extensions
 - [ ] Time-management rework, rule by rule, once the search has settled
       (see the parking lot's position-aware idea; also "don't start a
