@@ -26,6 +26,11 @@
 //!   that the opponent won't allow it, and it isn't searched any further.
 //!   Not when in check, in the main line, right after a pass, or with only
 //!   king and pawns (where passing would often be the best "move").
+//! - **Check extensions:** a move that gives check is searched one
+//!   half-move deeper. Checks are forcing (few replies), so they're cheap
+//!   to follow, and mating attacks hide in them just past the horizon.
+//!   No extension once a line is twice as long as the depth being
+//!   searched, so a long series of checks can't run away.
 //! - **Aspiration windows:** each depth's score is usually close to the
 //!   last one's, so from depth 5 the root is searched only for scores
 //!   within a quarter of a pawn of it, which cuts off more. If the real
@@ -182,19 +187,22 @@ pub fn search(
         pvs: true,
         aspiration: true,
         null_move: true,
+        check_extensions: true,
     };
     search_with(game, max_depth, table, history, should_stop, on_depth, all)
 }
 
 /// Search tricks that tests can switch off: PVS and aspiration windows
 /// change the work but never the answer, so the scores must stay the
-/// same; null moves can change the answer, so tests compare the work.
-/// Always all on outside tests.
+/// same; null moves and check extensions can change the answer, so tests
+/// compare the work or look for what only they find. Always all on
+/// outside tests.
 #[derive(Clone, Copy)]
 struct Features {
     pvs: bool,
     aspiration: bool,
     null_move: bool,
+    check_extensions: bool,
 }
 
 /// `search`, with some features switched off (in tests only).
@@ -224,6 +232,8 @@ fn search_with(
         pvs: features.pvs,
         null_move: features.null_move,
         after_null: false,
+        check_extensions: features.check_extensions,
+        root_depth: 0,
     };
     let mut best_move = first_legal;
     let mut previous_score = 0;
@@ -231,6 +241,7 @@ fn search_with(
 
     for depth in 1..=max_depth.min(MAX_PLY as u32 / 2) {
         searcher.may_stop = depth > 1;
+        searcher.root_depth = depth;
         let mut pv = Vec::new();
         let score = if features.aspiration
             && depth >= ASPIRATION_DEPTH
@@ -291,6 +302,11 @@ struct Searcher<'a> {
     /// The move into the position being entered was a pass (so the next
     /// side mustn't pass straight back).
     after_null: bool,
+    /// Check extensions on (always, outside tests).
+    check_extensions: bool,
+    /// The depth this iteration started with at the root (the cap on
+    /// check extensions is twice this, in half-moves).
+    root_depth: u32,
 }
 
 impl Searcher<'_> {
@@ -484,13 +500,18 @@ impl Searcher<'_> {
                 _ => &[],
             };
             let next = position.make_move(mv);
+            // A check is searched one half-move deeper (see the module
+            // notes), unless this line is already twice the root's depth.
+            let gives_check = next.in_check(next.side_to_move);
+            let extend = self.check_extensions && gives_check && ply < 2 * self.root_depth as usize;
+            let child_depth = depth - 1 + u32::from(extend);
             let first_move = best == -INFINITY;
             let mut score;
             if first_move || !self.pvs {
                 // The first move (usually the best): search it properly.
                 score = -self.negamax(
                     &next,
-                    depth - 1,
+                    child_depth,
                     ply + 1,
                     -beta,
                     -alpha,
@@ -502,7 +523,7 @@ impl Searcher<'_> {
                 // with a window too narrow for any score to fit inside.
                 score = -self.negamax(
                     &next,
-                    depth - 1,
+                    child_depth,
                     ply + 1,
                     -alpha - 1,
                     -alpha,
@@ -514,7 +535,7 @@ impl Searcher<'_> {
                 if score > alpha && score < beta && !self.stopped {
                     score = -self.negamax(
                         &next,
-                        depth - 1,
+                        child_depth,
                         ply + 1,
                         -beta,
                         -alpha,
@@ -868,6 +889,8 @@ mod tests {
             pvs: true,
             null_move: true,
             after_null: false,
+            check_extensions: true,
+            root_depth: 0,
         };
         searcher.is_repetition(position)
     }
@@ -1062,6 +1085,8 @@ mod tests {
             pvs: true,
             null_move: true,
             after_null: false,
+            check_extensions: true,
+            root_depth: 0,
         };
         let (quiet, other_quiet, capture) = (
             find_move(&board, "c3b5"),
@@ -1149,6 +1174,8 @@ mod tests {
             pvs: true,
             null_move: true,
             after_null: false,
+            check_extensions: true,
+            root_depth: 0,
         };
         let (good, failed, capture) = (
             find_move(&board, "c3b5"),
@@ -1195,6 +1222,7 @@ mod tests {
                         pvs,
                         aspiration: false,
                         null_move: false,
+                        check_extensions: false,
                     },
                 );
                 reports
@@ -1240,6 +1268,7 @@ mod tests {
                         pvs: true,
                         aspiration,
                         null_move: false,
+                        check_extensions: false,
                     },
                 );
                 reports
@@ -1282,6 +1311,7 @@ mod tests {
                             pvs: true,
                             aspiration: true,
                             null_move,
+                            check_extensions: false,
                         },
                     );
                     last
@@ -1290,6 +1320,38 @@ mod tests {
         };
         let (with, without) = (nodes(true), nodes(false));
         assert!(with * 10 < without * 7, "{with} vs {without}");
+    }
+
+    #[test]
+    fn checks_see_past_the_horizon() {
+        // Philidor's smothered mate: 1. Qg8+ Rxg8 2. Nf7#. Two moves
+        // deep, the knight's mate is past the horizon (it isn't a
+        // capture, so the end-of-line capture search can't find it),
+        // unless the two checks are each searched one deeper.
+        let fen = "r6k/6pp/7N/8/2Q5/8/6PP/6K1 w - - 0 1";
+        let score = |check_extensions: bool| -> i32 {
+            let mut last = 0;
+            search_with(
+                &[position(fen)],
+                2,
+                &mut Table::new(1),
+                &mut History::new(),
+                &mut || false,
+                &mut |report| {
+                    last = report.score;
+                    true
+                },
+                Features {
+                    pvs: true,
+                    aspiration: true,
+                    null_move: true,
+                    check_extensions,
+                },
+            );
+            last
+        };
+        assert_eq!(mate_in(score(true)), Some(2));
+        assert_eq!(mate_in(score(false)), None);
     }
 
     #[test]
