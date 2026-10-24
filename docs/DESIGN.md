@@ -141,7 +141,7 @@ $0). So:
     captures. A killer that happens to capture in the new position is
     ranked as a capture. Kept across the depths of one search, cleared
     at each `go`. Not used in quiescence (captures only there).
-  - **History, step 3b, built 2026-10-24:** a score for each quiet move
+  - **History, step 3b, built 2026-10-24** (SPRT: +25 Elo): a score for each quiet move
     (by side, from and to square) that rises by depth × depth when it
     refutes a position, and falls by the same for each quiet move tried
     before it there that failed. Scores stay within ±16,384: the nearer

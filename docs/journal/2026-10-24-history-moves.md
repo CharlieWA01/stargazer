@@ -52,10 +52,12 @@ moves that failed (DECISIONS.md, 2026-10-24).
   399,000 (history).
 - `cargo fmt`, clippy, WASM build, deep perft; `tools/selfplay.py` three
   games, no problems; a UCI `ucinewgame`, `position`, `go` by hand.
-- SPRT: to come, bounds 0 to 10 at 8+0.08 against `main`.
+- SPRT (2026-10-24), bounds 0 to 10 at 8+0.08 against `main`: **pass,
+  +25.1 ± 16.2 Elo over 1,095 games** (462 wins, 251 draws, 382 losses;
+  run `sprt-40051096528-1`). More than bench suggested: in real games
+  the scores carry over from move to move.
 
 ## Impact
-A small saving in bench, as expected: history is often worth little on
-its own and more once late move reductions (a later step) use it to
-decide which quiet moves to search less deeply. The SPRT decides whether
-it merges now. Memory: 32 KB.
+A small saving in bench but a clear gain in games (+25 Elo), and it will
+matter again once late move reductions (a later step) use it to decide
+which quiet moves to search less deeply. Memory: 32 KB.

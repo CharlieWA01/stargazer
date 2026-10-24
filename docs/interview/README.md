@@ -116,3 +116,7 @@ that way.
   quiet moves that just refuted a neighbouring position), passed at +45 ±
   23 Elo in 588 games. Three changes, about +225 Elo in total, each one
   measured on its own before it merged.
+- **Follow-up (2026-10-24):** history moves saved only 1 to 4% of the
+  work in the benchmark, which starts every position fresh, yet passed
+  at +25 ± 16 Elo in real games, where what it learns carries from move
+  to move. A benchmark measures what it can see; the match is the test.
