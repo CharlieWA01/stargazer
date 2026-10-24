@@ -85,8 +85,11 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
       clock shrinks about 5% a move, so a long game ends at depth 1 or 2,
       as in Charlie's 5+0 game against PyChess on 2026-10-23, lost on
       time after being a queen up at move 44)
-- [ ] Evaluation terms: mobility, pawn structure, king safety (design
-      section first)
+- [ ] Evaluation terms: mobility, pawn structure, king safety, and a
+      "mop-up" term for won endgames (drive the losing king to the edge,
+      bring your own king close; Charlie's endgame point, 2026-10-24,
+      after the queen-up shuffling game against PyChess) (design section
+      first)
 - [ ] Texel tuning (design section first)
 
 ## Release names
@@ -124,6 +127,9 @@ a release is tagged and built (DESIGN.md section 6).
   and a hard ceiling. Each rule kept only if SPRT shows a gain. Scheduled
   as Milestone 4's time-management rework, after the pruning steps.
 - Multithreading (Lazy SMP), native build only.
+- Endgame tablebases (Syzygy): perfect play with 7 or fewer pieces, for
+  the Lichess bot. Search extensions for endgames (passed pawn pushes,
+  singular extensions) after check extensions.
 - A board widget for the browser page: write one or vendor a library
   (check its licence).
 - Don't throw away thinking time: on about 2% of moves the engine spends
