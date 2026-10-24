@@ -15,6 +15,11 @@
 //! - **Quiescence search:** at the end of the line, keep playing out
 //!   captures until the position is quiet, so the engine never judges a
 //!   position halfway through an exchange.
+//! - **Principal variation search (PVS):** the first move tried is
+//!   usually the best, so it's searched properly; each later move only
+//!   has to answer "is this better than the first?", which a quick
+//!   search with a zero-width window settles. Only a "yes" is searched
+//!   again properly, to find out by how much.
 //! - **Captures first, best first:** take the most valuable piece with the
 //!   least valuable attacker first ("MVV-LVA"). Good moves first means
 //!   more cut-offs.
@@ -154,6 +159,20 @@ pub fn search(
     should_stop: &mut dyn FnMut() -> bool,
     on_depth: &mut dyn FnMut(&Report) -> bool,
 ) -> Option<Move> {
+    search_with(game, max_depth, table, history, should_stop, on_depth, true)
+}
+
+/// `search`, with principal variation search on or off (off only in
+/// tests, to check that it changes the work but not the answer).
+fn search_with(
+    game: &[Position],
+    max_depth: u32,
+    table: &mut Table,
+    history: &mut History,
+    should_stop: &mut dyn FnMut() -> bool,
+    on_depth: &mut dyn FnMut(&Report) -> bool,
+    pvs: bool,
+) -> Option<Move> {
     let (root, earlier) = game.split_last()?;
     let first_legal = *legal_moves(root).first()?;
     history.age();
@@ -168,6 +187,7 @@ pub fn search(
         killers: [[None; 2]; MAX_PLY + 1],
         history,
         quiets_tried: vec![Vec::new(); MAX_PLY + 1],
+        pvs,
     };
     let mut best_move = first_legal;
     let mut previous_pv = Vec::new();
@@ -219,6 +239,8 @@ struct Searcher<'a> {
     history: &'a mut History,
     /// For each ply, a reusable list of the quiet moves tried there.
     quiets_tried: Vec<Vec<Move>>,
+    /// Principal variation search on (always, outside tests).
+    pvs: bool,
 }
 
 impl Searcher<'_> {
@@ -320,15 +342,53 @@ impl Searcher<'_> {
                 _ => &[],
             };
             let next = position.make_move(mv);
-            let score = -self.negamax(
-                &next,
-                depth - 1,
-                ply + 1,
-                -beta,
-                -alpha,
-                &mut line,
-                child_hint,
-            );
+            let first_move = best == -INFINITY;
+            let mut score;
+            if first_move || !self.pvs {
+                // The first move (usually the best): search it properly.
+                score = -self.negamax(
+                    &next,
+                    depth - 1,
+                    ply + 1,
+                    -beta,
+                    -alpha,
+                    &mut line,
+                    child_hint,
+                );
+            } else {
+                // A later move: only ask whether it beats the best so far,
+                // with a window too narrow for any score to fit inside.
+                score = -self.negamax(
+                    &next,
+                    depth - 1,
+                    ply + 1,
+                    -alpha - 1,
+                    -alpha,
+                    &mut line,
+                    child_hint,
+                );
+                // It does beat it, and might matter here: find out by how
+                // much with a proper search.
+                if score > alpha && score < beta && !self.stopped {
+                    score = -self.negamax(
+                        &next,
+                        depth - 1,
+                        ply + 1,
+                        -beta,
+                        -alpha,
+                        &mut line,
+                        child_hint,
+                    );
+                    if self.stopped && ply == 0 {
+                        // Out of time before finding out by how much. At
+                        // the root that's still enough: this move is
+                        // proven better than the best so far, so it's the
+                        // one to play.
+                        pv.clear();
+                        pv.push(mv);
+                    }
+                }
+            }
             if self.stopped {
                 break;
             }
@@ -663,6 +723,7 @@ mod tests {
             killers: [[None; 2]; MAX_PLY + 1],
             history: &mut history,
             quiets_tried: vec![Vec::new(); MAX_PLY + 1],
+            pvs: true,
         };
         searcher.is_repetition(position)
     }
@@ -854,6 +915,7 @@ mod tests {
             killers: [[None; 2]; MAX_PLY + 1],
             history: &mut history,
             quiets_tried: vec![Vec::new(); MAX_PLY + 1],
+            pvs: true,
         };
         let (quiet, other_quiet, capture) = (
             find_move(&board, "c3b5"),
@@ -938,6 +1000,7 @@ mod tests {
             killers: [[None; 2]; MAX_PLY + 1],
             history: &mut history,
             quiets_tried: vec![Vec::new(); MAX_PLY + 1],
+            pvs: true,
         };
         let (good, failed, capture) = (
             find_move(&board, "c3b5"),
@@ -952,6 +1015,46 @@ mod tests {
         searcher.update_history(&board, 3, capture, &[failed]);
         assert_eq!(searcher.history.score(Color::White, capture), 0);
         assert_eq!(searcher.history.score(Color::White, failed), -9);
+    }
+
+    #[test]
+    fn pvs_saves_work_without_changing_the_answer() {
+        // With no table to carry results between move orders, plain
+        // alpha-beta and PVS must agree on every score; PVS should get
+        // there with fewer positions.
+        let positions = [
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "r1bq1rk1/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP2BPPP/R2QKB1R w KQ - 0 8",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+            "7k/8/8/8/8/8/R7/1R4K1 w - - 0 1",
+        ];
+        let (mut plain_total, mut pvs_total) = (0, 0);
+        for fen in positions {
+            let run = |pvs: bool| {
+                let mut reports = Vec::new();
+                search_with(
+                    &[position(fen)],
+                    5,
+                    &mut Table::new(0),
+                    &mut History::new(),
+                    &mut || false,
+                    &mut |report| {
+                        reports.push(report.clone());
+                        true
+                    },
+                    pvs,
+                );
+                reports
+            };
+            let (plain, with_pvs) = (run(false), run(true));
+            for (a, b) in plain.iter().zip(&with_pvs) {
+                assert_eq!(a.score, b.score, "{fen} depth {}", a.depth);
+            }
+            plain_total += plain.last().unwrap().nodes;
+            pvs_total += with_pvs.last().unwrap().nodes;
+        }
+        assert!(pvs_total < plain_total, "{pvs_total} vs {plain_total}");
     }
 
     #[test]
