@@ -34,3 +34,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-24 | [#26](https://github.com/CharlieWA01/stargazer/pull/26) | Run match: play Stockfish at a set strength for a rough rating |
 | 2026-10-24 | [#27](https://github.com/CharlieWA01/stargazer/pull/27) | Docs: record the first Stockfish match (about 1900) |
 | 2026-10-24 | [#28](https://github.com/CharlieWA01/stargazer/pull/28) | Null-move pruning (R = 3 + depth/4) |
+| 2026-10-24 | [#29](https://github.com/CharlieWA01/stargazer/pull/29) | Docs: Stockfish match after null-move pruning (about 2030) |
