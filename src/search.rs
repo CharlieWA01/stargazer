@@ -20,6 +20,11 @@
 //!   has to answer "is this better than the first?", which a quick
 //!   search with a zero-width window settles. Only a "yes" is searched
 //!   again properly, to find out by how much.
+//! - **Aspiration windows:** each depth's score is usually close to the
+//!   last one's, so from depth 5 the root is searched only for scores
+//!   within a quarter of a pawn of it, which cuts off more. If the real
+//!   score is outside, the window is widened and that depth searched
+//!   again.
 //! - **Captures first, best first:** take the most valuable piece with the
 //!   least valuable attacker first ("MVV-LVA"). Good moves first means
 //!   more cut-offs.
@@ -56,6 +61,12 @@ const INFINITY: i32 = 32_000;
 pub const MAX_PLY: usize = 128;
 /// How often, in positions, to ask whether to stop.
 const CHECK_EVERY: u64 = 2048;
+/// Aspiration windows start at this depth (shallower scores jump about).
+const ASPIRATION_DEPTH: u32 = 5;
+/// The first window: this many centipawns either side of last depth's score.
+const ASPIRATION_WINDOW: i32 = 25;
+/// Past this, a missed window gives up and searches everything.
+const ASPIRATION_LIMIT: i32 = 400;
 
 /// The two most recent quiet moves that refuted a position at one ply,
 /// newest first.
@@ -159,11 +170,23 @@ pub fn search(
     should_stop: &mut dyn FnMut() -> bool,
     on_depth: &mut dyn FnMut(&Report) -> bool,
 ) -> Option<Move> {
-    search_with(game, max_depth, table, history, should_stop, on_depth, true)
+    let all = Features {
+        pvs: true,
+        aspiration: true,
+    };
+    search_with(game, max_depth, table, history, should_stop, on_depth, all)
 }
 
-/// `search`, with principal variation search on or off (off only in
-/// tests, to check that it changes the work but not the answer).
+/// Search tricks that change the work but never the answer, so tests can
+/// switch them off and check that the scores stay the same. Always all on
+/// outside tests.
+#[derive(Clone, Copy)]
+struct Features {
+    pvs: bool,
+    aspiration: bool,
+}
+
+/// `search`, with some features switched off (in tests only).
 fn search_with(
     game: &[Position],
     max_depth: u32,
@@ -171,7 +194,7 @@ fn search_with(
     history: &mut History,
     should_stop: &mut dyn FnMut() -> bool,
     on_depth: &mut dyn FnMut(&Report) -> bool,
-    pvs: bool,
+    features: Features,
 ) -> Option<Move> {
     let (root, earlier) = game.split_last()?;
     let first_legal = *legal_moves(root).first()?;
@@ -187,15 +210,23 @@ fn search_with(
         killers: [[None; 2]; MAX_PLY + 1],
         history,
         quiets_tried: vec![Vec::new(); MAX_PLY + 1],
-        pvs,
+        pvs: features.pvs,
     };
     let mut best_move = first_legal;
+    let mut previous_score = 0;
     let mut previous_pv = Vec::new();
 
     for depth in 1..=max_depth.min(MAX_PLY as u32 / 2) {
         searcher.may_stop = depth > 1;
         let mut pv = Vec::new();
-        let score = searcher.negamax(root, depth, 0, -INFINITY, INFINITY, &mut pv, &previous_pv);
+        let score = if features.aspiration
+            && depth >= ASPIRATION_DEPTH
+            && mate_in(previous_score).is_none()
+        {
+            searcher.aspiration(root, depth, previous_score, &mut pv, &previous_pv)
+        } else {
+            searcher.negamax(root, depth, 0, -INFINITY, INFINITY, &mut pv, &previous_pv)
+        };
         if searcher.stopped {
             // Out of time partway through this depth. Last depth's best
             // move was searched first, so a best line here means that move
@@ -211,6 +242,7 @@ fn search_with(
             best_move = mv;
         }
         previous_pv = pv.clone();
+        previous_score = score;
         let report = Report {
             depth,
             score,
@@ -251,6 +283,51 @@ impl Searcher<'_> {
             self.stopped = true;
         }
         self.stopped
+    }
+
+    /// Search the root at `depth` expecting a score near `guess` (last
+    /// depth's). Start with a window of a quarter of a pawn either side;
+    /// each time the score lands outside, double the window on that side
+    /// and search again, until it gives up and searches everything.
+    fn aspiration(
+        &mut self,
+        root: &Position,
+        depth: u32,
+        guess: i32,
+        pv: &mut Vec<Move>,
+        hint: &[Move],
+    ) -> i32 {
+        let mut window = ASPIRATION_WINDOW;
+        let (mut alpha, mut beta) = (guess - window, guess + window);
+        // A move that beat the window is better than expected: keep it in
+        // case time runs out while finding out by how much.
+        let mut proven = None;
+        loop {
+            let score = self.negamax(root, depth, 0, alpha, beta, pv, hint);
+            if self.stopped {
+                if pv.is_empty()
+                    && let Some(mv) = proven
+                {
+                    pv.push(mv);
+                }
+                return score;
+            }
+            if score > alpha && score < beta {
+                return score;
+            }
+            window *= 2;
+            if score <= alpha {
+                // Worse than expected: look lower.
+                alpha = (score - window).max(-INFINITY);
+            } else {
+                // Better than expected: look higher.
+                proven = pv.first().copied();
+                beta = (score + window).min(INFINITY);
+            }
+            if window > ASPIRATION_LIMIT {
+                (alpha, beta) = (-INFINITY, INFINITY);
+            }
+        }
     }
 
     /// The score of `position` for the side to move, looking `depth`
@@ -1043,7 +1120,10 @@ mod tests {
                         reports.push(report.clone());
                         true
                     },
-                    pvs,
+                    Features {
+                        pvs,
+                        aspiration: false,
+                    },
                 );
                 reports
             };
@@ -1055,6 +1135,48 @@ mod tests {
             pvs_total += with_pvs.last().unwrap().nodes;
         }
         assert!(pvs_total < plain_total, "{pvs_total} vs {plain_total}");
+    }
+
+    #[test]
+    fn aspiration_windows_do_not_change_the_answer() {
+        // With no table, a narrow window that holds gives the exact score,
+        // and one that misses is widened until it does, so every depth's
+        // score must match a full-window search. (Whether it saves work
+        // depends on the table, which makes re-searches cheap: that is
+        // measured with bench and SPRT, not here.)
+        let positions = [
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "r1bq1rk1/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP2BPPP/R2QKB1R w KQ - 0 8",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+            "r1b1kb1r/pppp1ppp/5q2/4n3/3KP3/2N3PN/PPP4P/R1BQ1B1R b kq - 0 1",
+        ];
+        for fen in positions {
+            let run = |aspiration: bool| {
+                let mut reports = Vec::new();
+                search_with(
+                    &[position(fen)],
+                    6,
+                    &mut Table::new(0),
+                    &mut History::new(),
+                    &mut || false,
+                    &mut |report| {
+                        reports.push(report.clone());
+                        true
+                    },
+                    Features {
+                        pvs: true,
+                        aspiration,
+                    },
+                );
+                reports
+            };
+            let (full, narrow) = (run(false), run(true));
+            for (a, b) in full.iter().zip(&narrow) {
+                assert_eq!(a.score, b.score, "{fen} depth {}", a.depth);
+            }
+            assert_eq!(full.len(), narrow.len(), "{fen}");
+        }
     }
 
     #[test]

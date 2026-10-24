@@ -162,10 +162,14 @@ $0). So:
     properly. Quiescence is unchanged. If time runs out during that
     second search at the root, the move is still played: it's already
     proven better than the old best.
-  - **Aspiration windows, step 4b:** each depth from 5 on starts with a
-    narrow window around the last depth's score, widened on a miss. The
-    window size is settled with that PR (proposed: ±25 centipawns,
-    doubling on a miss; full window for mate scores).
+  - **Aspiration windows, step 4b, built 2026-10-24** (SPRT: +8 Elo):
+    each depth from 5 on first searches the root only for scores within
+    ±25 centipawns of the last depth's score. On a miss the window is
+    doubled on the side that missed (25, 50, 100, ...) and that depth
+    searched again; past 400 the full window is used. A mate score always
+    gets the full window. If time runs out after a "better than
+    expected" miss, that move is played (it beat the last best); after a
+    "worse than expected" miss, the last finished depth's move stands.
 - **`stop` and threads:** the core stays single-threaded and clock-free; it
   is handed a stop signal and a time limit and checks them every few
   thousand positions. The native UCI layer runs the search on a second

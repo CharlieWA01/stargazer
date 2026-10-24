@@ -461,3 +461,24 @@ keeping an unfinished depth's moves (#16). (4) PVS should change only
 the work, never the answer, and comparing the two is the direct proof.
 **Cost:** one extra SPRT; a few lines kept only for the test.
 
+## 2026-10-24: Aspiration window size
+**Decision:** (1) from depth 5, the root is first searched within ±25
+centipawns of the last depth's score (Charlie's choice). (2) A miss
+doubles the window on the side that missed; past 400 centipawns the
+full window is used. (3) Mate scores always get the full window. (4) If
+time runs out after a fail high, the move that failed high is played;
+after a fail low, the last finished depth's move stands. (5) The
+test-only PVS switch becomes a small set of switches, so a test can turn
+aspiration windows off too.
+**Alternatives:** (1) a wider or narrower start (±15, ±50); (2) widen
+both sides on a miss, or jump straight to the full window; (3) narrow
+windows around mates too; (4) always keep the last depth's move.
+**Why:** (1) and (2) are the common starting point; the numbers can be
+tuned by SPRT later. (3) mate scores jump by large amounts between
+depths, so a narrow window would just miss. (4) a fail high already
+proves the move beats the old best, the same reasoning as PVS at the
+root (#23); a fail low proves nothing about any move.
+**Cost:** a few lines; re-searches on a miss, which the transposition
+table makes cheap. Bench saves 6% at depth 5 but under 2% at 6 and 7,
+so the SPRT decides whether it stays (it passed: +7.8 ± 6.0 Elo over
+6,282 games).
