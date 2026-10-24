@@ -152,6 +152,19 @@ $0). So:
     position with a fresh history.
   - Move order then: last depth's or the table's move, captures and
     promotions, killers, then the other quiet moves.
+- **PVS and aspiration windows: decided 2026-10-24** (two PRs, each
+  with its own SPRT).
+  - **Principal variation search, step 4a, built 2026-10-24:** in every
+    position the first move is searched with the full window; each later
+    move gets a zero-width window ("is it better than the best so
+    far?"), and only a "yes" that could matter is searched again
+    properly. Quiescence is unchanged. If time runs out during that
+    second search at the root, the move is still played: it's already
+    proven better than the old best.
+  - **Aspiration windows, step 4b:** each depth from 5 on starts with a
+    narrow window around the last depth's score, widened on a miss. The
+    window size is settled with that PR (proposed: ±25 centipawns,
+    doubling on a miss; full window for mate scores).
 - **`stop` and threads:** the core stays single-threaded and clock-free; it
   is handed a stop signal and a time limit and checks them every few
   thousand positions. The native UCI layer runs the search on a second

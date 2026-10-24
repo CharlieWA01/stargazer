@@ -442,3 +442,22 @@ two are separate ideas (positions vs moves) that share a lifetime.
 4% fewer positions in bench (which can't show the carry-over between
 moves, where history should help most).
 
+## 2026-10-24: PVS and aspiration windows, in two PRs
+**Decision:** (1) principal variation search and aspiration windows are
+built as two PRs, PVS first, each with its own SPRT (Charlie's choice).
+(2) PVS everywhere in the main search, root included, not in
+quiescence. (3) A root move whose quick test says "better" but whose
+proper search runs out of time is still played. (4) The search keeps a
+switch to turn PVS off, used only by a test that checks the scores
+don't change.
+**Alternatives:** (1) one PR; (2) PVS only away from the root; (3) keep
+the old best until the proper search finishes; (4) trust the existing
+tests alone.
+**Why:** (1) PVS is the bigger, safer gain; aspiration windows are
+smaller and affect time use, so they're measured alone. (2) the root is
+where ordering is best, so it gains most there. (3) the quick test
+already proved the move beats the old best: the same reasoning as
+keeping an unfinished depth's moves (#16). (4) PVS should change only
+the work, never the answer, and comparing the two is the direct proof.
+**Cost:** one extra SPRT; a few lines kept only for the test.
+
