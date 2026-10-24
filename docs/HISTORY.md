@@ -31,3 +31,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-23 | [#23](https://github.com/CharlieWA01/stargazer/pull/23) | Principal variation search: prove later moves worse cheaply (step 4a) |
 | 2026-10-23 | [#24](https://github.com/CharlieWA01/stargazer/pull/24) | Docs: record the PVS SPRT pass (+18.8 Elo) |
 | 2026-10-24 | [#25](https://github.com/CharlieWA01/stargazer/pull/25) | Aspiration windows: search each depth near the last score |
+| 2026-10-24 | [#26](https://github.com/CharlieWA01/stargazer/pull/26) | Run match: play Stockfish at a set strength for a rough rating |
