@@ -35,6 +35,10 @@ About **16,900** games so far, counted from the recorded test runs (a
 few hundred quick checks, such as self-play and container smoke tests,
 aren't counted). Updated with each test.
 
+Cost: the AWS bill for all of it was **$0.68** (checked by Charlie on
+2026-10-24). About 15,100 of these games ran on AWS (the rest were
+local checks), so roughly **4.5 cents per 1,000 games**.
+
 | What | Games |
 |---|---|
 | Milestone 3: proving the rig fair (first AWS runs, local checks, two 2,000-game self-matches) | 6,619 |
