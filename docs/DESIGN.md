@@ -187,9 +187,10 @@ $0). So:
     check is searched one half-move deeper (its reply gets the same
     depth, not one less), but not once a line is twice as long as the
     depth the root started with.
-  - **Late move reductions, step 6b:** quiet moves late in the order are
+  - **Late move reductions, step 6b, built 2026-10-24:** quiet moves late in the order are
     searched shallower, by a slowly growing formula of depth and move
-    number (one less in the main line); not the first few moves,
+    number, 0.75 + ln(depth) × ln(move number) / 2.25 rounded down,
+    from the 4th move (one less in the main line); not the first few moves,
     captures, promotions, checks, or when in check, and not below depth
     3. A reduced move that beats the best so far is searched again at
     full depth.
