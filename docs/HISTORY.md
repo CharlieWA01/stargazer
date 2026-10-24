@@ -26,3 +26,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-23 | [#18](https://github.com/CharlieWA01/stargazer/pull/18) | Zobrist fingerprints for positions (transposition table, step 2a) |
 | 2026-10-23 | [#19](https://github.com/CharlieWA01/stargazer/pull/19) | Transposition table: the search remembers positions (step 2b) |
 | 2026-10-23 | [#20](https://github.com/CharlieWA01/stargazer/pull/20) | Docs sweep: fix stale status, layout, speed and runbook notes |
+| 2026-10-23 | [#21](https://github.com/CharlieWA01/stargazer/pull/21) | Killer moves: try last refutations right after the captures (step 3a) |
