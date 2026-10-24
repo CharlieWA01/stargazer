@@ -57,6 +57,13 @@ match" button on the AWS test rig (DECISIONS.md, 2026-10-24).
   (a new workflow's button appears only from `main`), so the first real
   match follows the merge.
 
+- A games counter, at Charlie's suggestion: `docs/PORTFOLIO.md` now has
+  a "Games played in testing" table, totalled from the journals and the
+  roadmap: 6,619 games in Milestone 3 (317 and 502 in the first AWS
+  runs, 200 and 2 × 800 locally, two 2,000-game self-matches) and
+  10,275 in Milestone 4's six SPRTs, 16,894 in all. The SPRT and match
+  runbooks say to add each new test's games.
+
 ## Impact
 A yardstick outside our own versions, for a few cents a run. It gives
 Charlie's "what would it be rated?" question a measured answer, and the

@@ -30,6 +30,17 @@ history moves, principal variation search and aspiration windows)
 passed at +44, +136, +45, +25, +19 and +8 Elo. On 2026-10-23 it beat PyChess's engine
 at full strength for the first time.
 
+## Games played in testing
+About **16,900** games so far, counted from the recorded test runs (a
+few hundred quick checks, such as self-play and container smoke tests,
+aren't counted). Updated with each test.
+
+| What | Games |
+|---|---|
+| Milestone 3: proving the rig fair (first AWS runs, local checks, two 2,000-game self-matches) | 6,619 |
+| Milestone 4 SPRTs: #16 503, #19 235, #21 588, #22 1,095, #23 1,572, #25 6,282 | 10,275 |
+| **Total** | **16,894** |
+
 ## What makes it interesting
 - **Two targets from one codebase:** a native engine (chess GUIs, Lichess
   bot) and a WebAssembly build that runs on the visitor's own computer, so

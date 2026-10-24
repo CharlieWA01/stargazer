@@ -5,6 +5,9 @@ one ("base") until it can say, with 95% confidence either way, whether the
 new one is stronger. Why it works this way: DESIGN.md section 5 and
 DECISIONS.md (2026-10-21).
 
+After each test, add its games to the "Games played in testing" table
+in `docs/PORTFOLIO.md` (the same goes for Stockfish matches).
+
 ## On AWS (the normal way)
 
 1. Push the change to a branch and open its PR.

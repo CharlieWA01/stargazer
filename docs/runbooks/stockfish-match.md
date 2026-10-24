@@ -46,7 +46,8 @@ Read the number as a rough guide:
 Cost: the same rates as an SPRT. 400 games at 10+0.1 on 16 vCPUs takes
 about 10 minutes, a few cents.
 
-Record each result below.
+Record each result below, and add the games to the "Games played in
+testing" table in `docs/PORTFOLIO.md`.
 
 ## Results
 
