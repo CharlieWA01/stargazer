@@ -29,3 +29,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-23 | [#21](https://github.com/CharlieWA01/stargazer/pull/21) | Killer moves: try last refutations right after the captures (step 3a) |
 | 2026-10-23 | [#22](https://github.com/CharlieWA01/stargazer/pull/22) | History moves: order quiet moves by how well they have done (step 3b) |
 | 2026-10-23 | [#23](https://github.com/CharlieWA01/stargazer/pull/23) | Principal variation search: prove later moves worse cheaply (step 4a) |
+| 2026-10-23 | [#24](https://github.com/CharlieWA01/stargazer/pull/24) | Docs: record the PVS SPRT pass (+18.8 Elo) |
