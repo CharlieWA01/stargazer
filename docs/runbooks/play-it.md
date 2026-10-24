@@ -10,6 +10,7 @@ position startpos moves e2e4 e7e5
 go movetime 2000      # think for 2 seconds
 go depth 6            # or: search 6 half-moves deep
 go infinite           # think until you type: stop
+setoption name Hash value 64   # memory for the transposition table, in MB (default 16)
 eval                  # the evaluation, from White's side
 d                     # print the board
 quit

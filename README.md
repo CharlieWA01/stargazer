@@ -9,10 +9,12 @@ eventually, as a Lichess bot.
 
 ## Status
 
-**Pre-alpha: Milestone 1 (Foundation) done.** Stargazer knows every rule of
-chess, proven by perft on six standard positions, but doesn't choose moves
-yet; search and evaluation are Milestone 2. The architecture is in
-[`docs/DESIGN.md`](docs/DESIGN.md).
+**Milestone 4 (Getting strong) under way.** Stargazer plays full games in
+any UCI GUI under a real clock (first playable version: Polaris). Every
+rule of chess is proven by perft, and every strength change is measured by
+an SPRT match on AWS before it merges. The architecture is in
+[`docs/DESIGN.md`](docs/DESIGN.md); progress is in
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Building and running
 
@@ -20,7 +22,8 @@ You need [Rust](https://rustup.rs) installed.
 
 ```sh
 cargo build --release          # build the engine
-./target/release/stargazer     # run it, then type: uci, d, go perft 5
+./target/release/stargazer     # run it, then type: uci, position startpos, go movetime 2000
+./target/release/stargazer bench   # fixed search; prints its node count and speed
 cargo test                     # run the tests
 ```
 
@@ -30,4 +33,5 @@ cargo test                     # run the tests
 - [`docs/DECISIONS.md`](docs/DECISIONS.md): every decision, with alternatives and reasons
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): milestones and the release naming scheme
 - [`docs/PORTFOLIO.md`](docs/PORTFOLIO.md): one-page summary
+- [`docs/runbooks/`](docs/runbooks/): how to play it, run perft and run a strength test
 - [`CLAUDE.md`](CLAUDE.md): how this project is developed, and context for AI sessions

@@ -11,7 +11,7 @@ Lichess as a bot, and playable in any visitor's browser on my portfolio site
 through WebAssembly.
 
 ## Status
-Milestone 3 of 6 done (2026-10-22). Milestone 2 (2026-10-20) was the
+Milestone 4 of 6 under way (started 2026-10-23). Milestone 2 (2026-10-20) was the
 first playable version, named Polaris: it plays full games in any chess
 GUI under a real clock. Every rule of chess is proven by perft (six
 standard test positions, up to 119 million positions deep, all exact). It

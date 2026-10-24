@@ -70,7 +70,7 @@ second, so it must be both exactly right and fast.
   out: browsers can't use the instruction.
 - **Knights, kings and pawns** use ready-made tables of their moves from
   each square.
-- **Copy-make.** To try a move, copy the position (about 200 bytes) and play
+- **Copy-make.** To try a move, copy the position (256 bytes) and play
   the move on the copy; to take it back, discard the copy. No undo code, so
   no undo bugs. Rejected: make/unmake (reverse each move in place), slightly
   faster in theory but every special move needs its own undo logic.
@@ -102,7 +102,7 @@ $0). So:
   and draws by repetition, the 50-move rule and insufficient material. Inside
   the search a single repeat counts as a draw. Built in PR #8.
 - **Later (Milestone 4), each only if SPRT shows a gain:** transposition
-  table (with Zobrist hashing), killer and history moves, null-move
+  table (with Zobrist hashing; built, below), killer and history moves, null-move
   pruning, late move reductions, check extensions, aspiration windows,
   principal variation search.
 - **Time:** a target of one twentieth of the remaining time (or a share
@@ -125,7 +125,7 @@ $0). So:
     step by step as pieces move. Repetitions are spotted by comparing
     fingerprints. Castling rights are four bits of one byte so `Position`
     stays at 256 bytes (it's copied for every move tried).
-  - **The table, step 2b, built 2026-10-23:** 16 MB by default, set by a UCI `Hash` option
+  - **The table, step 2b, built 2026-10-23** (SPRT with 2a: +136 Elo): 16 MB by default, set by a UCI `Hash` option
     (1 to 1024 MB), the same size in the browser build. Each slot holds
     the fingerprint, best move, score, depth and whether the score is
     exact or a bound; mate scores are stored relative to the position.
@@ -156,7 +156,8 @@ $0). So:
 - CI: GitHub Actions running format, lint, tests and a release build (in place).
 - Perft suite: **decided 2026-10-20: both.** Shallow depths (about 4) of
   the six standard positions run in CI on every PR; deep runs (5 to 6) are a
-  separate command run before each release, which also serves as `bench`.
+  separate command run before each release. Speed is measured with
+  `bench` (below), not perft.
 - Strength testing: **decided 2026-10-21.**
   - **Where:** AWS ECS Fargate Spot on ARM (Graviton), us-east-2. One
     container per test, up to 16 vCPU, paid per second only while it runs.

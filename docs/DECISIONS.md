@@ -220,6 +220,8 @@ The margin covers the GUI or Lichess passing the move on. A bare `go` with
 no limits is only typed by hand, where a quick answer is more useful than
 thinking forever.
 **Cost:** none. The numbers are first guesses; SPRT can tune them later.
+**Amended 2026-10-23:** a depth stopped at the ceiling no longer throws
+away its finished root moves (see "How Milestone 4 is ordered").
 
 ## 2026-10-20: The first playable version is "Polaris" (PR #10)
 **Decision:** the Milestone 2 engine (it plays full games under a clock) is

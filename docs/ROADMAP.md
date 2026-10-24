@@ -118,8 +118,8 @@ a release is tagged and built (DESIGN.md section 6).
   (check its licence).
 - Don't throw away thinking time: on about 2% of moves the engine spends
   up to a second on a depth it can't finish (seen in the self-match game
-  files). Using the unfinished depth's best move is Milestone 4's first
-  step; not starting such a depth at all is part of the time rework.
+  files). Using the unfinished depth's best move is done (#16, +44 Elo);
+  not starting such a depth at all is part of the time rework.
 - Give it a personality (Charlie's idea, 2026-10-21), after 1800 and each
   measured with SPRT so the strength cost is known:
   - a style knob, such as an attacking evaluation (king attacks, pawn
@@ -146,8 +146,10 @@ a release is tagged and built (DESIGN.md section 6).
 - Time use is deliberately simple. Over a long game with an increment the
   clock settles at about 5 times the increment (half a second at +0.1s).
   The smarter version is in the parking lot.
-- About 800,000 positions a second (about 600,000 on the ARM test
-  machines). Every position generates all its legal moves, quiescence
+- About 400,000 positions a second in `bench` and about 590,000 from the
+  start position on the session machine (2026-10-24; bench was about
+  560,000 before the fingerprints and table, and the start position about
+  800,000 in Milestone 2). Every position generates all its legal moves, quiescence
   included, and tries each one in full (fingerprint included) to check it
   is legal; that, not the repetition check, is where the time goes. The
   fingerprints cost about 4% of speed; the transposition table (2b) more
