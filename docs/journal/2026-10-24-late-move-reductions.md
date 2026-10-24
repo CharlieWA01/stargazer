@@ -67,6 +67,10 @@ extensions"). Builds on 6a (check extensions).
 - SPRT against `main` (0 to 10, 8+0.08, 16 vCPU): **pass**, +113.4 ±
   36.5 Elo over 264 games (136 wins, 74 draws, 54 losses), the second
   biggest gain after the transposition table.
+- After the merge, a 400-game match against Stockfish set to 2100
+  (10+0.1, 16 vCPU): 237 wins, 21 draws, 142 losses, 61.9%, +84 ± 35:
+  an estimated **2184 ± 35**, up from 2027 ± 35 before check extensions
+  and LMR (together +146 in the two SPRTs, about +157 here).
 
 ## Impact
 The engine now spends its time on the moves that matter and reaches
