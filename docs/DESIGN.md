@@ -232,6 +232,14 @@ $0). So:
     of `rig/`), starts the task at 16 vCPU (adjustable) and waits up to 30
     minutes. "SPRT report" posts a longer test's verdict later. Both write
     the same report (`rig/report.py`) to the workflow summary and the PR.
+  - **Matches against Stockfish: decided and built 2026-10-24.** A "Run
+    match" button (`match.yml`) runs "Run SPRT" in match mode: only one
+    Stargazer is built, and it plays Debian's Stockfish (in the same
+    container) at a set `UCI_Elo` for a fixed number of games (default
+    400 at 10+0.1). The report gives the score, the Elo difference and the
+    estimated rating (Stockfish's level plus the difference). It is a
+    rough yardstick, not a test: no pass or fail. See
+    `docs/runbooks/stockfish-match.md`.
 - Benchmarking: **built 2026-10-21 (PR #11).** `bench` (a UCI command, or
   `stargazer bench`) searches 10 fixed positions to depth 5 and prints
   `Bench: <nodes> nodes <speed> nps`. The node count fingerprints a build: a

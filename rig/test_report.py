@@ -66,5 +66,45 @@ class DescribeTest(unittest.TestCase):
         self.assertIn("not yet known", report)
 
 
+
+MATCH_REQUEST = {**REQUEST, "mode": "match", "opponent_elo": "1800", "base": "", "base_sha": ""}
+
+
+def match_verdict(state, **results):
+    return {
+        "verdict": state,
+        "reason": "played every game",
+        "bench": {"test": 924579},
+        "opponent": "Stockfish 17",
+        "results": {"games": 400, "wins": 180, "draws": 60, "losses": 160, "elo": 17.4,
+                    "elo_error": 31.6, **results},
+    }
+
+
+class MatchTest(unittest.TestCase):
+    def test_a_finished_match(self):
+        report, state = describe("match-1-1", MATCH_REQUEST, match_verdict("done"), "STOPPED", "")
+        self.assertEqual(state, "done")
+        self.assertIn("### Match `match-1-1`", report)
+        self.assertIn("**Done**", report)
+        # 180 wins and 60 draws of 400: 210 points, 52.5%; 1800 + 17 = 1817.
+        self.assertIn("| 400 | 180 | 60 | 160 | 52.5% | +17 ± 32 | 1817 ± 32 |", report)
+        self.assertIn("Stockfish 17", report)
+        self.assertIn("strength 1800", report)
+        self.assertNotIn("LLR", report)
+        self.assertNotIn("SPRT report", report)
+
+    def test_a_weaker_result_lowers_the_estimate(self):
+        verdict = match_verdict("done", elo=-120.0)
+        report, _ = describe("match-1-1", MATCH_REQUEST, verdict, "STOPPED", "")
+        self.assertIn("| -120 ± 32 | 1680 ± 32 |", report)
+
+    def test_a_running_match_points_to_the_report_workflow(self):
+        verdict = match_verdict("running", elo=None)
+        report, _ = describe("match-1-1", MATCH_REQUEST, verdict, "RUNNING", "")
+        self.assertIn("not yet known", report)
+        self.assertIn("SPRT report", report)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -50,6 +50,8 @@ Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
 - [x] First real test: the engine against itself must show no difference.
       Two 2,000-game self-matches on AWS: +7.3 ± 7.2 and +1.0 ± 7.5,
       with identical speed and depth for both copies (#14, #15)
+- [x] Matches against Stockfish at a set strength, for a rough rating:
+      a "Run match" button on the same rig (decided 2026-10-24; in review)
 
 ### Milestone 4 steps
 

@@ -1,12 +1,15 @@
 """Run one SPRT test: the new engine ("test") against the old one ("base").
+Or, in match mode, one match: the engine against Stockfish at a set
+strength, to estimate its rating.
 
-This is what the test container runs (see rig/Dockerfile and
-docs/runbooks/sprt.md). In order, it:
+This is what the test container runs (see rig/Dockerfile,
+docs/runbooks/sprt.md and docs/runbooks/stockfish-match.md). In order, it:
 
-1. fetches the two engines from S3 (or finds them in a local folder),
+1. fetches the engines from S3 (or finds them in a local folder),
 2. runs `bench` on each, so the results record exactly which builds played,
 3. runs fastchess: games from a balanced opening book, each opening played
-   twice with colours swapped, until the SPRT reaches a verdict,
+   twice with colours swapped, until the SPRT reaches a verdict (or, in
+   match mode, for a set number of rounds),
 4. writes verdict.json (plus the games and the full log) back to S3.
 
 A verdict is one of:
@@ -15,6 +18,7 @@ A verdict is one of:
 - "inconclusive": stopped before a verdict (deadline, AWS reclaimed the
   Spot capacity, or the game limit ran out); the numbers so far are kept
 - "error": something broke (an engine crashed, fastchess failed)
+- "done": a match played all its games (match mode has no pass or fail)
 
 Every setting comes from an environment variable (all start STARGAZER_):
 
@@ -23,8 +27,12 @@ Every setting comes from an environment variable (all start STARGAZER_):
                      WORK_DIR/results, no AWS at all.
   RUNS_PREFIX        folder inside the bucket (default "runs/")
   RUN_ID             this test's name; files live under RUNS_PREFIX/RUN_ID/
+  MODE               "sprt" (the default) or "match" (against Stockfish)
+  OPPONENT_ELO       match mode: Stockfish's strength, 1320 to 3190
+                     (its UCI_Elo setting; default 1800)
+  STOCKFISH          match mode: the Stockfish program (set in the Dockerfile)
   DEADLINE_SECONDS   stop and report after this long (default 28800, 8 hours)
-  ELO0, ELO1         the SPRT bounds (default 0 and 10)
+  ELO0, ELO1         the SPRT bounds (default 0 and 10; SPRT mode only)
   TC                 time control, seconds+increment (default "8+0.08")
   ROUNDS             most rounds to play; a round is one opening played
                      twice (default 20000, so at most 40,000 games)
@@ -54,6 +62,9 @@ BETA = 0.05
 # test that's killed without warning still leaves its numbers behind.
 PROGRESS_EVERY_SECONDS = 600
 
+# Stockfish's strength setting (UCI_Elo) accepts these levels.
+STOCKFISH_ELO_RANGE = (1320, 3190)
+
 
 def setting(name, default=None):
     value = os.environ.get("STARGAZER_" + name, "").strip()
@@ -78,8 +89,8 @@ class Run:
         self.engines.mkdir(parents=True, exist_ok=True)
         self.results.mkdir(parents=True, exist_ok=True)
 
-    def fetch_engines(self):
-        for name in ("base", "test"):
+    def fetch_engines(self, names):
+        for name in names:
             path = self.engines / name
             if self.bucket:
                 aws("s3", "cp", f"{self.s3_folder}/engines/{name}", str(path))
@@ -122,16 +133,30 @@ def fastchess_command(run, settings):
     # The test engine goes first: fastchess reports every number (Elo,
     # wins, the SPRT) from the first engine's point of view, so a positive
     # Elo means the new version is stronger.
+    if settings["mode"] == "match":
+        # Stockfish at a set strength, on one thread with a small table,
+        # like Stargazer. No SPRT: a set number of games, then the score.
+        opponent = [
+            "-engine", f"cmd={settings['stockfish']}", "name=stockfish",
+            "option.Threads=1", "option.Hash=16",
+            "option.UCI_LimitStrength=true", f"option.UCI_Elo={settings['opponent_elo']}",
+        ]
+        stopping = []
+    else:
+        opponent = ["-engine", f"cmd={run.engines / 'base'}", "name=base"]
+        stopping = [
+            "-sprt", f"elo0={settings['elo0']}", f"elo1={settings['elo1']}",
+            f"alpha={ALPHA}", f"beta={BETA}", "model=logistic",
+        ]
     return [
         "fastchess",
         "-engine", f"cmd={run.engines / 'test'}", "name=test",
-        "-engine", f"cmd={run.engines / 'base'}", "name=base",
+        *opponent,
         "-each", f"tc={settings['tc']}",
         "-openings", f"file={settings['book']}", "format=pgn", "order=random",
         "-rounds", str(settings["rounds"]), "-repeat",
         "-concurrency", str(settings["concurrency"]),
-        "-sprt", f"elo0={settings['elo0']}", f"elo1={settings['elo1']}",
-        f"alpha={ALPHA}", f"beta={BETA}", "model=logistic",
+        *stopping,
         # Finish games that are clearly decided, as Stockfish's testing does:
         # resign when both engines agree one side is 6 pawns up for 3 moves
         # running; agree a draw after move 34 when both say within 0.2 of a
@@ -191,22 +216,40 @@ def as_number(text):
     return value if value == value and abs(value) != float("inf") else None
 
 
-def verdict_from(numbers, exit_code, stopped_by):
+def verdict_from(numbers, exit_code, stopped_by, mode="sprt"):
     if numbers.get("sprt") == "H1":
         return "pass", "the test engine is stronger (SPRT accepted H1)"
     if numbers.get("sprt") == "H0":
         return "fail", "the test engine is not stronger (SPRT accepted H0)"
     if stopped_by:
         return "inconclusive", f"stopped before a verdict: {stopped_by}"
+    if mode == "match" and exit_code == 0 and numbers.get("games"):
+        return "done", "played every game"
     if exit_code == 0 and numbers.get("games"):
         return "inconclusive", "played every round without reaching a verdict"
     return "error", f"fastchess exited with code {exit_code} before a verdict"
 
 
+def engine_name(program):
+    """What a UCI engine calls itself (its "id name"), or None."""
+    try:
+        output = subprocess.run(
+            [str(program)], input="uci\nquit\n", capture_output=True, text=True, timeout=30
+        ).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    match = re.search(r"^id name (.+)$", output, re.MULTILINE)
+    return match.group(1).strip() if match else None
+
+
 def main():
     run = Run()
     cpus = len(os.sched_getaffinity(0))
+    mode = setting("MODE", "sprt")
+    if mode not in ("sprt", "match"):
+        sys.exit(f"STARGAZER_MODE must be sprt or match, not {mode!r}")
     settings = {
+        "mode": mode,
         "elo0": float(setting("ELO0", "0")),
         "elo1": float(setting("ELO1", "10")),
         "tc": setting("TC", "8+0.08"),
@@ -215,11 +258,21 @@ def main():
         "book": setting("BOOK", "8moves_v3.pgn"),
         "deadline_seconds": int(setting("DEADLINE_SECONDS", "28800")),
     }
+    if mode == "match":
+        low, high = STOCKFISH_ELO_RANGE
+        elo = int(setting("OPPONENT_ELO", "1800"))
+        if not low <= elo <= high:
+            sys.exit(f"STARGAZER_OPPONENT_ELO must be {low} to {high}, not {elo}")
+        settings["opponent_elo"] = elo
+        settings["stockfish"] = setting("STOCKFISH", "stockfish")
+        del settings["elo0"], settings["elo1"]
+    if mode == "sprt":
+        settings.update(alpha=ALPHA, beta=BETA)
     started = time.time()
     report = {
         "run_id": run.run_id,
         "verdict": "running",
-        "settings": {**settings, "alpha": ALPHA, "beta": BETA, "cpus": cpus},
+        "settings": {**settings, "cpus": cpus},
         "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started)),
     }
 
@@ -257,9 +310,16 @@ def main():
     deadline.daemon = True
     deadline.start()
 
-    run.fetch_engines()
-    report["bench"] = {name: bench(run.engines / name) for name in ("base", "test")}
+    names = ("test",) if mode == "match" else ("base", "test")
+    run.fetch_engines(names)
+    report["bench"] = {name: bench(run.engines / name) for name in names}
     print("bench:", report["bench"], flush=True)
+    if mode == "match":
+        report["opponent"] = engine_name(settings["stockfish"])
+        print("opponent:", report["opponent"], flush=True)
+        if not report["opponent"]:
+            write_report(verdict="error", reason=f"Stockfish didn't start ({settings['stockfish']})")
+            return 1
     write_report()
 
     log_path = run.results / "fastchess.log"
@@ -274,13 +334,19 @@ def main():
         cwd=run.results,
     )
 
+    quiet = ("Started game", "Finished game")
+    if mode == "match":
+        quiet += ("Warning; Bestmove does not match", "Info;", "Position;", "Moves;")
     last_progress = time.time()
     with open(log_path, "w") as log:
         for line in games.stdout:
             log.write(line)
             # The console (CloudWatch on AWS) gets everything except the
             # two lines per game; the full log is saved with the results.
-            if not line.startswith(("Started game", "Finished game")):
+            # Stockfish at a set strength plays a move other than the one
+            # its analysis ends with, on purpose, and fastchess warns about
+            # it (four lines each time); those stay in the log only.
+            if not line.startswith(quiet):
                 print(line, end="", flush=True)
             if time.time() - last_progress > PROGRESS_EVERY_SECONDS:
                 log.flush()
@@ -290,7 +356,9 @@ def main():
     deadline.cancel()
 
     numbers = read_results(log_path.read_text())
-    verdict, reason = verdict_from(numbers, exit_code, stopped_by[0] if stopped_by else None)
+    verdict, reason = verdict_from(
+        numbers, exit_code, stopped_by[0] if stopped_by else None, mode
+    )
     run.save("games.pgn", "fastchess.log")
     write_report(verdict=verdict, reason=reason, results=numbers, fastchess_exit_code=exit_code)
     print(f"verdict: {verdict} ({reason})", flush=True)

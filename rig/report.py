@@ -1,7 +1,8 @@
-"""Report on one SPRT test: read its results from S3 and post them.
+"""Report on one SPRT test or Stockfish match: read its results from S3
+and post them.
 
-Used by both GitHub workflows: "Run SPRT" (after waiting a while) and
-"SPRT report" (pressed later, for a test that took longer).
+Used by the GitHub workflows: "Run SPRT" and "Run match" (after waiting a
+while) and "SPRT report" (pressed later, for a run that took longer).
 
     python3 rig/report.py <run id>
 
@@ -50,12 +51,37 @@ HEADLINES = {
     "inconclusive": "⚪ **Inconclusive**: stopped before the test could decide.",
     "error": "⚠️ **Error**: the test broke; see the log.",
     "running": "⏳ **Still running.**",
+    "done": "🏁 **Done**: every game played.",
 }
+
+
+def rounded_elo(elo, error):
+    if elo is None:
+        return "not yet known"
+    return f"{elo:+.0f}" + (f" ± {error:.0f}" if error is not None else "")
+
+
+def match_lines(request, results):
+    """The table for a match against Stockfish: the score, and the rating
+    it suggests (Stockfish's level plus the Elo difference)."""
+    games = results["games"]
+    score = (results["wins"] + results["draws"] / 2) / games
+    elo, error = results.get("elo"), results.get("elo_error")
+    level = int(request["opponent_elo"])
+    rating = "not yet known" if elo is None else rounded_elo(level + elo, error).lstrip("+")
+    return [
+        "",
+        "| Games | Wins | Draws | Losses | Score | Elo vs Stockfish | Estimated rating |",
+        "|---|---|---|---|---|---|---|",
+        f"| {games} | {results['wins']} | {results['draws']} | {results['losses']} | "
+        f"{score:.1%} | {rounded_elo(elo, error)} | {rating} |",
+    ]
 
 
 def describe(run_id, request, verdict, task_status, stopped_reason):
     """The report, as Markdown."""
-    lines = [f"### SPRT `{run_id}`", ""]
+    match = (request or {}).get("mode") == "match"
+    lines = [f"### {'Match' if match else 'SPRT'} `{run_id}`", ""]
     state = verdict.get("verdict") if verdict else None
     if state == "running" and task_status == "STOPPED":
         # The container never wrote its final verdict: killed without
@@ -72,7 +98,9 @@ def describe(run_id, request, verdict, task_status, stopped_reason):
         if verdict.get("reason") and state != "running":
             lines.append(f"Reason: {verdict['reason']}.")
         results = verdict.get("results") or {}
-        if results.get("games"):
+        if results.get("games") and match:
+            lines += match_lines(request, results)
+        elif results.get("games"):
             elo = results.get("elo")
             error = results.get("elo_error")
             elo_text = "not yet known" if elo is None else f"{elo:+.1f}" + (
@@ -87,10 +115,22 @@ def describe(run_id, request, verdict, task_status, stopped_reason):
                 f"{results.get('llr', '?')} of {results.get('llr_bounds', '?')} |",
             ]
         bench = verdict.get("bench") or {}
-        if bench:
+        if bench and match:
+            lines.append(f"\nBench: {bench.get('test')}. Opponent: {verdict.get('opponent')}.")
+        elif bench:
             same = " (same search)" if bench.get("base") == bench.get("test") else ""
             lines.append(f"\nBench: base {bench.get('base')}, test {bench.get('test')}{same}.")
-    if request:
+    if request and match:
+        lines += [
+            "",
+            f"Stargazer `{request['test']}` ({request['test_sha'][:8]}) against Stockfish "
+            f"at strength {request['opponent_elo']}; {request['tc']}; {request['vcpus']} vCPU. "
+            f"[Workflow run]({request['workflow_run']}).",
+            "",
+            "The estimate is rough: Stockfish's levels are tied to the CCRL rating "
+            "list but were set at longer games.",
+        ]
+    elif request:
         lines += [
             "",
             f"Test `{request['test']}` ({request['test_sha'][:8]}) against base "
