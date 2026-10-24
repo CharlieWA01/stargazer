@@ -40,7 +40,8 @@ impl Color {
         }
     }
 
-    const fn index(self) -> usize {
+    /// 0 for White, 1 for Black, for tables kept per side.
+    pub const fn index(self) -> usize {
         self as usize
     }
 }

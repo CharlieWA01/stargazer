@@ -141,12 +141,15 @@ $0). So:
     captures. A killer that happens to capture in the new position is
     ranked as a capture. Kept across the depths of one search, cleared
     at each `go`. Not used in quiescence (captures only there).
-  - **History, step 3b:** a score for each quiet move (by side, from and
-    to square) that grows by depth × depth when it refutes a position;
-    the remaining quiet moves are tried highest score first. Halving
-    between moves and lowering the scores of quiet moves that failed
-    before the refutation are proposed, to be confirmed by Charlie
-    with that PR.
+  - **History, step 3b, built 2026-10-24:** a score for each quiet move
+    (by side, from and to square) that rises by depth × depth when it
+    refutes a position, and falls by the same for each quiet move tried
+    before it there that failed. Scores stay within ±16,384: the nearer
+    a score is to the limit, the less it moves. The quiet moves after
+    the killers are tried highest score first. Halved at the start of
+    each search (so between moves), cleared on `ucinewgame`; the UCI
+    layer keeps it next to the transposition table. Bench starts each
+    position with a fresh history.
   - Move order then: last depth's or the table's move, captures and
     promotions, killers, then the other quiet moves.
 - **`stop` and threads:** the core stays single-threaded and clock-free; it

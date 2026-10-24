@@ -423,3 +423,22 @@ promising.
 **Cost:** one extra SPRT (cents). Killers cost about 1 KB of memory and
 about 2% of speed per position, against 9 to 15% fewer positions.
 
+## 2026-10-24: History details
+**Decision:** (1) history scores are halved at the start of each search
+and cleared on `ucinewgame`; (2) when a quiet move refutes a position,
+the quiet moves tried before it there lose the same amount it gains
+(both Charlie's choice); (3) scores are kept within ±16,384 by shrinking
+each change as a score nears the limit; (4) the UCI layer keeps the
+history and the transposition table together as the search's memory,
+and bench gives each position a fresh history.
+**Alternatives:** (1) clear between moves; (2) only reward the
+refutation; (3) a hard cap, or halving everything when one score gets
+too big; (4) a history inside the transposition table.
+**Why:** (1) and (2) are what most engines settled on: old patterns fade
+without being lost, and the failures are what sharpen the order. (3) is
+the standard way to keep scores bounded without a sudden jump. (4) the
+two are separate ideas (positions vs moves) that share a lifetime.
+**Cost:** 32 KB of memory; about 1.5% of speed per position, for 1 to
+4% fewer positions in bench (which can't show the carry-over between
+moves, where history should help most).
+

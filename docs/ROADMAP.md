@@ -66,7 +66,7 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
 - [ ] Killer and history moves (design decided 2026-10-24; two PRs):
   - [x] 3a: killer moves: SPRT pass, +45.3 ± 22.8 Elo over 588 games
         (bench 1162141; #21)
-  - [ ] 3b: history moves
+  - [ ] 3b: history moves (bench 1153324; in review)
 - [ ] Principal variation search and aspiration windows
 - [ ] Null-move pruning
 - [ ] Late move reductions and check extensions
