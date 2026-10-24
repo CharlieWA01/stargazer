@@ -128,6 +128,10 @@ a release is tagged and built (DESIGN.md section 6).
   and a hard ceiling. Each rule kept only if SPRT shows a gain. Scheduled
   as Milestone 4's time-management rework, after the pruning steps.
 - Multithreading (Lazy SMP), native build only.
+- A null-move "verification search" (after a pass cuts off, search the
+  position again a little shallower to confirm), against middlegame
+  zugzwang; and the milder R the design note described by mistake (3 up
+  to depth 7). Each its own SPRT (journal 2026-10-24-null-move-pruning).
 - Endgame tablebases (Syzygy): perfect play with 7 or fewer pieces, for
   the Lichess bot. Search extensions for endgames (passed pawn pushes,
   singular extensions) after check extensions.

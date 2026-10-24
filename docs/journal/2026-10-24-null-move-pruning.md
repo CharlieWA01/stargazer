@@ -79,6 +79,12 @@ move has only a king and pawns.
 - SPRT against `main` (0 to 10, 8+0.08, 16 vCPU): **pass**, +73.2 ±
   29.1 Elo over 392 games (188 wins, 98 draws, 106 losses), the biggest
   gain since the transposition table.
+- After the merge, a 400-game match against Stockfish set to 1900
+  (10+0.1, 16 vCPU): 262 wins, 16 draws, 122 losses, 67.5%, +127 ± 35
+  Elo: an estimated **2027 ± 35**, up from 1902 ± 35 before this PR. Each
+  estimate is ±35, so the jump of 125 is uncertain by about ±50 (roughly
+  +75 to +175), and the two matches were against different levels; the
+  SPRT's +73 is the better measure of the step itself.
 
 ## Impact
 The engine skips most of the hopeless positions in its search, reaching
