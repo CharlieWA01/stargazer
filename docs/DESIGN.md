@@ -162,7 +162,7 @@ $0). So:
     properly. Quiescence is unchanged. If time runs out during that
     second search at the root, the move is still played: it's already
     proven better than the old best.
-  - **Aspiration windows, step 4b, built 2026-10-24** (SPRT pending):
+  - **Aspiration windows, step 4b, built 2026-10-24** (SPRT: +8 Elo):
     each depth from 5 on first searches the root only for scores within
     ±25 centipawns of the last depth's score. On a miss the window is
     doubled on the side that missed (25, 50, 100, ...) and that depth

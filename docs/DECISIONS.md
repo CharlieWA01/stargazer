@@ -480,4 +480,5 @@ proves the move beats the old best, the same reasoning as PVS at the
 root (#23); a fail low proves nothing about any move.
 **Cost:** a few lines; re-searches on a miss, which the transposition
 table makes cheap. Bench saves 6% at depth 5 but under 2% at 6 and 7,
-so the SPRT decides whether it stays.
+so the SPRT decides whether it stays (it passed: +7.8 ± 6.0 Elo over
+6,282 games).

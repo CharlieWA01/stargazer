@@ -45,8 +45,13 @@ around the last depth's score, since it rarely moves much. Charlie chose
   depth 7` searched 1,089,245 positions against 1,140,414 on main.
 - `cargo fmt`, clippy, WASM build, deep perft; `tools/selfplay.py`, no
   problems.
-- SPRT: pending.
+- SPRT (2026-10-24), bounds 0 to 10 at 8+0.08 against `main`: **pass,
+  +7.8 ± 6.0 Elo over 6,282 games** (2,457 wins, 1,509 draws, 2,316
+  losses; run `sprt-40059907237-1`). It took four times as many games
+  as PVS, as a small gain does: after 1,301 games it read −4.0 and was
+  leaning toward a fail, then climbed back.
 
 ## Impact
-A small saving in bench, smaller the deeper it goes. Engines usually
-gain +5 to +15 Elo from this; the SPRT will say whether ours does.
+A small saving in bench, smaller the deeper it goes, but a real gain
+in games: +8 Elo, in the usual +5 to +15 range. Milestone 4 so far:
+about +277 Elo over six changes.
