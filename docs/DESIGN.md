@@ -103,7 +103,7 @@ $0). So:
   the search a single repeat counts as a draw. Built in PR #8.
 - **Later (Milestone 4), each only if SPRT shows a gain:** transposition
   table (with Zobrist hashing; built, below), killer and history moves, null-move
-  pruning, late move reductions, check extensions, aspiration windows,
+  pruning (built, below), late move reductions, check extensions, aspiration windows,
   principal variation search.
 - **Time:** a target of one twentieth of the remaining time (or a share
   until the next time control, with `movestogo`) plus three quarters of the
@@ -170,6 +170,16 @@ $0). So:
     gets the full window. If time runs out after a "better than
     expected" miss, that move is played (it beat the last best); after a
     "worse than expected" miss, the last finished depth's move stands.
+- **Null-move pruning: decided 2026-10-24, step 5, built 2026-10-24** (SPRT:
+  +73 Elo):
+  if a position already looks good enough (evaluation at least beta),
+  the side to move passes and the reply is searched R = 3 + depth/4
+  half-moves shallower with a zero-width window; if still good enough,
+  the search stops there and returns beta (stored in the table as a
+  lower bound). Only at depth 3 or more, away from the root and the main
+  line, not twice in a row, not in check, not against a mate score, and
+  not with only king and pawns (zugzwang). A pass clears en passant and
+  resets the 50-move counter, so repetitions never look back past it.
 - **`stop` and threads:** the core stays single-threaded and clock-free; it
   is handed a stop signal and a time limit and checks them every few
   thousand positions. The native UCI layer runs the search on a second

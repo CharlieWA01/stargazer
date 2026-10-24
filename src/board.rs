@@ -683,6 +683,29 @@ impl Position {
         next
     }
 
+    /// Pass: hand the move to the other side without moving anything. Not
+    /// a chess move: the search uses it to ask "if I did nothing, would I
+    /// still be doing well?" (null-move pruning). Any en passant right
+    /// ends, as it would after a real move. The 50-move counter restarts,
+    /// so the repetition check never looks back past the pass: the
+    /// positions before it weren't reached by real moves.
+    pub fn make_null_move(&self) -> Position {
+        let mut next = *self;
+        next.hash ^= zobrist::en_passant(self.en_passant);
+        next.en_passant = None;
+        next.halfmove_clock = 0;
+        next.side_to_move = self.side_to_move.opponent();
+        next.hash ^= zobrist::side_to_move(Color::Black); // the side to move changed
+        next
+    }
+
+    /// Does `color` have a piece besides its king and pawns? Without one,
+    /// zugzwang (where every move makes things worse) is common.
+    pub fn has_pieces_besides_pawns(&self, color: Color) -> bool {
+        let pawns = self.pieces(Piece::new(color, PieceKind::Pawn)).count();
+        self.occupied_by(color).count() > pawns + 1
+    }
+
     /// Something moved from or to this square: clear any castling right
     /// that depends on a king or rook starting there.
     fn lose_castling_rights_touching(&mut self, square: Square) {
@@ -741,6 +764,41 @@ mod tests {
 
     fn sq(name: &str) -> Square {
         Square::parse(name).unwrap()
+    }
+
+    #[test]
+    fn a_null_move_only_hands_the_move_over() {
+        // After 1. e4 the en passant square is e3. A pass by Black ends
+        // that right, gives the move back to White and changes nothing on
+        // the board.
+        let before =
+            Position::from_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")
+                .unwrap();
+        let after = before.make_null_move();
+        assert_eq!(
+            after.to_fen(),
+            "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1"
+        );
+        // The fingerprint, updated step by step, matches one worked out
+        // from scratch, so the table and repetition checks stay right.
+        assert_eq!(after.hash(), after.compute_hash());
+        assert_eq!(
+            after.make_null_move().hash(),
+            before.make_null_move().make_null_move().hash()
+        );
+        assert!(after.is_consistent());
+    }
+
+    #[test]
+    fn pieces_besides_pawns() {
+        // Kings and pawns only: zugzwang country, no null moves.
+        let pawns = Position::from_fen("8/8/8/8/3k4/8/3PK3/8 w - - 0 1").unwrap();
+        assert!(!pawns.has_pieces_besides_pawns(Color::White));
+        assert!(!pawns.has_pieces_besides_pawns(Color::Black));
+        // Add a white rook: only White has one.
+        let rook = Position::from_fen("8/8/8/8/3k4/8/3PK3/7R w - - 0 1").unwrap();
+        assert!(rook.has_pieces_besides_pawns(Color::White));
+        assert!(!rook.has_pieces_besides_pawns(Color::Black));
     }
 
     #[test]

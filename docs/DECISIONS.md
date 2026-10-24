@@ -528,3 +528,24 @@ NNUE, which is Milestone 6.
 number is on Stockfish's (CCRL-tied) scale; the Lichess bot rating comes
 in Milestone 5 and may read differently.
 
+## 2026-10-24: Null-move pruning
+**Decision (Charlie's choice):** before searching a position that
+already looks good enough, let the side to move pass; search the reply
+R = 3 + depth/4 half-moves shallower (rounded down: 3 at depth 3, 4 at
+depths 4 to 7, 5 at 8 to 11); if still good enough, stop there. Not at
+the root, below depth 3, in the main line, twice in a row, in check, or
+against a mate score. Skipped when the side to move has only a king and
+pawns (the zugzwang safety net). A cutoff returns beta, never a mate
+score, and is stored in the table as "at least beta".
+**Alternatives:** a fixed R = 2 (the 1990s setting: safer, saves less);
+a fixed R = 3; the milder growth the design note described by mistake
+(3 up to depth 7, then 4); a verification search after each cutoff
+(safer in rare middlegame zugzwangs, but slower and more code).
+**Why:** the common modern choice; it saves more the deeper the search
+goes, and deep searches are where the time goes. The king-and-pawn rule
+is one line and covers most real zugzwangs. Verification can be its own
+SPRT later.
+**Cost:** a little more work at shallow depth (+2% positions at bench
+depth 5), far less deeper (−61% at depth 7). Rare middlegame zugzwangs
+can be misjudged.
+

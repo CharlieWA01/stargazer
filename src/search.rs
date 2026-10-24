@@ -20,6 +20,12 @@
 //!   has to answer "is this better than the first?", which a quick
 //!   search with a zero-width window settles. Only a "yes" is searched
 //!   again properly, to find out by how much.
+//! - **Null-move pruning:** in a position that already looks good enough,
+//!   first try passing (letting the opponent move twice) with a shallower
+//!   search. If even that is still good enough, the position is so strong
+//!   that the opponent won't allow it, and it isn't searched any further.
+//!   Not when in check, in the main line, right after a pass, or with only
+//!   king and pawns (where passing would often be the best "move").
 //! - **Aspiration windows:** each depth's score is usually close to the
 //!   last one's, so from depth 5 the root is searched only for scores
 //!   within a quarter of a pawn of it, which cuts off more. If the real
@@ -67,6 +73,8 @@ const ASPIRATION_DEPTH: u32 = 5;
 const ASPIRATION_WINDOW: i32 = 25;
 /// Past this, a missed window gives up and searches everything.
 const ASPIRATION_LIMIT: i32 = 400;
+/// Null moves are tried with at least this many half-moves left.
+const NULL_MOVE_DEPTH: u32 = 3;
 
 /// The two most recent quiet moves that refuted a position at one ply,
 /// newest first.
@@ -173,17 +181,20 @@ pub fn search(
     let all = Features {
         pvs: true,
         aspiration: true,
+        null_move: true,
     };
     search_with(game, max_depth, table, history, should_stop, on_depth, all)
 }
 
-/// Search tricks that change the work but never the answer, so tests can
-/// switch them off and check that the scores stay the same. Always all on
-/// outside tests.
+/// Search tricks that tests can switch off: PVS and aspiration windows
+/// change the work but never the answer, so the scores must stay the
+/// same; null moves can change the answer, so tests compare the work.
+/// Always all on outside tests.
 #[derive(Clone, Copy)]
 struct Features {
     pvs: bool,
     aspiration: bool,
+    null_move: bool,
 }
 
 /// `search`, with some features switched off (in tests only).
@@ -211,6 +222,8 @@ fn search_with(
         history,
         quiets_tried: vec![Vec::new(); MAX_PLY + 1],
         pvs: features.pvs,
+        null_move: features.null_move,
+        after_null: false,
     };
     let mut best_move = first_legal;
     let mut previous_score = 0;
@@ -273,6 +286,11 @@ struct Searcher<'a> {
     quiets_tried: Vec<Vec<Move>>,
     /// Principal variation search on (always, outside tests).
     pvs: bool,
+    /// Null-move pruning on (always, outside tests).
+    null_move: bool,
+    /// The move into the position being entered was a pass (so the next
+    /// side mustn't pass straight back).
+    after_null: bool,
 }
 
 impl Searcher<'_> {
@@ -347,6 +365,7 @@ impl Searcher<'_> {
         hint: &[Move],
     ) -> i32 {
         pv.clear();
+        let after_null = std::mem::take(&mut self.after_null);
         if self.visit() {
             return 0;
         }
@@ -388,6 +407,52 @@ impl Searcher<'_> {
             };
             if settled {
                 return found.score;
+            }
+        }
+
+        // Null move: if this position already looks good enough (beta),
+        // try passing and let the opponent move twice, searched R
+        // half-moves shallower (R grows slowly with depth). If even that
+        // is still good enough, the opponent won't allow this position:
+        // stop here. Only away from the main line (a zero-width window),
+        // not in check, not twice in a row, not against a mate score, and
+        // not with only king and pawns, where passing would often be the
+        // best "move" (zugzwang) and so would mislead.
+        let us = position.side_to_move;
+        if self.null_move
+            && ply > 0
+            && depth >= NULL_MOVE_DEPTH
+            && beta - alpha == 1
+            && !after_null
+            && mate_in(beta).is_none()
+            && position.has_pieces_besides_pawns(us)
+            && !position.in_check(us)
+            && evaluate(position) >= beta
+        {
+            let reduction = 3 + depth / 4;
+            let passed = position.make_null_move();
+            self.after_null = true;
+            let score = -self.negamax(
+                &passed,
+                depth.saturating_sub(1 + reduction),
+                ply + 1,
+                -beta,
+                -beta + 1,
+                &mut Vec::new(),
+                &[],
+            );
+            self.after_null = false;
+            if self.stopped {
+                return 0;
+            }
+            if score >= beta {
+                // "Good enough", not the score itself: a mate found while
+                // the other side was passing isn't real. Remembered as
+                // "at least beta", so the next depth needn't ask again.
+                let best_move = remembered.and_then(|f| f.best_move);
+                self.table
+                    .store(position.hash(), ply, depth, beta, Bound::Lower, best_move);
+                return beta;
             }
         }
 
@@ -801,6 +866,8 @@ mod tests {
             history: &mut history,
             quiets_tried: vec![Vec::new(); MAX_PLY + 1],
             pvs: true,
+            null_move: true,
+            after_null: false,
         };
         searcher.is_repetition(position)
     }
@@ -993,6 +1060,8 @@ mod tests {
             history: &mut history,
             quiets_tried: vec![Vec::new(); MAX_PLY + 1],
             pvs: true,
+            null_move: true,
+            after_null: false,
         };
         let (quiet, other_quiet, capture) = (
             find_move(&board, "c3b5"),
@@ -1078,6 +1147,8 @@ mod tests {
             history: &mut history,
             quiets_tried: vec![Vec::new(); MAX_PLY + 1],
             pvs: true,
+            null_move: true,
+            after_null: false,
         };
         let (good, failed, capture) = (
             find_move(&board, "c3b5"),
@@ -1123,6 +1194,7 @@ mod tests {
                     Features {
                         pvs,
                         aspiration: false,
+                        null_move: false,
                     },
                 );
                 reports
@@ -1167,6 +1239,7 @@ mod tests {
                     Features {
                         pvs: true,
                         aspiration,
+                        null_move: false,
                     },
                 );
                 reports
@@ -1177,6 +1250,46 @@ mod tests {
             }
             assert_eq!(full.len(), narrow.len(), "{fen}");
         }
+    }
+
+    #[test]
+    fn null_moves_save_work() {
+        // Null moves can change the answer, so this compares the work:
+        // in these quiet positions (the start, two calm middlegames) far
+        // fewer positions are searched to reach the same depth. (In sharp
+        // ones like Kiwipete the passes often fail and cost a little.)
+        let positions = [
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+            "2r2rk1/pp1bqppp/2n1pn2/3p4/2PP4/2N1PN2/PPQ2PPP/R1B2RK1 w - - 0 12",
+        ];
+        let nodes = |null_move: bool| -> u64 {
+            positions
+                .iter()
+                .map(|fen| {
+                    let mut last = 0;
+                    search_with(
+                        &[position(fen)],
+                        6,
+                        &mut Table::new(16),
+                        &mut History::new(),
+                        &mut || false,
+                        &mut |report| {
+                            last = report.nodes;
+                            true
+                        },
+                        Features {
+                            pvs: true,
+                            aspiration: true,
+                            null_move,
+                        },
+                    );
+                    last
+                })
+                .sum()
+        };
+        let (with, without) = (nodes(true), nodes(false));
+        assert!(with * 10 < without * 7, "{with} vs {without}");
     }
 
     #[test]
