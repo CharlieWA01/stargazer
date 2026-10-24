@@ -31,6 +31,13 @@
 //!   to follow, and mating attacks hide in them just past the horizon.
 //!   No extension once a line is twice as long as the depth being
 //!   searched, so a long series of checks can't run away.
+//! - **Late move reductions:** with good move ordering, a quiet move
+//!   that comes up late in the list is rarely the best. From the fourth
+//!   move on, such moves get a quicker, shallower look first (more
+//!   shallow the deeper the search and the later the move); only one
+//!   that surprisingly beats the best so far is searched again at full
+//!   depth. Not for captures, promotions, killers, checks, or when in
+//!   check.
 //! - **Aspiration windows:** each depth's score is usually close to the
 //!   last one's, so from depth 5 the root is searched only for scores
 //!   within a quarter of a pawn of it, which cuts off more. If the real
@@ -80,6 +87,27 @@ const ASPIRATION_WINDOW: i32 = 25;
 const ASPIRATION_LIMIT: i32 = 400;
 /// Null moves are tried with at least this many half-moves left.
 const NULL_MOVE_DEPTH: u32 = 3;
+/// Late move reductions: only with at least this many half-moves left,
+/// and only from this move on (counting from 1).
+const LMR_DEPTH: u32 = 3;
+const LMR_MOVE: usize = 4;
+
+/// How many half-moves shallower a late quiet move is searched, by depth
+/// left and by its place in the move list (both up to 63). It grows
+/// slowly with both: about 1 for the 4th move at depth 3, 2 for the
+/// 10th move at depth 8, 5 for the 40th at depth 20. The common modern
+/// shape (two logarithms multiplied); the two numbers are our own
+/// starting point, for tuning later.
+fn reductions() -> Box<[[u8; 64]; 64]> {
+    let mut table = Box::new([[0; 64]; 64]);
+    for (depth, row) in table.iter_mut().enumerate().skip(1) {
+        for (number, reduction) in row.iter_mut().enumerate().skip(1) {
+            let r = 0.75 + (depth as f64).ln() * (number as f64).ln() / 2.25;
+            *reduction = r as u8; // rounded down
+        }
+    }
+    table
+}
 
 /// The two most recent quiet moves that refuted a position at one ply,
 /// newest first.
@@ -188,14 +216,16 @@ pub fn search(
         aspiration: true,
         null_move: true,
         check_extensions: true,
+        lmr: true,
     };
     search_with(game, max_depth, table, history, should_stop, on_depth, all)
 }
 
 /// Search tricks that tests can switch off: PVS and aspiration windows
 /// change the work but never the answer, so the scores must stay the
-/// same; null moves and check extensions can change the answer, so tests
-/// compare the work or look for what only they find. Always all on
+/// same; null moves, check extensions and late move reductions can
+/// change the answer, so tests compare the work or look for what only
+/// they find. Always all on
 /// outside tests.
 #[derive(Clone, Copy)]
 struct Features {
@@ -203,6 +233,7 @@ struct Features {
     aspiration: bool,
     null_move: bool,
     check_extensions: bool,
+    lmr: bool,
 }
 
 /// `search`, with some features switched off (in tests only).
@@ -234,6 +265,11 @@ fn search_with(
         after_null: false,
         check_extensions: features.check_extensions,
         root_depth: 0,
+        reductions: if features.lmr {
+            Some(reductions())
+        } else {
+            None
+        },
     };
     let mut best_move = first_legal;
     let mut previous_score = 0;
@@ -307,6 +343,9 @@ struct Searcher<'a> {
     /// The depth this iteration started with at the root (the cap on
     /// check extensions is twice this, in half-moves).
     root_depth: u32,
+    /// Late move reductions by depth and move number (`None`: off, in
+    /// tests only).
+    reductions: Option<Box<[[u8; 64]; 64]>>,
 }
 
 impl Searcher<'_> {
@@ -492,8 +531,10 @@ impl Searcher<'_> {
         // kept per ply and reused, so no new memory is needed each time).
         let mut quiets_tried = std::mem::take(&mut self.quiets_tried[ply]);
         quiets_tried.clear();
+        let in_check = position.in_check(position.side_to_move);
+        let main_line = beta - alpha > 1;
         self.path.push(*position);
-        for mv in moves {
+        for (number, mv) in (1..).zip(moves) {
             // Follow last iteration's best line only down its own first move.
             let child_hint = match hint.split_first() {
                 Some((&first, rest)) if first == mv => rest,
@@ -520,16 +561,39 @@ impl Searcher<'_> {
                 );
             } else {
                 // A later move: only ask whether it beats the best so far,
-                // with a window too narrow for any score to fit inside.
+                // with a window too narrow for any score to fit inside. A
+                // late, dull move gets a shallower look first; if even
+                // that says it beats the best, it's looked at again at
+                // full depth.
+                let reduction = self.reduction(
+                    position,
+                    mv,
+                    depth,
+                    number,
+                    in_check || gives_check,
+                    main_line,
+                    ply,
+                );
                 score = -self.negamax(
                     &next,
-                    child_depth,
+                    child_depth - reduction,
                     ply + 1,
                     -alpha - 1,
                     -alpha,
                     &mut line,
                     child_hint,
                 );
+                if reduction > 0 && score > alpha && !self.stopped {
+                    score = -self.negamax(
+                        &next,
+                        child_depth,
+                        ply + 1,
+                        -alpha - 1,
+                        -alpha,
+                        &mut line,
+                        child_hint,
+                    );
+                }
                 // It does beat it, and might matter here: find out by how
                 // much with a proper search.
                 if score > alpha && score < beta && !self.stopped {
@@ -592,6 +656,39 @@ impl Searcher<'_> {
                 .store(position.hash(), ply, depth, best, bound, best_move);
         }
         best
+    }
+
+    /// How many half-moves shallower to search move number `number` here
+    /// (0: not reduced). `checks` is whether either side's king is in
+    /// check before or after the move. Never takes the search below one
+    /// half-move.
+    #[allow(clippy::too_many_arguments)]
+    fn reduction(
+        &self,
+        position: &Position,
+        mv: Move,
+        depth: u32,
+        number: usize,
+        checks: bool,
+        main_line: bool,
+        ply: usize,
+    ) -> u32 {
+        let Some(table) = &self.reductions else {
+            return 0;
+        };
+        if depth < LMR_DEPTH
+            || number < LMR_MOVE
+            || checks
+            || !is_quiet(position, mv)
+            || self.killers[ply].contains(&Some(mv))
+        {
+            return 0;
+        }
+        let mut r = u32::from(table[(depth as usize).min(63)][number.min(63)]);
+        if main_line {
+            r = r.saturating_sub(1);
+        }
+        r.min(depth - 2)
     }
 
     /// At the end of the line, play out captures until the position is
@@ -891,6 +988,7 @@ mod tests {
             after_null: false,
             check_extensions: true,
             root_depth: 0,
+            reductions: None,
         };
         searcher.is_repetition(position)
     }
@@ -1087,6 +1185,7 @@ mod tests {
             after_null: false,
             check_extensions: true,
             root_depth: 0,
+            reductions: None,
         };
         let (quiet, other_quiet, capture) = (
             find_move(&board, "c3b5"),
@@ -1176,6 +1275,7 @@ mod tests {
             after_null: false,
             check_extensions: true,
             root_depth: 0,
+            reductions: None,
         };
         let (good, failed, capture) = (
             find_move(&board, "c3b5"),
@@ -1223,6 +1323,7 @@ mod tests {
                         aspiration: false,
                         null_move: false,
                         check_extensions: false,
+                        lmr: false,
                     },
                 );
                 reports
@@ -1269,6 +1370,7 @@ mod tests {
                         aspiration,
                         null_move: false,
                         check_extensions: false,
+                        lmr: false,
                     },
                 );
                 reports
@@ -1312,6 +1414,7 @@ mod tests {
                             aspiration: true,
                             null_move,
                             check_extensions: false,
+                            lmr: false,
                         },
                     );
                     last
@@ -1320,6 +1423,61 @@ mod tests {
         };
         let (with, without) = (nodes(true), nodes(false));
         assert!(with * 10 < without * 7, "{with} vs {without}");
+    }
+
+    #[test]
+    fn late_moves_are_reduced_a_little_more_the_deeper_and_later() {
+        let table = reductions();
+        assert_eq!(table[3][4], 1);
+        assert_eq!(table[8][10], 2);
+        assert_eq!(table[20][40], 5);
+        assert_eq!(table[2][1], 0); // the first move is never reduced much
+        for depth in 1..64 {
+            for number in 1..63 {
+                assert!(table[depth][number] <= table[depth][number + 1]);
+                assert!(table[number][depth] <= table[number + 1][depth]);
+            }
+        }
+    }
+
+    #[test]
+    fn late_move_reductions_save_work() {
+        // Like null moves, reductions can change the answer, so this
+        // compares the work: to the same depth, far fewer positions.
+        let positions = [
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "2r2rk1/pp1bqppp/2n1pn2/3p4/2PP4/2N1PN2/PPQ2PPP/R1B2RK1 w - - 0 12",
+        ];
+        let nodes = |lmr: bool| -> u64 {
+            positions
+                .iter()
+                .map(|fen| {
+                    let mut last = 0;
+                    search_with(
+                        &[position(fen)],
+                        6,
+                        &mut Table::new(16),
+                        &mut History::new(),
+                        &mut || false,
+                        &mut |report| {
+                            last = report.nodes;
+                            true
+                        },
+                        Features {
+                            pvs: true,
+                            aspiration: true,
+                            null_move: true,
+                            check_extensions: true,
+                            lmr,
+                        },
+                    );
+                    last
+                })
+                .sum()
+        };
+        let (with, without) = (nodes(true), nodes(false));
+        assert!(with * 2 < without, "{with} vs {without}");
     }
 
     #[test]
@@ -1346,6 +1504,7 @@ mod tests {
                     aspiration: true,
                     null_move: true,
                     check_extensions,
+                    lmr: true,
                 },
             );
             last

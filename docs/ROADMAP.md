@@ -79,11 +79,12 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
         games (bench 924579; #25)
 - [x] Null-move pruning (R = 3 + depth/4, decided 2026-10-24): SPRT
       pass, +73.2 ± 29.1 Elo over 392 games (bench 942397; #28)
-- [ ] Late move reductions and check extensions (design decided
+- [x] Late move reductions and check extensions (design decided
       2026-10-24; two PRs):
   - [x] 6a: check extensions: SPRT pass, +33.0 ± 19.0 Elo over 753
         games (bench 1013571; #30)
-  - [ ] 6b: late move reductions
+  - [x] 6b: late move reductions: SPRT pass, +113.4 ± 36.5 Elo over
+        264 games (bench 343857; #31)
 - [ ] Time-management rework, rule by rule, once the search has settled
       (see the parking lot's position-aware idea; also "don't start a
       depth that can't finish"; and sudden death: with no increment the
@@ -184,5 +185,10 @@ a release is tagged and built (DESIGN.md section 6).
   even when no enemy pawn could capture, so that position never counts as
   a repeat. Rare and harmless (a draw claim might be missed).
 - Insufficient material covers king vs king and a lone minor piece only.
+- Zugzwang with pieces on the board can fool null-move pruning (the
+  side to move "passes", which the rules don't allow). Example: the
+  quiet mate in 2 1. Ra6! in `kbK5/pp6/1P6/8/8/8/8/R7 w`, missed since
+  late move reductions (journal 2026-10-24-late-move-reductions). The
+  parked verification search is the fix.
 - The browser build, when it exists, will be single-threaded and so a little
   weaker than the Lichess bot.
