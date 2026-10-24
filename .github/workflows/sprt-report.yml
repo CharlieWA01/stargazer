@@ -1,15 +1,16 @@
 name: SPRT report
 
-# The verdict of a test started by "Run SPRT" that took longer than that
-# workflow waited. Give it the run id from that workflow's summary
-# (sprt-<number>-<attempt>); it posts the verdict, or the progress so far,
+# The verdict of a test started by "Run SPRT" (or a match started by "Run
+# match") that took longer than that workflow waited. Give it the run id
+# from that workflow's summary (sprt-<number>-<attempt> or
+# match-<number>-<attempt>); it posts the verdict, or the progress so far,
 # on the summary page and on the PR the test was started for.
 
 on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: "Run id, e.g. sprt-1234567890-1"
+        description: "Run id, e.g. sprt-1234567890-1 or match-1234567890-1"
         required: true
 
 permissions:
@@ -26,7 +27,7 @@ jobs:
       - name: Check the run id
         env:
           RUN_ID: ${{ inputs.run_id }}
-        run: '[[ "$RUN_ID" =~ ^sprt-[0-9]+-[0-9]+$ ]] || { echo "bad run id"; exit 1; }'
+        run: '[[ "$RUN_ID" =~ ^(sprt|match)-[0-9]+-[0-9]+$ ]] || { echo "bad run id"; exit 1; }'
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.STARGAZER_RUNNER_ROLE_ARN }}

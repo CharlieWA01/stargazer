@@ -482,3 +482,32 @@ root (#23); a fail low proves nothing about any move.
 table makes cheap. Bench saves 6% at depth 5 but under 2% at 6 and 7,
 so the SPRT decides whether it stays (it passed: +7.8 ± 6.0 Elo over
 6,282 games).
+
+## 2026-10-24: Matches against Stockfish on the test rig
+**Decision:** (1) a "Run match" button on the AWS test rig plays
+Stargazer against Stockfish at a set strength (`UCI_Elo`) to estimate
+its rating (Charlie's choice). (2) It runs the SPRT workflow in a match
+mode instead of copying it: one workflow file holds the build, upload
+and start steps for both. (3) The opponent is Debian's `stockfish`
+package, installed in the same container. (4) Defaults: 400 games at
+10+0.1 on 16 vCPU, one Stockfish level per run; Stockfish on one thread
+with a 16 MB table, like Stargazer. (5) Claude may start a match on its
+own when it uses at most 16 vCPU and takes under an hour; anything
+bigger is asked first.
+**Alternatives:** (1) a script on the Chromebook (free, but an hour or
+more for a couple of hundred games), or both; (2) a separate copy of
+the workflow; (3) Stockfish's own release binary, pinned by hash, or
+built from source; (4) a "ladder" of several levels per run, or longer
+games; (5) ask every time.
+**Why:** (1) the rig already has everything (fastchess, the book,
+Fargate, the report), so a real number takes minutes and pennies.
+Watching games at home needs nothing built: PyChess and `apt install
+stockfish` (runbook). (2) one place to fix the steps. (3) Debian builds
+it for ARM, and the report records the exact version; Stockfish's own
+ARM downloads are made for Android, and building it adds minutes to
+every image build. (4) simple first; a ladder can come later. (5) same
+size and cost as the standard SPRTs already approved.
+**Cost:** a few cents per 400-game match; the rig image grows by
+Stockfish (a few tens of MB with its network file) and is rebuilt once.
+The rating is rough (±30 Elo at 400 games, and Stockfish's levels were
+set at longer games).

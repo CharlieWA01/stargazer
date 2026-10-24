@@ -97,7 +97,9 @@ python3 -m unittest discover -s rig -v              # after changing the test ri
   the search runs on its own thread
 - `rig/`: the SPRT test container (`Dockerfile`, `run_test.py`), the
   report the workflows post (`report.py`), and their tests; started by the
-  "Run SPRT" and "SPRT report" workflows; see `docs/runbooks/sprt.md`
+  "Run SPRT" and "SPRT report" workflows; see `docs/runbooks/sprt.md`.
+  Its match mode plays Stockfish at a set strength ("Run match";
+  `docs/runbooks/stockfish-match.md`)
 - `tools/selfplay.py`: engine-vs-itself games under a clock (no time
   losses, no illegal moves); see `docs/runbooks/play-it.md`
 - `docs/DESIGN.md`: the architecture, section by section; the source of truth

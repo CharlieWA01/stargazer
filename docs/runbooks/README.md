@@ -6,3 +6,4 @@ release, the Lichess bot). See `docs/DOCS-STANDARD.md`.
 - `perft.md`: prove move generation with perft
 - `play-it.md`: play the engine by hand or in a GUI, and the self-play check
 - `sprt.md`: run a strength test (SPRT), on AWS or on your own machine
+- `stockfish-match.md`: play Stockfish at a set strength, for a rough rating or to watch

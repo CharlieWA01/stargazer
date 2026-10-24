@@ -1,0 +1,60 @@
+name: Run match
+
+# The Run button for a match against Stockfish (docs/runbooks/stockfish-match.md):
+# one version of Stargazer plays Stockfish at a set strength for a fixed
+# number of games, and the score gives a rough rating. It runs "Run SPRT"
+# (sprt.yml) in match mode: the same container, opening book and AWS
+# resources, and the verdict is posted the same way.
+
+on:
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "Stargazer version: branch, tag or commit"
+        default: main
+      opponent_elo:
+        description: "Stockfish's strength (UCI_Elo, 1320 to 3190)"
+        default: "1800"
+      games:
+        description: "Games to play (even; each opening is played with both colours)"
+        default: "400"
+      tc:
+        description: "Time control, seconds+increment"
+        default: "10+0.1"
+      vcpus:
+        description: "CPUs for the match (1, 2, 4, 8 or 16). AWS allows 16 at once, so not during an SPRT"
+        default: "16"
+      wait_minutes:
+        description: "How long to wait for the result before leaving it to the report workflow"
+        default: "30"
+
+permissions:
+  id-token: write       # sign in to AWS with OIDC
+  contents: read
+  pull-requests: write  # needed by sprt.yml (a match never posts on a PR)
+
+jobs:
+  games:
+    runs-on: ubuntu-24.04
+    outputs:
+      rounds: ${{ steps.rounds.outputs.rounds }}
+    steps:
+      - id: rounds
+        env:
+          GAMES: ${{ inputs.games }}
+        run: |
+          [[ "$GAMES" =~ ^[0-9]+$ && "$GAMES" -ge 2 && "$GAMES" -le 4000 && $((GAMES % 2)) -eq 0 ]] \
+            || { echo "games must be an even number, 2 to 4000"; exit 1; }
+          echo "rounds=$((GAMES / 2))" >> "$GITHUB_OUTPUT"
+
+  match:
+    needs: games
+    uses: ./.github/workflows/sprt.yml
+    with:
+      mode: match
+      test: ${{ inputs.test }}
+      opponent_elo: ${{ inputs.opponent_elo }}
+      rounds: ${{ needs.games.outputs.rounds }}
+      tc: ${{ inputs.tc }}
+      vcpus: ${{ inputs.vcpus }}
+      wait_minutes: ${{ inputs.wait_minutes }}

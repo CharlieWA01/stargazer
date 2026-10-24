@@ -43,18 +43,21 @@ RUN curl -fsSL -o /book.zip \
  && echo "$BOOK_SHA256  /book.zip" | sha256sum -c - \
  && unzip -q /book.zip -d /book
 
-# --- Final image: fastchess, the book, the AWS CLI and the run script --------
+# --- Final image: fastchess, the book, Stockfish, the AWS CLI, the run script
 # Debian 13 ("trixie"), because the engines are built on GitHub's Ubuntu
 # 24.04 machines and need a C library at least that new (glibc 2.39). A
 # fully static build would run anywhere but searches about 30% slower.
 FROM debian:trixie-slim
 RUN apt-get update \
- && apt-get install -y --no-install-recommends awscli ca-certificates python3 \
+ && apt-get install -y --no-install-recommends awscli ca-certificates python3 stockfish \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=fastchess /src/fastchess /usr/local/bin/fastchess
 COPY --from=book /book/8moves_v3.pgn /opt/rig/8moves_v3.pgn
 COPY run_test.py /opt/rig/run_test.py
 ENV STARGAZER_BOOK=/opt/rig/8moves_v3.pgn
+# Stockfish, the opponent in match mode (Debian's package; the match
+# report records its exact version).
+ENV STARGAZER_STOCKFISH=/usr/games/stockfish
 WORKDIR /work
 # Python is process 1 so it receives AWS's stop signal and can save results.
 ENTRYPOINT ["python3", "-u", "/opt/rig/run_test.py"]

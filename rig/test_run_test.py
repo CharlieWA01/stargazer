@@ -5,7 +5,10 @@ Run with: python3 -m unittest discover -s rig -v
 
 import unittest
 
-from run_test import read_results, verdict_from
+from pathlib import Path
+from types import SimpleNamespace
+
+from run_test import fastchess_command, read_results, verdict_from
 
 # Real fastchess output (v1.8.2-alpha), trimmed: four games, a summary, then
 # the SPRT's verdict. "test vs base" means the test engine had White.
@@ -81,6 +84,40 @@ class VerdictTest(unittest.TestCase):
 
     def test_fastchess_failed(self):
         self.assertEqual(verdict_from({"games": 0}, 1, None)[0], "error")
+
+
+    def test_a_finished_match_is_done(self):
+        self.assertEqual(verdict_from({"games": 400}, 0, None, "match")[0], "done")
+
+    def test_a_stopped_match_is_inconclusive(self):
+        self.assertEqual(verdict_from({"games": 40}, 1, "deadline", "match")[0], "inconclusive")
+
+
+SETTINGS = {
+    "mode": "sprt", "tc": "8+0.08", "book": "book.pgn", "rounds": 10, "concurrency": 2,
+    "elo0": 0.0, "elo1": 10.0,
+}
+
+
+class FastchessCommandTest(unittest.TestCase):
+    paths = SimpleNamespace(engines=Path("/e"), results=Path("/r"))
+
+    def test_sprt_plays_the_old_version_until_a_verdict(self):
+        command = fastchess_command(self.paths, SETTINGS)
+        self.assertIn("cmd=/e/base", command)
+        self.assertIn("-sprt", command)
+
+    def test_a_match_plays_stockfish_at_a_set_strength_without_an_sprt(self):
+        settings = {**SETTINGS, "mode": "match", "opponent_elo": 1800, "stockfish": "/sf"}
+        command = fastchess_command(self.paths, settings)
+        self.assertNotIn("cmd=/e/base", command)
+        self.assertNotIn("-sprt", command)
+        # Stargazer goes first, so every number is from its side.
+        engines = [command[i + 1] for i, word in enumerate(command) if word == "-engine"]
+        self.assertEqual(engines, ["cmd=/e/test", "cmd=/sf"])
+        for option in ("option.UCI_LimitStrength=true", "option.UCI_Elo=1800",
+                       "option.Threads=1", "option.Hash=16"):
+            self.assertIn(option, command)
 
 
 if __name__ == "__main__":

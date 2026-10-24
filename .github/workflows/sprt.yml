@@ -9,6 +9,11 @@ name: Run SPRT
 #
 # AWS access is through GitHub's OIDC sign-in to a role (no stored keys).
 # The repository variables come from cloud-homelab's Terraform outputs.
+#
+# "Run match" (match.yml) runs this same workflow in match mode: only the
+# new version is built, and it plays Stockfish at a set strength for a
+# fixed number of games instead of an SPRT
+# (docs/runbooks/stockfish-match.md).
 
 on:
   workflow_dispatch:
@@ -40,6 +45,20 @@ on:
       wait_minutes:
         description: "How long to wait for a verdict before leaving it to the report workflow"
         default: "30"
+  # The same inputs, for "Run match" (which also sets mode and opponent_elo).
+  workflow_call:
+    inputs:
+      test: {type: string, required: true}
+      base: {type: string, default: main}
+      elo0: {type: string, default: "0"}
+      elo1: {type: string, default: "10"}
+      tc: {type: string, default: "8+0.08"}
+      vcpus: {type: string, default: "16"}
+      pr: {type: string, default: ""}
+      rounds: {type: string, default: "20000"}
+      wait_minutes: {type: string, default: "30"}
+      mode: {type: string, default: sprt}
+      opponent_elo: {type: string, default: "1800"}
 
 permissions:
   id-token: write       # sign in to AWS with OIDC
@@ -48,12 +67,16 @@ permissions:
 
 env:
   AWS_REGION: us-east-2
-  RUN_ID: sprt-${{ github.run_id }}-${{ github.run_attempt }}
+  # "sprt", or "match" when started by "Run match" (the button above has
+  # no mode input, so it's empty there).
+  MODE: ${{ inputs.mode || 'sprt' }}
+  RUN_ID: ${{ inputs.mode || 'sprt' }}-${{ github.run_id }}-${{ github.run_attempt }}
   # Inputs reach scripts only through environment variables, never pasted
   # into the script text, so odd characters in them can't run as commands.
   TEST_REF: ${{ inputs.test }}
   BASE_REF: ${{ inputs.base }}
   PR: ${{ inputs.pr }}
+  OPPONENT_ELO: ${{ inputs.opponent_elo || '1800' }}
 
 jobs:
   run:
@@ -76,6 +99,9 @@ jobs:
           [[ "$TC" =~ ^[0-9]+(\.[0-9]+)?\+[0-9]+(\.[0-9]+)?$ ]] || { echo "bad time control"; exit 1; }
           [[ -z "$PR" || "$PR" =~ ^[0-9]+$ ]] || { echo "bad PR number"; exit 1; }
           [[ "$WAIT" =~ ^[0-9]+$ && "$WAIT" -le 100 ]] || { echo "wait_minutes must be 0 to 100"; exit 1; }
+          case "$MODE" in sprt|match) ;; *) echo "mode must be sprt or match"; exit 1;; esac
+          [[ "$OPPONENT_ELO" =~ ^[0-9]+$ && "$OPPONENT_ELO" -ge 1320 && "$OPPONENT_ELO" -le 3190 ]] \
+            || { echo "opponent_elo must be 1320 to 3190 (Stockfish's range)"; exit 1; }
 
       # The workflow's own version of the repo, for the rig (rig/): the test
       # container and the report script. Old engine versions may not have it.
@@ -90,6 +116,7 @@ jobs:
           ref: ${{ inputs.test }}
           path: test
       - name: Check out the old version
+        if: env.MODE == 'sprt'
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.base }}
@@ -113,14 +140,17 @@ jobs:
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: |
+          # A match needs only the new version; its opponent is Stockfish.
+          versions="base test"; [ "$MODE" = match ] && versions="test"
+          echo "VERSIONS=$versions" >> "$GITHUB_ENV"
           mkdir engines
-          for version in base test; do
+          for version in $versions; do
             (cd "$version" && rustup target add aarch64-unknown-linux-gnu \
               && cargo build --release --target aarch64-unknown-linux-gnu)
             cp "$version/target/aarch64-unknown-linux-gnu/release/stargazer" "engines/$version"
           done
           file engines/*
-          echo "BASE_SHA=$(git -C base rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "BASE_SHA=$([ -d base ] && git -C base rev-parse HEAD)" >> "$GITHUB_ENV"
           echo "TEST_SHA=$(git -C test rev-parse HEAD)" >> "$GITHUB_ENV"
 
       # --- Sign in to AWS, upload the engines --------------------------------
@@ -132,7 +162,7 @@ jobs:
         env:
           BUCKET: ${{ vars.STARGAZER_RESULTS_BUCKET }}
         run: |
-          for version in base test; do
+          for version in $VERSIONS; do
             aws s3 cp "engines/$version" "s3://$BUCKET/runs/$RUN_ID/engines/$version" --only-show-errors
           done
 
@@ -193,7 +223,8 @@ jobs:
           import json, os
           e = os.environ
           settings = {"STARGAZER_RUN_ID": e["RUN_ID"], "STARGAZER_ELO0": e["ELO0"],
-                      "STARGAZER_ELO1": e["ELO1"], "STARGAZER_TC": e["TC"], "STARGAZER_ROUNDS": e["ROUNDS"]}
+                      "STARGAZER_ELO1": e["ELO1"], "STARGAZER_TC": e["TC"], "STARGAZER_ROUNDS": e["ROUNDS"],
+                      "STARGAZER_MODE": e["MODE"], "STARGAZER_OPPONENT_ELO": e["OPPONENT_ELO"]}
           print(json.dumps({"cpu": e["CPU"], "memory": e["MEMORY"], "containerOverrides": [{
               "name": "runner",
               "environment": [{"name": k, "value": v} for k, v in settings.items()]}]}))
@@ -228,17 +259,27 @@ jobs:
               "task_arn": e["TASK_ARN"], "test": e["TEST_REF"], "test_sha": e["TEST_SHA"],
               "base": e["BASE_REF"], "base_sha": e["BASE_SHA"], "pr": e["PR"],
               "elo0": e["ELO0"], "elo1": e["ELO1"], "tc": e["TC"], "vcpus": e["VCPUS"],
+              "mode": e["MODE"], "opponent_elo": e["OPPONENT_ELO"],
               "image": e["IMAGE_TAG"],
               "workflow_run": f"{e['GITHUB_SERVER_URL']}/{e['GITHUB_REPOSITORY']}/actions/runs/{e['GITHUB_RUN_ID']}",
           }, indent=2))
           EOF
           aws s3 cp request.json "s3://$BUCKET/runs/$RUN_ID/request.json" --only-show-errors
-          {
-            echo "## SPRT started: \`$RUN_ID\`"
-            echo "- test: \`$TEST_REF\` ($TEST_SHA)"
-            echo "- base: \`$BASE_REF\` ($BASE_SHA)"
-            echo "- bounds [$ELO0, $ELO1] Elo, $TC, $VCPUS vCPU, image \`$IMAGE_TAG\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$MODE" = match ]; then
+            {
+              echo "## Match started: \`$RUN_ID\`"
+              echo "- Stargazer: \`$TEST_REF\` ($TEST_SHA)"
+              echo "- against Stockfish at strength $OPPONENT_ELO, $((ROUNDS * 2)) games"
+              echo "- $TC, $VCPUS vCPU, image \`$IMAGE_TAG\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## SPRT started: \`$RUN_ID\`"
+              echo "- test: \`$TEST_REF\` ($TEST_SHA)"
+              echo "- base: \`$BASE_REF\` ($BASE_SHA)"
+              echo "- bounds [$ELO0, $ELO1] Elo, $TC, $VCPUS vCPU, image \`$IMAGE_TAG\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       # --- Wait a while for a verdict -----------------------------------------
       - name: Wait for the verdict

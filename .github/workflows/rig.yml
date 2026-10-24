@@ -1,8 +1,9 @@
 name: Test rig
 
 # Checks the SPRT test container (rig/) whenever it changes: the run
-# script's unit tests, then a real build of the image and a tiny match
-# inside it (the engine against itself, 8 very fast games, no AWS).
+# script's unit tests, then a real build of the image and tiny matches
+# inside it (the engine against itself, 8 very fast games, and against
+# Stockfish, 4 games; no AWS).
 # This is x86; the SPRT workflow builds the same Dockerfile for ARM.
 
 on:
@@ -49,6 +50,24 @@ jobs:
           assert report["results"]["games"] == 8, report["results"]
           bench = report["bench"]
           assert bench["base"] == bench["test"] and bench["base"], bench
+          EOF
+
+      # Match mode: the engine against the image's Stockfish at its weakest
+      # setting, 4 very fast games.
+      - name: Play a tiny match against Stockfish inside it
+        run: |
+          sudo rm -rf work/results
+          docker run --rm -v "$PWD/work:/work" \
+            -e STARGAZER_MODE=match -e STARGAZER_OPPONENT_ELO=1320 \
+            -e STARGAZER_TC=1+0.01 -e STARGAZER_ROUNDS=2 -e STARGAZER_CONCURRENCY=2 \
+            stargazer-rig
+          python3 - <<'EOF'
+          import json
+          report = json.load(open("work/results/verdict.json"))
+          print(json.dumps(report, indent=2))
+          assert report["verdict"] == "done", report["verdict"]
+          assert report["results"]["games"] == 4, report["results"]
+          assert report["opponent"].startswith("Stockfish"), report["opponent"]
           EOF
 
   # The same image built for ARM, as AWS runs it, and a 2-game match inside
