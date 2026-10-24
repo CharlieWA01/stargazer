@@ -81,7 +81,8 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
       pass, +73.2 ± 29.1 Elo over 392 games (bench 942397; #28)
 - [ ] Late move reductions and check extensions (design decided
       2026-10-24; two PRs):
-  - [ ] 6a: check extensions (bench 1013571; in review)
+  - [x] 6a: check extensions: SPRT pass, +33.0 ± 19.0 Elo over 753
+        games (bench 1013571; #30)
   - [ ] 6b: late move reductions
 - [ ] Time-management rework, rule by rule, once the search has settled
       (see the parking lot's position-aware idea; also "don't start a

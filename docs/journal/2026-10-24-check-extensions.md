@@ -41,7 +41,8 @@ quiet knight mate.
   More work is expected: the extensions look deeper along forcing lines.
   Whether that's worth it is the SPRT's question. New bench fingerprint
   **1013571**.
-- SPRT: see the PR and the roadmap.
+- SPRT against `main` (0 to 10, 8+0.08, 16 vCPU): **pass**, +33.0 ±
+  19.0 Elo over 753 games (308 wins, 211 draws, 234 losses).
 
 ## Impact
 The engine sees mating attacks and checking sequences further ahead, at

@@ -183,7 +183,7 @@ $0). So:
   resets the 50-move counter, so repetitions never look back past it.
 - **Late move reductions and check extensions: decided 2026-10-24**
   (two PRs, each with its own SPRT).
-  - **Check extensions, step 6a, built 2026-10-24:** a move that gives
+  - **Check extensions, step 6a, built 2026-10-24** (SPRT: +33 Elo): a move that gives
     check is searched one half-move deeper (its reply gets the same
     depth, not one less), but not once a line is twice as long as the
     depth the root started with.
