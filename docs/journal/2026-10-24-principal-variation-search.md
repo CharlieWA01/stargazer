@@ -45,7 +45,13 @@ PVS first and aspiration windows second (DECISIONS.md, 2026-10-24).
   (median of five runs: 390,000 main, 398,000 PVS; noise).
 - `cargo fmt`, clippy, WASM build, deep perft; `tools/selfplay.py` three
   games, no problems.
-- SPRT: to come, bounds 0 to 10 at 8+0.08 against `main`.
+- SPRT (2026-10-24), bounds 0 to 10 at 8+0.08 against `main`: **pass,
+  +18.8 ± 13.3 Elo over 1,572 games** (618 wins, 421 draws, 533 losses;
+  run `sprt-40054595706-1`, verdict collected with SPRT report after the
+  30-minute wait). #23 was merged by mistake about 20 minutes before the
+  verdict. Both engines had already been built, so the test still
+  compared PVS against the `main` before it, and the pass makes the
+  merge good. The result is recorded here in a follow-up docs PR.
 
 ## Impact
 About a fifth less work to reach the same depth, more the deeper it
