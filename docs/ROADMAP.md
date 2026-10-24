@@ -72,7 +72,8 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
       2026-10-24; two PRs):
   - [x] 4a: principal variation search: SPRT pass, +18.8 ± 13.3 Elo over
         1,572 games (bench 987309; #23)
-  - [ ] 4b: aspiration windows
+  - [ ] 4b: aspiration windows: built, in review (bench 924579), SPRT
+        pending
 - [ ] Null-move pruning
 - [ ] Late move reductions and check extensions
 - [ ] Time-management rework, rule by rule, once the search has settled
