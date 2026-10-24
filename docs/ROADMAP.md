@@ -79,7 +79,11 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
         games (bench 924579; #25)
 - [x] Null-move pruning (R = 3 + depth/4, decided 2026-10-24): SPRT
       pass, +73.2 ± 29.1 Elo over 392 games (bench 942397; #28)
-- [ ] Late move reductions and check extensions
+- [ ] Late move reductions and check extensions (design decided
+      2026-10-24; two PRs):
+  - [x] 6a: check extensions: SPRT pass, +33.0 ± 19.0 Elo over 753
+        games (bench 1013571; #30)
+  - [ ] 6b: late move reductions
 - [ ] Time-management rework, rule by rule, once the search has settled
       (see the parking lot's position-aware idea; also "don't start a
       depth that can't finish"; and sudden death: with no increment the

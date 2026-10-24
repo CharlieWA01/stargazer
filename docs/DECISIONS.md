@@ -549,3 +549,25 @@ SPRT later.
 depth 5), far less deeper (−61% at depth 7). Rare middlegame zugzwangs
 can be misjudged.
 
+## 2026-10-24: Late move reductions and check extensions
+**Decision (Charlie's choices):** (1) late moves are reduced by a
+formula that grows slowly with both the depth and how late the move
+comes (the common logarithm-based form, a small table computed at
+start-up, one less in the main line); not the first few moves, captures,
+promotions, checks, or when in check, and not below depth 3; a reduced
+move that beats the best so far is searched again at full depth. (2)
+Every move that gives check is searched one half-move deeper, with no
+extension once a line is twice the root's depth. (3) Two PRs, each with
+its own SPRT: check extensions (6a), then late move reductions (6b).
+**Alternatives:** (1) a fixed rule (1 less from the 4th move, 2 from the
+7th): simpler, saves less at depth. (2) extending only "safe" checks
+that don't hang the checking piece: more code, small difference. (3)
+one PR: faster, but the two gains couldn't be told apart.
+**Why:** the common modern forms; move ordering is now good enough
+(table move, captures, killers, history) that late quiet moves are
+rarely best. Checks get more depth while dull moves get less, so the two
+balance each other. Separate SPRTs keep every number clean.
+**Cost:** check extensions add 8 to 22% more positions per depth (bench
+depths 5 to 7); LMR should cut far more. A reduced search can miss a
+quiet move that only works deep down, until the re-search catches it.
+
