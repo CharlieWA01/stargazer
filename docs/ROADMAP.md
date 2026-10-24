@@ -1,7 +1,8 @@
 # Roadmap
 
 Milestones are rough and will be refined during the architecture discussions.
-Goal: about 1800 on Lichess (2000 maybe later). Design state: `docs/DESIGN.md`.
+Goal: about 2000 (raised from 1800 on 2026-10-24, once a first match
+against Stockfish measured about 1900; DECISIONS.md). Design state: `docs/DESIGN.md`.
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -122,8 +123,6 @@ a release is tagged and built (DESIGN.md section 6).
   early when one move is clearly best or forced. All inside a soft target
   and a hard ceiling. Each rule kept only if SPRT shows a gain. Scheduled
   as Milestone 4's time-management rework, after the pruning steps.
-- Push from 1800 to 2000: more search tricks, a richer evaluation, Texel
-  tuning (see `docs/DECISIONS.md`, 2026-10-20).
 - Multithreading (Lazy SMP), native build only.
 - A board widget for the browser page: write one or vendor a library
   (check its licence).
@@ -131,7 +130,7 @@ a release is tagged and built (DESIGN.md section 6).
   up to a second on a depth it can't finish (seen in the self-match game
   files). Using the unfinished depth's best move is done (#16, +44 Elo);
   not starting such a depth at all is part of the time rework.
-- Give it a personality (Charlie's idea, 2026-10-21), after 1800 and each
+- Give it a personality (Charlie's idea, 2026-10-21), after 2000 and each
   measured with SPRT so the strength cost is known:
   - a style knob, such as an attacking evaluation (king attacks, pawn
     storms, pawns given for activity), as a UCI option

@@ -6,8 +6,8 @@ Details: `docs/journal/` (what happened), `docs/DECISIONS.md` (why),
 `docs/HISTORY.md` (timeline).*
 
 ## In one sentence
-A chess engine written from scratch in Rust, aiming for about 1800 on
-Lichess as a bot, and playable in any visitor's browser on my portfolio site
+A chess engine written from scratch in Rust, aiming for about 2000
+(first goal 1800, passed) as a Lichess bot, and playable in any visitor's browser on my portfolio site
 through WebAssembly.
 
 ## Status
