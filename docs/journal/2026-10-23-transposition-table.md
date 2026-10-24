@@ -60,8 +60,15 @@ and approved earlier the same day (DECISIONS.md 2026-10-23).
   The new bench fingerprint is **1275902**.
 - `tools/selfplay.py`: three games, no time losses or illegal moves.
   Deep perft, `cargo fmt`, clippy, WASM build.
-- SPRT: to come, bounds 0 to 10, against `main` from before #18 so it
-  measures fingerprints and table together (Charlie's call).
+- SPRT (2026-10-24), bounds 0 to 10, against `main` from before #18
+  (`f21fba3`) so it measures fingerprints and table together (Charlie's
+  call): **pass, +135.7 ± 36.9 Elo over 235 games** (132 wins, 57 draws,
+  46 losses; run `sprt-40043985301-1`). The biggest gain so far, decided
+  in under a quarter of an hour.
+- The first try at that SPRT failed in 45 seconds without reaching AWS:
+  the base was given as the short commit ID `f21fba3`, and the checkout step
+  treats a short ID as a branch name. Rerun with the full 40-character
+  ID; the SPRT runbook now says so.
 
 ## Impact
 The engine reaches the same depth three to four times faster, so in the

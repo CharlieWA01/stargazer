@@ -57,11 +57,12 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
 
 - [x] Keep the best move from a depth that runs out of time: SPRT pass,
       +43.8 ± 22.1 Elo over 503 games (#16)
-- [ ] Transposition table (design decided 2026-10-23):
+- [x] Transposition table (design decided 2026-10-23): SPRT pass,
+      +135.7 ± 36.9 Elo over 235 games (2a and 2b together; #18, #19)
   - [x] 2a: Zobrist fingerprints; repetitions found by fingerprint
         (same search, bench 2457379; #18, no SPRT of its own)
-  - [ ] 2b: the table itself, with a UCI `Hash` option (bench 1275902;
-        in review, SPRT together with 2a)
+  - [x] 2b: the table itself, with a UCI `Hash` option (bench 1275902;
+        #19)
 - [ ] Killer and history moves
 - [ ] Principal variation search and aspiration windows
 - [ ] Null-move pruning
