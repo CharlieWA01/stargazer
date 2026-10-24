@@ -53,6 +53,7 @@ testing" table in `docs/PORTFOLIO.md`.
 
 | Date | Stargazer | Stockfish level | Games | tc | Score | Estimate | Run |
 |---|---|---|---|---|---|---|---|
+| 2026-10-24 | `main` after #26 (bench 924579) | 1800 (Stockfish 17.1) | 400 (251 W, 12 D, 137 L) | 10+0.1 | 64.2% | 1902 ± 35 | `match-40099086284-1` |
 
 ## On your own machine (to watch games)
 

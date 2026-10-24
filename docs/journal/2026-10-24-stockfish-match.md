@@ -64,6 +64,17 @@ match" button on the AWS test rig (DECISIONS.md, 2026-10-24).
   10,275 in Milestone 4's six SPRTs, 16,894 in all. The SPRT and match
   runbooks say to add each new test's games.
 
+## The first real match (after the merge)
+- "Run match" on `main` (#26 merged), Stockfish 1800, 400 games at
+  10+0.1 on 16 vCPU: **251 wins, 12 draws, 137 losses, a 64.2% score,
+  +102 ± 35 Elo, so an estimated rating of about 1900** (run
+  `match-40099086284-1`). The run took 20 minutes: 6 to rebuild the
+  container with Stockfish (once), 12 for the games. The opponent was
+  Debian's Stockfish 17.1.
+- Very few draws (3%): Stockfish at a set strength plays deliberately
+  weaker moves now and then, so games tend to end decisively.
+- Next time, a level nearer 1900 gives a tighter estimate than 1800.
+
 ## Impact
 A yardstick outside our own versions, for a few cents a run. It gives
 Charlie's "what would it be rated?" question a measured answer, and the
