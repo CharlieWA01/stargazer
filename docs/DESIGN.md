@@ -154,7 +154,8 @@ $0). So:
     promotions, killers, then the other quiet moves.
 - **PVS and aspiration windows: decided 2026-10-24** (two PRs, each
   with its own SPRT).
-  - **Principal variation search, step 4a, built 2026-10-24:** in every
+  - **Principal variation search, step 4a, built 2026-10-24** (SPRT:
+    +19 Elo): in every
     position the first move is searched with the full window; each later
     move gets a zero-width window ("is it better than the best so
     far?"), and only a "yes" that could matter is searched again
