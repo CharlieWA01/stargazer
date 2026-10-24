@@ -8,6 +8,7 @@
 //! - `movegen`: listing the moves in a position
 //! - `eval`: scoring a position (material and where the pieces stand)
 //! - `search`: looking ahead to choose a move (alpha-beta, iterative deepening)
+//! - `tt`: the transposition table, the search's memory of positions
 //! - `perft`: counting move sequences, to prove move generation correct
 //! - `uci`: the text protocol GUIs and Lichess use to talk to the engine
 //! - `zobrist`: fingerprints for positions, for spotting repeats quickly
@@ -22,6 +23,7 @@ pub mod eval;
 pub mod movegen;
 pub mod perft;
 pub mod search;
+pub mod tt;
 pub mod uci;
 pub mod zobrist;
 

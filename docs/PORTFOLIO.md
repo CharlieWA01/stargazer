@@ -23,8 +23,10 @@ GitHub builds two versions, plays them against each other on AWS Fargate
 Spot (16 ARM CPUs, about 2,000 games in 50 minutes for roughly 25 cents)
 and posts a statistical verdict (SPRT) on the pull request. It was proven
 fair by playing the engine against itself: +1.0 ± 7.5 Elo over 2,000
-games. Next: making it stronger, one measured change at a time
-(Milestone 4).
+games. Milestone 4 makes it stronger one measured change at a time: the
+first two (keeping the best move from an unfinished search, and a
+transposition table that remembers searched positions) passed at +44 and
++136 Elo.
 
 ## What makes it interesting
 - **Two targets from one codebase:** a native engine (chess GUIs, Lichess

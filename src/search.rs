@@ -18,6 +18,9 @@
 //! - **Captures first, best first:** take the most valuable piece with the
 //!   least valuable attacker first ("MVV-LVA"). Good moves first means
 //!   more cut-offs.
+//! - **Transposition table:** remember each position's result (see `tt`),
+//!   so a position reached again by another move order isn't searched
+//!   again, and its best move is tried first when it is.
 //! - **Results:** checkmate (quicker mates score higher), stalemate,
 //!   repetition, the 50-move rule and insufficient material.
 //!
@@ -28,6 +31,7 @@
 use crate::board::{PieceKind, Position};
 use crate::eval::evaluate;
 use crate::movegen::{Move, legal_moves};
+use crate::tt::{Bound, Table};
 
 /// The score for checkmating. A mate found `ply` half-moves from now scores
 /// `MATE - ply`, so the engine prefers the quickest mate (and, when losing,
@@ -68,6 +72,8 @@ pub fn mate_in(score: i32) -> Option<i32> {
 /// - `game`: every position in the game so far, the current one last (for
 ///   the repetition rule).
 /// - `max_depth`: the deepest iteration to run, in half-moves.
+/// - `table`: the transposition table, kept by the caller from move to
+///   move (what it learned last move often still applies).
 /// - `should_stop`: asked now and then during depth 2 and later; once it
 ///   answers yes, the search stops. Moves already finished in the
 ///   unfinished depth still count: if one beat last depth's best move, it
@@ -79,6 +85,7 @@ pub fn mate_in(score: i32) -> Option<i32> {
 pub fn search(
     game: &[Position],
     max_depth: u32,
+    table: &mut Table,
     should_stop: &mut dyn FnMut() -> bool,
     on_depth: &mut dyn FnMut(&Report) -> bool,
 ) -> Option<Move> {
@@ -91,6 +98,7 @@ pub fn search(
         may_stop: false,
         stopped: false,
         should_stop,
+        table,
     };
     let mut best_move = first_legal;
     let mut previous_pv = Vec::new();
@@ -136,6 +144,7 @@ struct Searcher<'a> {
     may_stop: bool,
     stopped: bool,
     should_stop: &'a mut dyn FnMut() -> bool,
+    table: &'a mut Table,
 }
 
 impl Searcher<'_> {
@@ -191,8 +200,33 @@ impl Searcher<'_> {
             return self.quiescence(position, ply, alpha, beta);
         }
 
-        let moves = ordered(position, moves, hint.first().copied());
+        // Seen this position before? If it was searched at least this deep
+        // and its score settles the question here, use it (not at the
+        // root, which must always come back with a move).
+        let remembered = self.table.probe(position.hash(), ply);
+        if let Some(found) = remembered
+            && ply > 0
+            && found.depth >= depth
+        {
+            let settled = match found.bound {
+                Bound::Exact => true,
+                Bound::Lower => found.score >= beta,
+                Bound::Upper => found.score <= alpha,
+            };
+            if settled {
+                return found.score;
+            }
+        }
+
+        // Try last iteration's best move first, else the remembered one.
+        let first = hint
+            .first()
+            .copied()
+            .or(remembered.and_then(|f| f.best_move));
+        let moves = ordered(position, moves, first);
+        let alpha_at_start = alpha;
         let mut best = -INFINITY;
+        let mut best_move = None;
         let mut line = Vec::new();
         self.path.push(*position);
         for mv in moves {
@@ -216,6 +250,7 @@ impl Searcher<'_> {
             }
             if score > best {
                 best = score;
+                best_move = Some(mv);
             }
             if score > alpha {
                 // A new best move: remember the line it leads to.
@@ -231,6 +266,17 @@ impl Searcher<'_> {
             }
         }
         self.path.pop();
+        if !self.stopped {
+            let bound = if best >= beta {
+                Bound::Lower
+            } else if best > alpha_at_start {
+                Bound::Exact
+            } else {
+                Bound::Upper
+            };
+            self.table
+                .store(position.hash(), ply, depth, best, bound, best_move);
+        }
         best
     }
 
@@ -358,10 +404,16 @@ mod tests {
     /// Search `fen` to `depth`; return the best move and the last report.
     fn search_fen(fen: &str, depth: u32) -> (Move, Report) {
         let mut last = None;
-        let best = search(&[position(fen)], depth, &mut || false, &mut |report| {
-            last = Some(report.clone());
-            true
-        })
+        let best = search(
+            &[position(fen)],
+            depth,
+            &mut Table::new(1),
+            &mut || false,
+            &mut |report| {
+                last = Some(report.clone());
+                true
+            },
+        )
         .unwrap();
         (best, last.unwrap())
     }
@@ -450,12 +502,14 @@ mod tests {
     /// A searcher that has `path` behind it, to test the repetition rule.
     fn is_repetition_after(path: &[Position], position: &Position) -> bool {
         let mut never = || false;
+        let mut table = Table::new(1);
         let searcher = Searcher {
             path: path.to_vec(),
             nodes: 0,
             may_stop: false,
             stopped: false,
             should_stop: &mut never,
+            table: &mut table,
         };
         searcher.is_repetition(position)
     }
@@ -485,6 +539,7 @@ mod tests {
         let best = search(
             &[Position::startpos()],
             20,
+            &mut Table::new(1),
             &mut || {
                 asked += 1;
                 true
@@ -514,6 +569,7 @@ mod tests {
         let best = search(
             &[position(fen)],
             max_depth,
+            &mut Table::new(1),
             &mut || {
                 asked.set(asked.get() + 1);
                 stop_at.is_some_and(|n| asked.get() >= n)
@@ -552,10 +608,44 @@ mod tests {
     }
 
     #[test]
+    fn the_table_saves_work_and_remembers_between_searches() {
+        let kiwipete = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+        let nodes = |table: &mut Table| {
+            let mut last = 0;
+            search(
+                &[position(kiwipete)],
+                4,
+                table,
+                &mut || false,
+                &mut |report| {
+                    last = report.nodes;
+                    true
+                },
+            );
+            last
+        };
+        // A table of one slot remembers almost nothing; a real one saves
+        // work (about a quarter at depth 4, much more deeper down).
+        let mut tiny = Table::new(0);
+        let mut table = Table::new(1);
+        let without = nodes(&mut tiny);
+        let first = nodes(&mut table);
+        assert!(first * 10 < without * 9, "{first} vs {without}");
+        // Searching the same position again with what's already in the
+        // table is quicker still.
+        assert!(nodes(&mut table) < first);
+    }
+
+    #[test]
     fn no_move_when_checkmated() {
         // Fool's mate: White is checkmated.
         let mated = position("rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3");
-        assert_eq!(search(&[mated], 3, &mut || false, &mut |_| true), None);
+        assert_eq!(
+            search(&[mated], 3, &mut Table::new(1), &mut || false, &mut |_| {
+                true
+            }),
+            None
+        );
     }
 
     #[test]

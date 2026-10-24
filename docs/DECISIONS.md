@@ -388,3 +388,15 @@ packed rights bring it back to about 4%. Charlie approved (1) to (6).
 before 2a, so it measures both together (Charlie, after the 4% was found).
 **Cost:** about 4% speed until the table uses the fingerprints; 16 MB of
 memory per engine.
+
+## 2026-10-24: Claude starts standard SPRT tests without asking
+**Decision:** Claude may start a standard SPRT on its own: bounds 0 to 10
+(a strength change) or −5 to 0 (a clean-up), at 8+0.08 on 16 vCPU of
+Fargate Spot, one at a time. Anything else (other bounds, a longer time
+control, more CPUs, regular Fargate) is still asked first.
+**Alternatives:** asking before every test, as until now.
+**Why:** each standard test costs cents and has the same shape every
+time; waiting for a yes left finished PRs idle for hours. Charlie, in
+the Milestone 4 thread.
+**Cost:** a few cents of Spot time per test that Charlie didn't
+individually approve; the $10 org budget alert still applies.

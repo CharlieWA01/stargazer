@@ -106,3 +106,9 @@ that way.
   tested on the rig. Keeping the best move from a search that runs out of
   time, about a dozen lines of code, passed at +44 ± 22 Elo in 503 games.
   The data collected to check the rig found the engine's first big gain.
+- **Follow-up (2026-10-24):** the second change, a transposition table
+  (the engine remembering positions it has already searched), passed at
+  +136 ± 37 Elo in 235 games. Before trusting it, a speed check on the
+  first half showed a 10 to 12% slowdown; the cause was the position
+  record growing past 256 bytes, fixed by packing four castling flags
+  into one byte. Measure the cost of each half, not just the total.

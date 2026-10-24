@@ -10,7 +10,10 @@ DECISIONS.md (2026-10-21).
 1. Push the change to a branch and open its PR.
 2. GitHub, **Actions** tab, **Run SPRT**, **Run workflow**. Fill in:
    - **test**: the branch (or tag, or commit) with the change
-   - **base**: what to compare against, normally `main`
+   - **base**: what to compare against, normally `main`. A branch, a
+     tag or a **full 40-character** commit ID (`git rev-parse <short id>`);
+     a short ID like `f21fba3` is taken as a branch name and the run
+     fails in its first minute
    - **elo0 / elo1**: `0` and `10` for a strength change; `-5` and `0`
      for a clean-up that should change nothing
    - **pr**: the PR's number, so the verdict is posted there

@@ -84,6 +84,9 @@ python3 -m unittest discover -s rig -v              # after changing the test ri
   blended between middlegame and endgame); tables built from chess rules
 - `src/perft.rs`: perft and divide, with the six standard positions as tests
   (deep run: `cargo test --release -- --ignored`; see `docs/runbooks/perft.md`)
+- `src/zobrist.rs`: position fingerprints (Zobrist hashing), for repeats
+  and the transposition table
+- `src/tt.rs`: the transposition table (the search's memory of positions)
 - `src/search.rs`: choosing a move (alpha-beta, iterative deepening,
   quiescence, mate and draw rules); clock-free, asks `should_stop`
 - `src/uci.rs`: UCI protocol handling (handshake, `position ... moves`,
