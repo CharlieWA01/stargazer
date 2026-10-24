@@ -23,7 +23,7 @@ use crate::board::{Color, Position};
 use crate::eval::evaluate;
 use crate::movegen::legal_moves;
 use crate::perft::divide;
-use crate::search::{MAX_PLY, Report, mate_in, search};
+use crate::search::{History, MAX_PLY, Report, mate_in, search};
 use crate::tt::{self, Table};
 
 /// How deep a bare `go` (no clock, depth or time) searches. Handy when
@@ -37,8 +37,14 @@ const SAFETY_MARGIN_MS: u64 = 50;
 /// Output shared between this loop and the search thread.
 type Output<W> = Arc<Mutex<W>>;
 
-/// The transposition table, kept from move to move and lent to each search.
-type SharedTable = Arc<Mutex<Table>>;
+/// What the search remembers from move to move (the transposition table
+/// and the history scores), lent to each search.
+struct Memory {
+    table: Table,
+    history: History,
+}
+
+type SharedMemory = Arc<Mutex<Memory>>;
 
 /// The `Hash` option's limits, in megabytes.
 const MAX_HASH_MB: usize = 1024;
@@ -72,7 +78,10 @@ pub fn run<W: Write + Send + 'static>(input: impl BufRead, output: W) {
     // needs the earlier ones for the repetition rule.
     let mut game = vec![Position::startpos()];
     let mut thinking: Option<Thinking> = None;
-    let table: SharedTable = Arc::new(Mutex::new(Table::new(tt::DEFAULT_MB)));
+    let memory: SharedMemory = Arc::new(Mutex::new(Memory {
+        table: Table::new(tt::DEFAULT_MB),
+        history: History::new(),
+    }));
 
     for line in input.lines() {
         let Ok(line) = line else { break };
@@ -107,11 +116,13 @@ pub fn run<W: Write + Send + 'static>(input: impl BufRead, output: W) {
             "isready" => say(&output, "readyok"),
             "ucinewgame" => {
                 game = vec![Position::startpos()];
-                // A new game: last game's positions are no use.
-                table.lock().unwrap().clear();
+                // A new game: last game's positions and moves are no use.
+                let mut memory = memory.lock().unwrap();
+                memory.table.clear();
+                memory.history.clear();
             }
             "setoption" => match parse_hash_option(&line) {
-                Some(megabytes) => *table.lock().unwrap() = Table::new(megabytes),
+                Some(megabytes) => memory.lock().unwrap().table = Table::new(megabytes),
                 None => say(
                     &output,
                     "info string unknown option (only Hash is supported)",
@@ -123,7 +134,7 @@ pub fn run<W: Write + Send + 'static>(input: impl BufRead, output: W) {
                 // and keep the old position.
                 Err(reason) => say(&output, format!("info string invalid position: {reason}")),
             },
-            "go" => thinking = go(&line, &game, &table, &output),
+            "go" => thinking = go(&line, &game, &memory, &output),
             // Not part of UCI, but most engines have it: print the board.
             "d" => say(&output, current(&game)),
             // Also not UCI: the evaluation of the current position, without
@@ -277,7 +288,7 @@ fn parse_hash_option(line: &str) -> Option<usize> {
 fn go<W: Write + Send + 'static>(
     line: &str,
     game: &[Position],
-    table: &SharedTable,
+    memory: &SharedMemory,
     output: &Output<W>,
 ) -> Option<Thinking> {
     let words: Vec<&str> = line.split_whitespace().skip(1).collect();
@@ -308,17 +319,20 @@ fn go<W: Write + Send + 'static>(
 
     let stop = Arc::new(AtomicBool::new(false));
     let game = game.to_vec();
-    let table = Arc::clone(table);
+    let memory = Arc::clone(memory);
     let output = Arc::clone(output);
     let thread_stop = Arc::clone(&stop);
     let thread = thread::spawn(move || {
         let started = Instant::now();
         let stop = thread_stop;
         let elapsed = || started.elapsed().as_millis() as u64;
+        let mut memory = memory.lock().unwrap();
+        let Memory { table, history } = &mut *memory;
         let best = search(
             &game,
             max_depth,
-            &mut table.lock().unwrap(),
+            table,
+            history,
             // Inside a depth: stop when told to, or at the hard limit.
             &mut || {
                 stop.load(Ordering::Relaxed)

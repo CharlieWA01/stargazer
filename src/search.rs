@@ -22,6 +22,10 @@
 //!   position will often refute its neighbours at the same depth too:
 //!   if ...Qh4 punished a3, it probably punishes h3 as well. The last two
 //!   such moves at each depth are tried right after the captures.
+//! - **History:** every quiet move has a running score: up when it refutes
+//!   a position, down when it was tried first and failed. The other quiet
+//!   moves are tried highest score first. It's a memory of "moves that
+//!   tend to be good in this game", like Rd1 when the d-file matters.
 //! - **Transposition table:** remember each position's result (see `tt`),
 //!   so a position reached again by another move order isn't searched
 //!   again, and its best move is tried first when it is.
@@ -32,7 +36,7 @@
 //! asks every few thousand positions, and reports after each depth. The
 //! caller (the UCI layer, or the browser page later) owns the time.
 
-use crate::board::{PieceKind, Position};
+use crate::board::{Color, PieceKind, Position};
 use crate::eval::evaluate;
 use crate::movegen::{Move, legal_moves};
 use crate::tt::{Bound, Table};
@@ -51,6 +55,56 @@ const CHECK_EVERY: u64 = 2048;
 /// The two most recent quiet moves that refuted a position at one ply,
 /// newest first.
 type Killers = [Option<Move>; 2];
+
+/// The furthest a history score goes either way.
+const HISTORY_MAX: i32 = 16_384;
+
+/// History scores for quiet moves, by side to move, from-square and
+/// to-square. Kept by the caller from move to move, like the table.
+#[derive(Clone)]
+pub struct History {
+    scores: Box<[[[i32; 64]; 64]; 2]>,
+}
+
+impl Default for History {
+    fn default() -> History {
+        History::new()
+    }
+}
+
+impl History {
+    /// No history: every quiet move scores 0.
+    pub fn new() -> History {
+        History {
+            scores: Box::new([[[0; 64]; 64]; 2]),
+        }
+    }
+
+    /// Forget everything (a new game).
+    pub fn clear(&mut self) {
+        *self = History::new();
+    }
+
+    /// Halve every score, between moves of a game: old patterns fade but
+    /// aren't lost.
+    pub fn age(&mut self) {
+        for score in self.scores.iter_mut().flatten().flatten() {
+            *score /= 2;
+        }
+    }
+
+    fn score(&self, side: Color, mv: Move) -> i32 {
+        self.scores[side.index()][mv.from.index()][mv.to.index()]
+    }
+
+    /// Move `mv`'s score by `change` (up for a refutation, down for a
+    /// failure). The nearer a score is to the limit, the less it moves,
+    /// so it can never pass `HISTORY_MAX` either way.
+    fn adjust(&mut self, side: Color, mv: Move, change: i32) {
+        let score = &mut self.scores[side.index()][mv.from.index()][mv.to.index()];
+        *score += change - *score * change.abs() / HISTORY_MAX;
+    }
+}
 
 /// What a finished depth found, for `info` lines.
 #[derive(Clone, Debug)]
@@ -82,6 +136,8 @@ pub fn mate_in(score: i32) -> Option<i32> {
 /// - `max_depth`: the deepest iteration to run, in half-moves.
 /// - `table`: the transposition table, kept by the caller from move to
 ///   move (what it learned last move often still applies).
+/// - `history`: the quiet moves' history scores, also kept from move to
+///   move; halved at the start of each search.
 /// - `should_stop`: asked now and then during depth 2 and later; once it
 ///   answers yes, the search stops. Moves already finished in the
 ///   unfinished depth still count: if one beat last depth's best move, it
@@ -94,11 +150,13 @@ pub fn search(
     game: &[Position],
     max_depth: u32,
     table: &mut Table,
+    history: &mut History,
     should_stop: &mut dyn FnMut() -> bool,
     on_depth: &mut dyn FnMut(&Report) -> bool,
 ) -> Option<Move> {
     let (root, earlier) = game.split_last()?;
     let first_legal = *legal_moves(root).first()?;
+    history.age();
 
     let mut searcher = Searcher {
         path: earlier.to_vec(),
@@ -108,6 +166,8 @@ pub fn search(
         should_stop,
         table,
         killers: [[None; 2]; MAX_PLY + 1],
+        history,
+        quiets_tried: vec![Vec::new(); MAX_PLY + 1],
     };
     let mut best_move = first_legal;
     let mut previous_pv = Vec::new();
@@ -156,6 +216,9 @@ struct Searcher<'a> {
     table: &'a mut Table,
     /// Killer moves for each ply, kept across depths of one search.
     killers: [Killers; MAX_PLY + 1],
+    history: &'a mut History,
+    /// For each ply, a reusable list of the quiet moves tried there.
+    quiets_tried: Vec<Vec<Move>>,
 }
 
 impl Searcher<'_> {
@@ -234,11 +297,21 @@ impl Searcher<'_> {
             .first()
             .copied()
             .or(remembered.and_then(|f| f.best_move));
-        let moves = ordered(position, moves, first, self.killers[ply]);
+        let moves = ordered(
+            position,
+            moves,
+            first,
+            self.killers[ply],
+            Some(&*self.history),
+        );
         let alpha_at_start = alpha;
         let mut best = -INFINITY;
         let mut best_move = None;
         let mut line = Vec::new();
+        // Quiet moves tried here that didn't refute the position (a list
+        // kept per ply and reused, so no new memory is needed each time).
+        let mut quiets_tried = std::mem::take(&mut self.quiets_tried[ply]);
+        quiets_tried.clear();
         self.path.push(*position);
         for mv in moves {
             // Follow last iteration's best line only down its own first move.
@@ -275,10 +348,15 @@ impl Searcher<'_> {
                 // our other moves here. Remember the refutation, in case
                 // it refutes the neighbouring positions too.
                 self.remember_killer(position, ply, mv);
+                self.update_history(position, depth, mv, &quiets_tried);
                 break;
+            }
+            if is_quiet(position, mv) {
+                quiets_tried.push(mv);
             }
         }
         self.path.pop();
+        self.quiets_tried[ply] = quiets_tried;
         if !self.stopped {
             let bound = if best >= beta {
                 Bound::Lower
@@ -321,7 +399,7 @@ impl Searcher<'_> {
             moves.retain(|&mv| is_capture(position, mv) || mv.promotion.is_some());
         }
 
-        for mv in ordered(position, moves, None, [None; 2]) {
+        for mv in ordered(position, moves, None, [None; 2], None) {
             let next = position.make_move(mv);
             let score = -self.quiescence(&next, ply + 1, -beta, -alpha);
             if self.stopped {
@@ -340,13 +418,29 @@ impl Searcher<'_> {
     /// newest killer. Captures and promotions are left out; they're
     /// already tried early.
     fn remember_killer(&mut self, position: &Position, ply: usize, mv: Move) {
-        if is_capture(position, mv) || mv.promotion.is_some() {
+        if !is_quiet(position, mv) {
             return;
         }
         let killers = &mut self.killers[ply];
         if killers[0] != Some(mv) {
             killers[1] = killers[0];
             killers[0] = Some(mv);
+        }
+    }
+
+    /// `mv` refuted `position` with `depth` half-moves to go: if it's
+    /// quiet, raise its history score, and lower the scores of the quiet
+    /// moves tried before it that failed. Deeper searches count for more
+    /// (depth × depth), since their verdicts are more reliable.
+    fn update_history(&mut self, position: &Position, depth: u32, mv: Move, failed: &[Move]) {
+        if !is_quiet(position, mv) {
+            return;
+        }
+        let bonus = (depth * depth).min(HISTORY_MAX as u32) as i32;
+        let side = position.side_to_move;
+        self.history.adjust(side, mv, bonus);
+        for &other in failed {
+            self.history.adjust(side, other, -bonus);
         }
     }
 
@@ -364,6 +458,11 @@ impl Searcher<'_> {
             .step_by(2)
             .any(|earlier| earlier.repeats(position))
     }
+}
+
+/// A quiet move: neither a capture nor a promotion.
+fn is_quiet(position: &Position, mv: Move) -> bool {
+    !is_capture(position, mv) && mv.promotion.is_none()
 }
 
 /// Does this move capture something (en passant included)?
@@ -393,42 +492,49 @@ fn order_value(kind: PieceKind) -> i32 {
 /// Put the moves most likely to be best first: last iteration's best move,
 /// then captures (biggest victim first, cheapest attacker first among
 /// equal victims) and promotions, then the killer moves (newest first),
-/// then the other quiet moves.
+/// then the other quiet moves, highest history score first.
 fn ordered(
     position: &Position,
     mut moves: Vec<Move>,
     best_first: Option<Move>,
     killers: Killers,
+    history: Option<&History>,
 ) -> Vec<Move> {
+    // Each group's priorities sit far above the next group's.
+    const FIRST: i32 = 3_000_000;
+    const CAPTURES: i32 = 2_000_000;
+    const KILLERS: i32 = 1_000_000;
     let priority = |mv: &Move| {
         if Some(*mv) == best_first {
-            return 1_000;
+            return FIRST;
         }
-        let mut priority = 0;
         let victim = if is_en_passant(position, *mv) {
             Some(PieceKind::Pawn)
         } else {
             position.piece_on(mv.to).map(|piece| piece.kind)
         };
-        if let Some(victim) = victim {
-            let attacker = position
-                .piece_on(mv.from)
-                .map_or(PieceKind::Pawn, |p| p.kind);
-            priority += 10 * order_value(victim) - order_value(attacker) + 20;
-        }
-        if let Some(kind) = mv.promotion {
-            priority += 10 * order_value(kind);
-        }
-        // A killer is quiet where it was found, but here the same move
-        // may capture; then it's already ranked as a capture.
-        if priority == 0 {
-            if Some(*mv) == killers[0] {
-                priority = 15;
-            } else if Some(*mv) == killers[1] {
-                priority = 14;
+        if victim.is_some() || mv.promotion.is_some() {
+            let mut priority = CAPTURES;
+            if let Some(victim) = victim {
+                let attacker = position
+                    .piece_on(mv.from)
+                    .map_or(PieceKind::Pawn, |p| p.kind);
+                priority += 10 * order_value(victim) - order_value(attacker) + 20;
             }
+            if let Some(kind) = mv.promotion {
+                priority += 10 * order_value(kind);
+            }
+            return priority;
         }
-        priority
+        // A quiet move here. (A killer is quiet where it was found, but
+        // here the same move may capture; then it's ranked as a capture.)
+        if Some(*mv) == killers[0] {
+            KILLERS + 1
+        } else if Some(*mv) == killers[1] {
+            KILLERS
+        } else {
+            history.map_or(0, |h| h.score(position.side_to_move, *mv))
+        }
     };
     // Highest priority first; ties keep move generation's order.
     moves.sort_by_key(|mv| -priority(mv));
@@ -450,6 +556,7 @@ mod tests {
             &[position(fen)],
             depth,
             &mut Table::new(1),
+            &mut History::new(),
             &mut || false,
             &mut |report| {
                 last = Some(report.clone());
@@ -545,6 +652,7 @@ mod tests {
     fn is_repetition_after(path: &[Position], position: &Position) -> bool {
         let mut never = || false;
         let mut table = Table::new(1);
+        let mut history = History::new();
         let searcher = Searcher {
             path: path.to_vec(),
             nodes: 0,
@@ -553,6 +661,8 @@ mod tests {
             should_stop: &mut never,
             table: &mut table,
             killers: [[None; 2]; MAX_PLY + 1],
+            history: &mut history,
+            quiets_tried: vec![Vec::new(); MAX_PLY + 1],
         };
         searcher.is_repetition(position)
     }
@@ -583,6 +693,7 @@ mod tests {
             &[Position::startpos()],
             20,
             &mut Table::new(1),
+            &mut History::new(),
             &mut || {
                 asked += 1;
                 true
@@ -613,6 +724,7 @@ mod tests {
             &[position(fen)],
             max_depth,
             &mut Table::new(1),
+            &mut History::new(),
             &mut || {
                 asked.set(asked.get() + 1);
                 stop_at.is_some_and(|n| asked.get() >= n)
@@ -659,6 +771,7 @@ mod tests {
                 &[position(kiwipete)],
                 4,
                 table,
+                &mut History::new(),
                 &mut || false,
                 &mut |report| {
                     last = report.nodes;
@@ -696,13 +809,13 @@ mod tests {
             Some(find_move(&board, "c3b5")),
             Some(find_move(&board, "e1f2")),
         ];
-        let order: Vec<String> = ordered(&board, legal_moves(&board), None, killers)
+        let order: Vec<String> = ordered(&board, legal_moves(&board), None, killers, None)
             .iter()
             .map(|m| m.to_string())
             .collect();
         assert_eq!(&order[..4], ["e4d5", "c3d5", "c3b5", "e1f2"]);
         // Without killers those two quiet moves are nowhere near the front.
-        let plain: Vec<String> = ordered(&board, legal_moves(&board), None, [None; 2])
+        let plain: Vec<String> = ordered(&board, legal_moves(&board), None, [None; 2], None)
             .iter()
             .map(|m| m.to_string())
             .collect();
@@ -718,7 +831,7 @@ mod tests {
         // killers' place after them.
         let board = position("4k3/8/8/p2p4/4P3/2N5/8/R3K3 w - - 0 1");
         let killers = [Some(find_move(&board, "c3d5")), None];
-        let order: Vec<String> = ordered(&board, legal_moves(&board), None, killers)
+        let order: Vec<String> = ordered(&board, legal_moves(&board), None, killers, None)
             .iter()
             .map(|m| m.to_string())
             .collect();
@@ -730,6 +843,7 @@ mod tests {
         let board = position("4k3/8/8/3p4/4P3/2N5/8/4K3 w - - 0 1");
         let mut never = || false;
         let mut table = Table::new(1);
+        let mut history = History::new();
         let mut searcher = Searcher {
             path: Vec::new(),
             nodes: 0,
@@ -738,6 +852,8 @@ mod tests {
             should_stop: &mut never,
             table: &mut table,
             killers: [[None; 2]; MAX_PLY + 1],
+            history: &mut history,
+            quiets_tried: vec![Vec::new(); MAX_PLY + 1],
         };
         let (quiet, other_quiet, capture) = (
             find_move(&board, "c3b5"),
@@ -756,13 +872,101 @@ mod tests {
     }
 
     #[test]
+    fn history_scores_rise_fall_stay_in_bounds_and_fade() {
+        let board = position("4k3/8/8/3p4/4P3/2N5/8/4K3 w - - 0 1");
+        let mv = find_move(&board, "c3b5");
+        let mut history = History::new();
+        history.adjust(Color::White, mv, 100);
+        assert_eq!(history.score(Color::White, mv), 100);
+        // Kept per side: Black's score for the same squares is untouched.
+        assert_eq!(history.score(Color::Black, mv), 0);
+        // However many refutations, the score never passes the limit, and
+        // near the limit it grows more slowly.
+        for _ in 0..10_000 {
+            history.adjust(Color::White, mv, 5_000);
+        }
+        let near_top = history.score(Color::White, mv);
+        assert!(
+            near_top <= HISTORY_MAX && near_top > HISTORY_MAX - 100,
+            "{near_top}"
+        );
+        for _ in 0..10_000 {
+            history.adjust(Color::White, mv, -5_000);
+        }
+        assert!(history.score(Color::White, mv) >= -HISTORY_MAX);
+        // Between moves the scores are halved; a new game clears them.
+        history.clear();
+        history.adjust(Color::White, mv, 300);
+        history.age();
+        assert_eq!(history.score(Color::White, mv), 150);
+        history.clear();
+        assert_eq!(history.score(Color::White, mv), 0);
+    }
+
+    #[test]
+    fn quiet_moves_after_the_killers_follow_their_history_scores() {
+        let board = position("4k3/8/8/3p4/4P3/2N5/8/4K3 w - - 0 1");
+        let mut history = History::new();
+        history.adjust(Color::White, find_move(&board, "e1d2"), 500);
+        history.adjust(Color::White, find_move(&board, "c3a4"), 200);
+        history.adjust(Color::White, find_move(&board, "e1f1"), -300);
+        let killers = [Some(find_move(&board, "c3b5")), None];
+        let order: Vec<String> =
+            ordered(&board, legal_moves(&board), None, killers, Some(&history))
+                .iter()
+                .map(|m| m.to_string())
+                .collect();
+        // Captures, then the killer, then quiet moves by score; a move that
+        // has failed before goes to the back.
+        assert_eq!(&order[..5], ["e4d5", "c3d5", "c3b5", "e1d2", "c3a4"]);
+        assert_eq!(order.last().unwrap(), "e1f1");
+    }
+
+    #[test]
+    fn a_quiet_refutation_gains_history_and_the_quiet_moves_before_it_lose() {
+        let board = position("4k3/8/8/3p4/4P3/2N5/8/4K3 w - - 0 1");
+        let mut never = || false;
+        let mut table = Table::new(1);
+        let mut history = History::new();
+        let mut searcher = Searcher {
+            path: Vec::new(),
+            nodes: 0,
+            may_stop: false,
+            stopped: false,
+            should_stop: &mut never,
+            table: &mut table,
+            killers: [[None; 2]; MAX_PLY + 1],
+            history: &mut history,
+            quiets_tried: vec![Vec::new(); MAX_PLY + 1],
+        };
+        let (good, failed, capture) = (
+            find_move(&board, "c3b5"),
+            find_move(&board, "e1f2"),
+            find_move(&board, "e4d5"),
+        );
+        searcher.update_history(&board, 3, good, &[failed]);
+        assert_eq!(searcher.history.score(Color::White, good), 9);
+        assert_eq!(searcher.history.score(Color::White, failed), -9);
+        // A capture that refutes changes nothing: captures are ordered by
+        // what they take, not by history.
+        searcher.update_history(&board, 3, capture, &[failed]);
+        assert_eq!(searcher.history.score(Color::White, capture), 0);
+        assert_eq!(searcher.history.score(Color::White, failed), -9);
+    }
+
+    #[test]
     fn no_move_when_checkmated() {
         // Fool's mate: White is checkmated.
         let mated = position("rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3");
         assert_eq!(
-            search(&[mated], 3, &mut Table::new(1), &mut || false, &mut |_| {
-                true
-            }),
+            search(
+                &[mated],
+                3,
+                &mut Table::new(1),
+                &mut History::new(),
+                &mut || false,
+                &mut |_| { true }
+            ),
             None
         );
     }
