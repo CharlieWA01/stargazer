@@ -89,7 +89,8 @@ python3 -m unittest discover -s rig -v              # after changing the test ri
 - `src/tt.rs`: the transposition table (the search's memory of positions)
 - `src/search.rs`: choosing a move (alpha-beta, iterative deepening,
   quiescence, mate and draw rules, the transposition table, killer and
-  history moves, principal variation search); clock-free,
+  history moves, principal variation search, aspiration windows,
+  null-move pruning); clock-free,
   asks `should_stop`
 - `src/uci.rs`: UCI protocol handling (handshake, `position ... moves`,
   `go` with clocks, `movetime`, `depth`, `infinite`, `stop`; `go perft N`,
