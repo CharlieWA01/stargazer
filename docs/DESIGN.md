@@ -133,6 +133,22 @@ $0). So:
     tried first everywhere; the stored score ends a search early only when
     deep enough and its bound allows, never at the root. Kept between
     moves, cleared on `ucinewgame`.
+- **Killer and history moves: decided 2026-10-24** (two PRs, each with
+  its own SPRT).
+  - **Killers, step 3a, built 2026-10-24:** at each ply the search keeps
+    the last two quiet moves (not captures or promotions) that refuted a
+    position there, newest first, and tries them right after the
+    captures. A killer that happens to capture in the new position is
+    ranked as a capture. Kept across the depths of one search, cleared
+    at each `go`. Not used in quiescence (captures only there).
+  - **History, step 3b:** a score for each quiet move (by side, from and
+    to square) that grows by depth × depth when it refutes a position;
+    the remaining quiet moves are tried highest score first. Halving
+    between moves and lowering the scores of quiet moves that failed
+    before the refutation are proposed, to be confirmed by Charlie
+    with that PR.
+  - Move order then: last depth's or the table's move, captures and
+    promotions, killers, then the other quiet moves.
 - **`stop` and threads:** the core stays single-threaded and clock-free; it
   is handed a stop signal and a time limit and checks them every few
   thousand positions. The native UCI layer runs the search on a second

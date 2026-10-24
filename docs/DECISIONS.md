@@ -402,3 +402,24 @@ time; waiting for a yes left finished PRs idle for hours. Charlie, in
 the Milestone 4 thread.
 **Cost:** a few cents of Spot time per test that Charlie didn't
 individually approve; the $10 org budget alert still applies.
+
+## 2026-10-24: Killer and history moves, in two PRs
+**Decision:** (1) killers and history are built as two PRs, killers
+first, each with its own SPRT (Charlie's choice). (2) Killers: two per
+ply, quiet moves only, newest first, tried right after the captures,
+kept across the depths of one search and cleared at each `go`; a killer
+that captures in the new position is ranked as a capture. (3) History:
+by side, from and to square, bonus depth × depth; the details (halving
+between moves, lowering failed quiet moves) are settled with its PR.
+**Alternatives:** (1) one PR and one SPRT for both; (2) one killer per
+ply, or killers kept between moves; ordering killers before the weakest
+captures (needs a way to tell a losing capture, which we don't have).
+**Why:** (1) killers are the larger, safer gain; history often does
+little until late move reductions use it, and a separate test shows
+whether it earns its place now. (2) is the textbook form: two slots
+catch a second refutation without letting a stale one linger. Captures
+stay first because without an exchange evaluator every capture looks
+promising.
+**Cost:** one extra SPRT (cents). Killers cost about 1 KB of memory and
+about 2% of speed per position, against 9 to 15% fewer positions.
+
