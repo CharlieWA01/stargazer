@@ -27,8 +27,9 @@ games. Milestone 4 makes it stronger one measured change at a time: the
 first nine (keeping the best move from an unfinished search, a
 transposition table that remembers searched positions, killer moves,
 history moves, principal variation search, aspiration windows, null-move
-pruning, check extensions and late move reductions) passed at +44,
-+136, +45, +25, +19, +8, +73, +33 and +113 Elo. On 2026-10-23 it beat PyChess's engine
+pruning, check extensions, late move reductions, and thinking longer
+when the score drops) passed at +44, +136, +45, +25, +19, +8, +73, +33,
++113 and +11 Elo; one idea (best-move stability) lost and was dropped. On 2026-10-23 it beat PyChess's engine
 at full strength for the first time. Measured ratings, from 400-game
 matches against Stockfish at a set strength, on the scale Stockfish's
 levels are tied to (the CCRL list): **about 1900** on 2026-10-24 (64%
@@ -39,7 +40,7 @@ after check extensions and late move reductions (2184 ± 35, 61.9%
 against Stockfish 2100).
 
 ## Games played in testing
-About **20,100** games so far, counted from the recorded test runs (a
+About **22,800** games so far, counted from the recorded test runs (a
 few hundred quick checks, such as self-play and container smoke tests,
 aren't counted). Updated with each test.
 
@@ -51,9 +52,9 @@ local checks), so roughly **4.5 cents per 1,000 games**.
 | What | Games |
 |---|---|
 | Milestone 3: proving the rig fair (first AWS runs, local checks, two 2,000-game self-matches) | 6,619 |
-| Milestone 4 SPRTs: #16 503, #19 235, #21 588, #22 1,095, #23 1,572, #25 6,282, #28 392, #30 753, #31 264, #34 626 | 12,310 |
+| Milestone 4 SPRTs: #16 503, #19 235, #21 588, #22 1,095, #23 1,572, #25 6,282, #28 392, #30 753, #31 264, #34 626 + 2,651 | 14,961 |
 | Stockfish matches: 2026-10-24 against 1800, 1900, then 2100 | 1,200 |
-| **Total** | **20,129** |
+| **Total** | **22,780** |
 
 ## What makes it interesting
 - **Two targets from one codebase:** a native engine (chess GUIs, Lichess

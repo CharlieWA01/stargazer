@@ -93,8 +93,8 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
   - [x] 7b: best-move stability (150% after a change, 50% once settled
         for 4 depths): **tried and dropped**, SPRT -24.5 ± 19.4 Elo over
         626 games (PR #34); a milder version is parked
-  - [ ] 7c: score drop (more than 30 centipawns down from the last depth:
-        200% of the target; PR #34, SPRT running)
+  - [x] 7c: score drop (more than 30 centipawns down from the last depth:
+        200% of the target): SPRT +10.9 ± 8.7 Elo over 2,651 games (PR #34)
   - [ ] 7d: when to start a new depth
   - [ ] Sudden-death SPRT at 10 seconds + 0 for the rules kept, against
         the version before 7c

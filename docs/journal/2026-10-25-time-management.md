@@ -99,4 +99,12 @@ only settled at depths too shallow to matter.
   Making a drop give 100% makes it fail.
 - 117 unit tests pass; `cargo fmt`, `clippy -D warnings`, the WASM build
   and selfplay are clean. Bench unchanged at 343857.
-- SPRT: see the PR and the roadmap.
+- SPRT against main: **passed**, +10.9 ± 8.7 Elo over 2,651 games (883
+  wins, 969 draws, 799 losses; LLR 3.0). It ran past the workflow's
+  wait, so the verdict came from the SPRT report workflow.
+
+### Impact
+A small, real gain, in line with the +10 to +30 expected for the whole
+rework. Unlike rule 2, it adds time only in the few positions where the
+search has just found a problem, instead of taking time from every
+move.
