@@ -16,7 +16,7 @@ each decision, with alternatives and reasons, is in `DECISIONS.md`.
 | Goal | A rating around 2000 (raised from 1800 on 2026-10-24), with code Charlie understands | Reachable with a classic search and hand-written evaluation, no neural network. Understanding comes first, strength second. 2000 needs more search and evaluation work and tuning, no change of design. |
 | Targets | Native (GUIs, Lichess bot) and the browser (WebAssembly) | A free "play it here" tile on the portfolio site. See "Runs in a browser" below. |
 | Board | Hybrid: bitboards plus a 64-square board | See section 1. |
-| Repo | Going public (decided 2026-10-25) | Once the Actions logs are clean and a licence is chosen (section 7). |
+| Repo | Going public, GPL-3.0-or-later (decided 2026-10-25) | Open source, and nobody can ship a closed fork (section 7). |
 
 ## Open questions
 
@@ -321,14 +321,14 @@ $0). So:
 - Release process: how and when versions get tagged and built.
 
 ### 7. Project housekeeping
-- License: MIT, GPL-3.0 (what Stockfish uses), or none/private? (to be
-  decided before the repo goes public)
+- License: **decided 2026-10-25: GPL-3.0-or-later** (what Stockfish
+  uses). `LICENSE` holds the full text, `Cargo.toml` names it, and the
+  README carries the notice.
 - Public or private repo long term? **Decided 2026-10-25: public**, for
   the Lichess bot's deploy approvals and the portfolio. First: the three
   AWS settings that contain the account ID are secrets, and the account ID
   is masked in the Actions logs (done in this PR); old SPRT and match run
-  logs, which show it, are deleted (Charlie's OK needed); a licence is
-  chosen.
+  logs, which show it, are deleted (Charlie's OK needed).
 
 ## Decision log
 

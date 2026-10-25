@@ -66,5 +66,10 @@ whether the repo goes public (needed for a deploy approval step).
   them otherwise). Agreed with the Milestone 4 thread, which owns the rig:
   the secrets are added before this merges and the variables deleted after,
   so the "SPRT report" runs planned for 23:00 and 03:50 UTC keep working.
+- Licence: Claude explained MIT, GPL-3.0 and AGPL-3.0 (GPL stops a closed
+  fork being handed out; AGPL also covers one run only on a server).
+  Charlie chose GPL-3.0; `LICENSE` is the official text (sha256 checked
+  against Debian's copy), plus `license` in `Cargo.toml` and a README
+  notice.
 - Still to do before the flip: delete the old SPRT and match run logs
-  (they show the account ID; Charlie's OK), and choose a licence.
+  (they show the account ID; Charlie's OK).

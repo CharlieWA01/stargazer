@@ -9,6 +9,7 @@ See `docs/DOCS-STANDARD.md`.
 - **Cost**: keeping running costs near zero
 - **Testing**: proving correctness (perft) and strength (SPRT)
 - **Process**: git, documentation, working with an AI agent
+- **Security**: keeping secrets and account details out of public view
 
 **How it was built, said plainly:** Stargazer is built with Claude Code as a
 pair programmer. I set the goals and made the design decisions, own the
@@ -145,3 +146,29 @@ that way.
   (a third of the time) was exactly the effect that lost games. Lesson:
   a hypothesis is only as good as its test, a failed one is still data,
   and "it looks faster" is not "it plays better".
+
+## Going open source: picking a licence, and checking what goes public
+**Tags:** Process, Security, Design
+
+- **Situation:** Stargazer was a private repo. For the Lichess bot I
+  wanted a deploy approval step, which on my GitHub plan needs a public
+  repo, and I wanted the engine open source anyway, on the portfolio.
+- **Task:** Make it public without leaking anything, under a licence that
+  matches what I want: open, but nobody takes a fork private.
+- **Action:** Compared three licences. MIT lets anyone reuse it, even in a
+  closed product. GPL-3.0 means anyone who hands out a modified version
+  must publish their source under the same terms. AGPL-3.0 also covers a
+  modified copy run only on someone's server. I chose GPL-3.0, the norm
+  for chess engines (Stockfish uses it), accepting the server gap as the
+  trade for the conventional choice. Separately, I had every commit on
+  every branch scanned (104) for account IDs, ARNs, keys, tokens and
+  emails: the code was clean. The leak was somewhere easier to miss: the
+  GitHub Actions logs, which go public with the repo. Three CI settings
+  held the AWS account ID as plain variables, and GitHub prints variables
+  in logs. They became secrets (which GitHub masks), each workflow now
+  masks the account ID after signing in to AWS, and the old run logs were
+  deleted.
+- **Result:** The repo goes public under GPL-3.0 with nothing sensitive in
+  the code, the history or the logs, at no cost. The lesson I'd repeat:
+  "public repo" means the CI logs too, not just the code.
+

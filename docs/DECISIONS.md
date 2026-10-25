@@ -675,3 +675,23 @@ found no account IDs, ARNs, keys, tokens or personal email addresses in
 the code or history.
 **Cost:** $0. Links from journals and PR comments to deleted runs will
 break; the results stay in the PR comments, the docs and S3.
+
+## 2026-10-25: Licence: GPL-3.0-or-later
+**Decision (Charlie's choice):** Stargazer is licensed under the GNU GPL,
+version 3 or later.
+**Alternatives:** MIT (anyone may reuse it, even in closed products;
+Claude's first suggestion); AGPL-3.0 (like GPL, but running a modified
+copy on a server for others to use also requires publishing it; Lichess
+and lichess-bot use it); no licence (readable, not reusable).
+**Why:** Charlie wants it open source, and doesn't want anyone to take a
+fork private. GPL requires anyone who distributes a modified Stargazer
+(a download, an app, the browser build) to publish their source under the
+same terms. It's the usual licence for chess engines (Stockfish). AGPL
+would also cover a closed fork run only on someone's server; Charlie chose
+the conventional GPL over that.
+**Trade-offs:** someone could still run a modified copy privately on a
+server without publishing it. Charlie keeps full rights to their own code
+and could release it under other terms later; outside contributions come
+in under the GPL, so including them in a closed version would need their
+authors' permission.
+**Cost:** none.
