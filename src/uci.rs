@@ -24,7 +24,7 @@ use std::time::{Duration, Instant};
 
 use crate::board::{Color, Position};
 use crate::eval::{evaluate, game_phase};
-use crate::movegen::legal_moves;
+use crate::movegen::{Move, legal_moves};
 use crate::perft::divide;
 use crate::search::{History, MAX_PLY, Report, mate_in, search};
 use crate::tt::{self, Table};
@@ -263,6 +263,46 @@ impl TimeBudget {
     }
 }
 
+/// How settled the search's choice is, judged only from depth
+/// `STABLE_FROM_DEPTH` on: the shallow depths take microseconds and nearly
+/// always agree, so they say little (the first version, which counted
+/// them, lost 24 Elo; DECISIONS.md, 2026-10-25).
+#[derive(Default)]
+struct Stability {
+    best: Option<Move>,
+    same_for: u32,
+}
+
+/// The first depth whose best move counts towards stability.
+const STABLE_FROM_DEPTH: u32 = 6;
+
+impl Stability {
+    /// After a depth, with its number and best move: how much of the
+    /// target to allow, in percent. A best move that has just changed
+    /// gets more time (the search is still making up its mind); one that
+    /// has held for 4 more depths in a row gets three quarters (it's
+    /// probably right). Below `STABLE_FROM_DEPTH`, always as planned.
+    fn after_depth(&mut self, depth: u32, best: Option<Move>) -> u64 {
+        if depth < STABLE_FROM_DEPTH {
+            return 100;
+        }
+        let changed = self.best.is_some() && best != self.best;
+        if changed || best.is_none() {
+            self.same_for = 0;
+        } else if self.best.is_some() {
+            self.same_for += 1;
+        }
+        self.best = best;
+        if changed {
+            150
+        } else if self.same_for >= 4 {
+            75
+        } else {
+            100
+        }
+    }
+}
+
 /// The score each depth gave, to notice when the search has just found a
 /// problem.
 #[derive(Default)]
@@ -439,6 +479,7 @@ fn go<W: Write + Send + 'static>(
         let mut memory = memory.lock().unwrap();
         let Memory { table, history } = &mut *memory;
         let mut scores = ScoreWatch::default();
+        let mut stability = Stability::default();
         let best = search(
             &game,
             max_depth,
@@ -450,10 +491,14 @@ fn go<W: Write + Send + 'static>(
                     || budget.as_ref().is_some_and(|b| b.out_of_time(elapsed()))
             },
             // Between depths: report, then decide whether to go deeper,
-            // allowing more time when the score has just fallen.
+            // allowing more time when the score has just fallen or the
+            // best move has just changed, and less once it has settled.
             &mut |report| {
                 say(&output, info_line(report, started));
-                let percent = scores.after_depth(report.score);
+                let for_score = scores.after_depth(report.score);
+                let for_move = stability.after_depth(report.depth, report.pv.first().copied());
+                // A falling score outranks a settled move.
+                let percent = if for_score > 100 { for_score } else { for_move };
                 !stop.load(Ordering::Relaxed)
                     && budget
                         .as_ref()
@@ -905,6 +950,33 @@ mod tests {
             time_budget(&GoLimits::default(), Color::White, 24, 50),
             None
         );
+    }
+
+    #[test]
+    fn a_settled_best_move_gets_less_time_and_a_new_one_more() {
+        let opening = legal_moves(&Position::startpos());
+        let find = |text: &str| opening.iter().copied().find(|mv| mv.to_string() == text);
+        let (e4, d4) = (find("e2e4"), find("d2d4"));
+        let mut stability = Stability::default();
+        // Depths 1 to 5 don't count, whatever they say.
+        for depth in 1..=5 {
+            assert_eq!(
+                stability.after_depth(depth, if depth % 2 == 0 { e4 } else { d4 }),
+                100
+            );
+        }
+        // Depth 6: the first that counts, nothing to compare with yet.
+        assert_eq!(stability.after_depth(6, e4), 100);
+        // The same move at depths 7 to 9: as planned.
+        for depth in 7..=9 {
+            assert_eq!(stability.after_depth(depth, e4), 100);
+        }
+        // Held for 4 more depths: three quarters.
+        assert_eq!(stability.after_depth(10, e4), 75);
+        assert_eq!(stability.after_depth(11, e4), 75);
+        // A new best move: half as much again, and the count starts over.
+        assert_eq!(stability.after_depth(12, d4), 150);
+        assert_eq!(stability.after_depth(13, d4), 100);
     }
 
     #[test]

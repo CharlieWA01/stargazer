@@ -250,3 +250,14 @@ DECISIONS.md, 2026-10-26).
   `test_a_no_harm_test_says_no_weaker`, seen failing with the wording
   switched off, then passing (22 rig tests). The report workflow runs
   from main, so the new wording shows only after #35 merges.
+
+## The milder stability rule (2026-10-27)
+With #35 merged, the parked milder rule 2 was rebuilt on main (PR #44):
+`Stability` in `src/uci.rs` ignores depths below 6, gives 75% once the
+best move has held for 4 more depths and 150% right after it changes;
+`ScoreWatch` (rule 3) wins when the score has just fallen. New test
+`a_settled_best_move_gets_less_time_and_a_new_one_more`, seen failing
+with depths 1 to 5 counted again, then passing (121 tests). Bench is
+unchanged (343857): this only decides when to stop, which bench, a
+fixed-depth search, never asks. SPRTs under the no-harm bar: see the PR
+and the roadmap.

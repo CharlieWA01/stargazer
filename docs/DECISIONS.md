@@ -851,3 +851,20 @@ such changes in without letting every neutral tweak pile up (rule 4
 stays dropped unless someone gives it one).
 **Cost:** one 60-second test per change kept (under a dollar); the SPRT
 report now words a no-harm verdict as "no weaker".
+
+## 2026-10-27: Try a milder best-move stability rule
+**Decision:** test a milder rule 2 (7b'): only depths 6 and up count
+towards stability, a best move that has held for 4 more depths gets 75%
+of the target instead of 50%, and a change gets 150%. When the score
+has just fallen (rule 3), that wins. Judged by the no-harm bar for time
+management (2026-10-26): [-10, 0] at 8+0.08, then 60 seconds + 0.6.
+**Alternatives:** leave stability out (the first version lost 24 Elo);
+retry the first version at a long control (its fault was structural:
+depths 1 to 5 take microseconds and always agree, so it stopped after a
+quarter of the planned time).
+**Why:** the reason we can articulate: time saved on obvious moves is
+time kept for hard ones, and against opponents who ponder, time spent
+confirming a settled move is free thinking for them (journal,
+2026-10-25, the pondering note). The milder version fixes what made the
+first one lose.
+**Cost:** about 30 lines; two SPRTs, about a dollar and a half.

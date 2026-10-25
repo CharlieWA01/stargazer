@@ -123,6 +123,10 @@ $0). So:
     change, 50% once the best move had held for 4 depths): it lost
     24.5 ± 19.4 Elo, because the shallow depths nearly always agree and
     the engine stopped after a quarter of its planned time.
+    **Milder version (7b'), under test (PR #44):** only depths 6 and
+    up count; 75% once the best move has held for 4 more depths, 150%
+    right after it changes. A falling score (7c) outranks it. Judged by
+    the no-harm bar (DECISIONS.md, 2026-10-26).
   - **Score drop (7c):** if a depth's score is more than 30 centipawns
     below the last depth's, the target for starting another depth is
     200%; a rising score changes nothing. It decides only whether to
