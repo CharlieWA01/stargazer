@@ -111,3 +111,22 @@ never touches AWS. The settings it understands are listed at the top of
 `rig/run_test.py`. Ctrl+C stops it cleanly.
 
 The script's own tests: `python3 -m unittest discover -s rig -v`.
+
+## Where the AWS settings live
+
+The workflows read their AWS settings from the repository's settings
+(Settings, Secrets and variables, Actions), filled in from cloud-homelab's
+Terraform outputs (`terraform/sandbox`, `stargazer_*` outputs):
+
+| Name | Kind | Why |
+|---|---|---|
+| `STARGAZER_RUNNER_ROLE_ARN` | secret | contains the account ID |
+| `STARGAZER_RESULTS_BUCKET` | secret | contains the account ID |
+| `STARGAZER_IMAGE_REPOSITORY` | secret | contains the account ID |
+| `STARGAZER_CLUSTER`, `STARGAZER_TASK_DEFINITION_FAMILY`, `STARGAZER_SUBNETS`, `STARGAZER_SECURITY_GROUP` | variable | no account ID |
+
+The repo's Actions logs are public, and GitHub prints variables in them
+but hides secrets. Each workflow also masks the account ID right after
+signing in to AWS, so task ARNs and the image registry show `***`. To
+change a secret: `gh secret set STARGAZER_RESULTS_BUCKET` (it asks for the
+value; never pass it on the command line, where it lands in shell history).

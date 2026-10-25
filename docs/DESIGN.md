@@ -16,7 +16,7 @@ each decision, with alternatives and reasons, is in `DECISIONS.md`.
 | Goal | A rating around 2000 (raised from 1800 on 2026-10-24), with code Charlie understands | Reachable with a classic search and hand-written evaluation, no neural network. Understanding comes first, strength second. 2000 needs more search and evaluation work and tuning, no change of design. |
 | Targets | Native (GUIs, Lichess bot) and the browser (WebAssembly) | A free "play it here" tile on the portfolio site. See "Runs in a browser" below. |
 | Board | Hybrid: bitboards plus a 64-square board | See section 1. |
-| Repo | Private for now | Licence decided before it goes public (section 7). |
+| Repo | Going public (decided 2026-10-25) | Once the Actions logs are clean and a licence is chosen (section 7). |
 
 ## Open questions
 
@@ -300,11 +300,18 @@ $0). So:
 - Lichess rules that shape it (checked 2026-10-25): at most 100 games a
   day against other bots (lichess-bot reads the limit and waits); challenge
   games only, no pools or tournaments except bot events; no UltraBullet.
+- **Time controls (decided 2026-10-25):** while it plays casual, it
+  accepts every standard bullet and blitz control, with or without
+  increment, and rapid up to 10+5 (lichess-bot: `time_controls: [bullet,
+  blitz, rapid]`, `max_base: 600`, `max_increment: 5`; the increment cap
+  also turns down rare blitz controls like 3+10). No classical or
+  correspondence: long games would eat playing time and could run past
+  the evening drain. One game at a time, no pondering.
 - **Open (Milestone 5 design, journal 2026-10-25-lichess-bot-design):**
   the SRE layer (SLOs, burn-rate alerts, an observer Lambda, DynamoDB for
   live records, S3 + Athena for history, a status page on the portfolio
-  site), deploys gated on SPRT that let games finish, time controls,
-  budgets, and whether the repo goes public.
+  site) and deploys gated on SPRT that let games finish. Prod's budget
+  rises to $25 (cloud-homelab PR #28).
 - Portfolio tile (decided 2026-10-20): **both** a "play it here" page on the
   portfolio site, with the engine running in the visitor's browser (see
   "Runs in a browser"), and a link to the Lichess bot's profile to show its
@@ -314,8 +321,14 @@ $0). So:
 - Release process: how and when versions get tagged and built.
 
 ### 7. Project housekeeping
-- License: MIT, GPL-3.0 (what Stockfish uses), or none/private?
-- Public or private repo long term?
+- License: MIT, GPL-3.0 (what Stockfish uses), or none/private? (to be
+  decided before the repo goes public)
+- Public or private repo long term? **Decided 2026-10-25: public**, for
+  the Lichess bot's deploy approvals and the portfolio. First: the three
+  AWS settings that contain the account ID are secrets, and the account ID
+  is masked in the Actions logs (done in this PR); old SPRT and match run
+  logs, which show it, are deleted (Charlie's OK needed); a licence is
+  chosen.
 
 ## Decision log
 

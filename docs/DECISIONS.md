@@ -640,3 +640,38 @@ Terraform PR). The t4g.small free trial (to 31 December 2026) may cover
 the instance hours, if Charlie's accounts qualify.
 **Trade-offs:** an instance to keep patched, unlike Fargate; people who
 challenge the bot outside the hours find it offline.
+
+## 2026-10-25: The bot's time controls while it plays casual
+**Decision (Charlie's choice):** accept every standard bullet and blitz
+control, with or without increment, and rapid up to 10+5
+(`max_base: 600`, `max_increment: 5`); no classical or correspondence.
+The increment cap is accepted, though it also turns down rare blitz
+controls such as 3+10.
+**Alternatives:** blitz and rapid only, bullet only with an increment,
+until sudden-death pacing passes its SPRT (Claude's first suggestion).
+**Why:** in casual games a loss on time costs no rating, and Milestone
+4's sudden-death work lands soon; the bot meets the most opponents this
+way. Long games would eat the 12-hour window and could run past the
+evening drain.
+**Cost:** none; some early losses on time in sudden-death bullet are
+expected until the pacing fix is in.
+
+## 2026-10-25: The repo goes public; AWS settings with the account ID become secrets
+**Decision (Charlie's choice):** make stargazer public, for the Lichess
+bot's deploy approvals (a required reviewer on a GitHub environment needs
+a public repo on Charlie's plan) and for the portfolio. Before it flips:
+the three repository settings that contain the AWS account ID
+(`STARGAZER_RUNNER_ROLE_ARN`, `STARGAZER_RESULTS_BUCKET`,
+`STARGAZER_IMAGE_REPOSITORY`) move from variables to secrets, each
+workflow masks the account ID after signing in to AWS, old SPRT and match
+run logs are deleted (Charlie's OK), and a licence is chosen.
+**Alternatives:** stay private and deploy the bot without an approval
+step; or pay for GitHub Pro to get environment reviewers on a private
+repo (about $4 a month).
+**Why:** the same rule as Maplenote: Actions logs are public with the
+repo, GitHub prints variables but hides secrets, and the account ID
+stays out of public view. A scan of every commit on every branch (104)
+found no account IDs, ARNs, keys, tokens or personal email addresses in
+the code or history.
+**Cost:** $0. Links from journals and PR comments to deleted runs will
+break; the results stay in the PR comments, the docs and S3.

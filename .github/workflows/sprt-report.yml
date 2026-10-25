@@ -30,12 +30,16 @@ jobs:
         run: '[[ "$RUN_ID" =~ ^(sprt|match)-[0-9]+-[0-9]+$ ]] || { echo "bad run id"; exit 1; }'
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.STARGAZER_RUNNER_ROLE_ARN }}
+          role-to-assume: ${{ secrets.STARGAZER_RUNNER_ROLE_ARN }}
           aws-region: us-east-2
+      - name: Hide the AWS account ID in this log
+        # The repo is public, and so are its Actions logs: task ARNs and the
+        # image registry contain the account ID, so it's masked from here on.
+        run: echo "::add-mask::$(aws sts get-caller-identity --query Account --output text)"
       - name: Report
         env:
           RUN_ID: ${{ inputs.run_id }}
-          BUCKET: ${{ vars.STARGAZER_RESULTS_BUCKET }}
+          BUCKET: ${{ secrets.STARGAZER_RESULTS_BUCKET }}
           CLUSTER: ${{ vars.STARGAZER_CLUSTER }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

@@ -47,3 +47,24 @@ built or applied yet.
 No cost yet. Once built: about $9 to $10 a month for the bot, under $1
 for the monitoring around it. Still open: budgets, time controls, and
 whether the repo goes public (needed for a deploy approval step).
+
+## Later the same day: budget, time controls, going public
+- Charlie approved raising prod's budget from $20 to $25 (cloud-homelab
+  PR #28).
+- Time controls: Claude suggested no sudden-death bullet until the
+  pacing fix passes its SPRT; Charlie chose to accept all standard bullet
+  and blitz, and rapid up to 10+5, since casual losses cost nothing
+  (DECISIONS.md).
+- Charlie decided to make the repo public. A scan of all 104 commits on
+  every branch (every version of every file, plus author emails) found
+  nothing sensitive. The leak was in the Actions logs: three repository
+  variables contain the AWS account ID, and GitHub prints variables. They
+  become secrets, and each workflow masks the account ID after signing in
+  (`::add-mask::` with the account from `aws sts get-caller-identity`),
+  which also covers task ARNs and the image registry. `match.yml` passes
+  the secrets on with `secrets: inherit` (a called workflow doesn't get
+  them otherwise). Agreed with the Milestone 4 thread, which owns the rig:
+  the secrets are added before this merges and the variables deleted after,
+  so the "SPRT report" runs planned for 23:00 and 03:50 UTC keep working.
+- Still to do before the flip: delete the old SPRT and match run logs
+  (they show the account ID; Charlie's OK), and choose a licence.
