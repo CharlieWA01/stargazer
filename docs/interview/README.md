@@ -166,8 +166,8 @@ that way.
   GitHub Actions logs, which go public with the repo. Three CI settings
   held the AWS account ID as plain variables, and GitHub prints variables
   in logs. They became secrets (which GitHub masks), each workflow now
-  masks the account ID after signing in to AWS, and the old run logs were
-  deleted.
+  masks the account ID after signing in to AWS, and the old run logs that
+  showed it are deleted before the switch.
 - **Result:** The repo goes public under GPL-3.0 with nothing sensitive in
   the code, the history or the logs, at no cost. The lesson I'd repeat:
   "public repo" means the CI logs too, not just the code.
