@@ -615,6 +615,87 @@ shows a gain, with tuning later; a 24-Elo loss points to a flawed idea,
 not a slightly wrong number. The milder version is parked.
 **Cost:** one SPRT (a few cents).
 
+## 2026-10-25: The Lichess bot runs on EC2, 10am to 10pm Central
+**Decision (Charlie's choice):** one EC2 t4g.small (ARM, unlimited CPU
+credits) in workloads-prod, started and stopped by EventBridge Scheduler
+from 10am to 10pm Central, 12 hours a day to start. The schedule drains
+the bot before stopping it, so no game is cut off.
+**Alternatives (monthly, always on):** EC2 t4g.small always on ($17 to
+$20); t4g.micro (about $19 once its smaller CPU allowance runs out, and
+1 GB is tight); on-demand Fargate ARM at 1 vCPU ($32.50) or 0.5 vCPU
+($18, half speed, so a weaker engine than the one SPRT measured);
+Fargate on a schedule (about $5 for 4 hours an evening); waiting for the
+homelab ($0, 6 to 12 months away).
+**Why:** a full core while the engine thinks, for about half the price
+of Fargate; no stop limit (ECS gives a container at most 120 seconds,
+far shorter than a game), so draining is simple; and EC2 is central to
+the Solutions Architect exam. The upkeep is automated (security updates,
+no SSH, rebuilt from the latest image by Terraform) to keep to "nothing
+to babysit". The schedule halves the cost; 12 hours still allows about
+60 games a day against Lichess's cap of 100 bot games a day.
+**Cost:** about $9 to $10 a month: $6.13 instance + $1.83 public IPv4 +
+$0.64 disk + about $1.50 extra CPU. Prod would spend about $17 a month,
+so its $20 budget should rise to about $25 (to decide with the
+Terraform PR). The t4g.small free trial (to 31 December 2026) may cover
+the instance hours, if Charlie's accounts qualify.
+**Trade-offs:** an instance to keep patched, unlike Fargate; people who
+challenge the bot outside the hours find it offline.
+
+## 2026-10-25: The bot's time controls while it plays casual
+**Decision (Charlie's choice):** accept every standard bullet and blitz
+control, with or without increment, and rapid up to 10+5
+(`max_base: 600`, `max_increment: 5`); no classical or correspondence.
+The increment cap is accepted, though it also turns down rare blitz
+controls such as 3+10.
+**Alternatives:** blitz and rapid only, bullet only with an increment,
+until sudden-death pacing passes its SPRT (Claude's first suggestion).
+**Why:** in casual games a loss on time costs no rating, and Milestone
+4's sudden-death work lands soon; the bot meets the most opponents this
+way. Long games would eat the 12-hour window and could run past the
+evening drain.
+**Cost:** none; some early losses on time in sudden-death bullet are
+expected until the pacing fix is in.
+
+## 2026-10-25: The repo goes public; AWS settings with the account ID become secrets
+**Decision (Charlie's choice):** make stargazer public, for the Lichess
+bot's deploy approvals (a required reviewer on a GitHub environment needs
+a public repo on Charlie's plan) and for the portfolio. Before it flips:
+the three repository settings that contain the AWS account ID
+(`STARGAZER_RUNNER_ROLE_ARN`, `STARGAZER_RESULTS_BUCKET`,
+`STARGAZER_IMAGE_REPOSITORY`) move from variables to secrets, each
+workflow masks the account ID after signing in to AWS, old SPRT and match
+run logs are deleted (Charlie's OK), and a licence is chosen.
+**Alternatives:** stay private and deploy the bot without an approval
+step; or pay for GitHub Pro to get environment reviewers on a private
+repo (about $4 a month).
+**Why:** the same rule as Maplenote: Actions logs are public with the
+repo, GitHub prints variables but hides secrets, and the account ID
+stays out of public view. A scan of every commit on every branch (104)
+found no account IDs, ARNs, keys, tokens or personal email addresses in
+the code or history.
+**Cost:** $0. Links from journals and PR comments to deleted runs will
+break; the results stay in the PR comments, the docs and S3.
+
+## 2026-10-25: Licence: GPL-3.0-or-later
+**Decision (Charlie's choice):** Stargazer is licensed under the GNU GPL,
+version 3 or later.
+**Alternatives:** MIT (anyone may reuse it, even in closed products;
+Claude's first suggestion); AGPL-3.0 (like GPL, but running a modified
+copy on a server for others to use also requires publishing it; Lichess
+and lichess-bot use it); no licence (readable, not reusable).
+**Why:** Charlie wants it open source, and doesn't want anyone to take a
+fork private. GPL requires anyone who distributes a modified Stargazer
+(a download, an app, the browser build) to publish their source under the
+same terms. It's the usual licence for chess engines (Stockfish). AGPL
+would also cover a closed fork run only on someone's server; Charlie chose
+the conventional GPL over that.
+**Trade-offs:** someone could still run a modified copy privately on a
+server without publishing it. Charlie keeps full rights to their own code
+and could release it under other terms later; outside contributions come
+in under the GPL, so including them in a closed version would need their
+authors' permission.
+**Cost:** none.
+
 ## 2026-10-25: Long time controls to confirm time-management changes
 **Decision (Charlie's choice):** time-management changes get a
 confirmation test at a long time control, 60 seconds + 0.6 a game, as

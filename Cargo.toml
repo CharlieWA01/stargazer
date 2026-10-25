@@ -3,6 +3,7 @@ name = "stargazer"
 version = "0.1.0"
 edition = "2024"
 description = "A UCI chess engine"
+license = "GPL-3.0-or-later"
 publish = false
 
 [dependencies]

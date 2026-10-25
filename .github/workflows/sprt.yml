@@ -8,7 +8,10 @@ name: Run SPRT
 # posts its verdict later.
 #
 # AWS access is through GitHub's OIDC sign-in to a role (no stored keys).
-# The repository variables come from cloud-homelab's Terraform outputs.
+# The settings come from cloud-homelab's Terraform outputs. The three that
+# contain the AWS account ID (role ARN, results bucket, image repository)
+# are repository secrets, so GitHub hides them in the public logs; the rest
+# are repository variables.
 #
 # "Run match" (match.yml) runs this same workflow in match mode: only the
 # new version is built, and it plays Stockfish at a set strength for a
@@ -156,11 +159,15 @@ jobs:
       # --- Sign in to AWS, upload the engines --------------------------------
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.STARGAZER_RUNNER_ROLE_ARN }}
+          role-to-assume: ${{ secrets.STARGAZER_RUNNER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+      - name: Hide the AWS account ID in this log
+        # The repo is public, and so are its Actions logs: task ARNs and the
+        # image registry contain the account ID, so it's masked from here on.
+        run: echo "::add-mask::$(aws sts get-caller-identity --query Account --output text)"
       - name: Upload the engines
         env:
-          BUCKET: ${{ vars.STARGAZER_RESULTS_BUCKET }}
+          BUCKET: ${{ secrets.STARGAZER_RESULTS_BUCKET }}
         run: |
           for version in $VERSIONS; do
             aws s3 cp "engines/$version" "s3://$BUCKET/runs/$RUN_ID/engines/$version" --only-show-errors
@@ -177,7 +184,7 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - name: Find or build the test container
         env:
-          REPOSITORY: ${{ vars.STARGAZER_IMAGE_REPOSITORY }}
+          REPOSITORY: ${{ secrets.STARGAZER_IMAGE_REPOSITORY }}
         run: |
           tag="rig-$(cd self && git ls-files -s rig | sha256sum | cut -c1-16)"
           name="${REPOSITORY#*/}"
@@ -210,7 +217,7 @@ jobs:
           FAMILY: ${{ vars.STARGAZER_TASK_DEFINITION_FAMILY }}
           SUBNETS: ${{ vars.STARGAZER_SUBNETS }}
           SECURITY_GROUP: ${{ vars.STARGAZER_SECURITY_GROUP }}
-          BUCKET: ${{ vars.STARGAZER_RESULTS_BUCKET }}
+          BUCKET: ${{ secrets.STARGAZER_RESULTS_BUCKET }}
           VCPUS: ${{ inputs.vcpus }}
           ELO0: ${{ inputs.elo0 }}
           ELO1: ${{ inputs.elo1 }}
@@ -298,7 +305,7 @@ jobs:
 
       - name: Report
         env:
-          BUCKET: ${{ vars.STARGAZER_RESULTS_BUCKET }}
+          BUCKET: ${{ secrets.STARGAZER_RESULTS_BUCKET }}
           CLUSTER: ${{ vars.STARGAZER_CLUSTER }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

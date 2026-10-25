@@ -35,3 +35,13 @@ cargo test                     # run the tests
 - [`docs/PORTFOLIO.md`](docs/PORTFOLIO.md): one-page summary
 - [`docs/runbooks/`](docs/runbooks/): how to play it, run perft and run a strength test
 - [`CLAUDE.md`](CLAUDE.md): how this project is developed, and context for AI sessions
+
+## Licence
+
+Copyright (C) 2026 Charlie (CharlieWA01).
+
+Stargazer is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option)
+any later version. It is distributed in the hope that it will be useful,
+but without any warranty; see [`LICENSE`](LICENSE) for the full terms.

@@ -58,3 +58,5 @@ jobs:
       tc: ${{ inputs.tc }}
       vcpus: ${{ inputs.vcpus }}
       wait_minutes: ${{ inputs.wait_minutes }}
+    # sprt.yml reads the role ARN, bucket and image repository from secrets.
+    secrets: inherit

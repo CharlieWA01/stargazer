@@ -74,3 +74,7 @@ To run the same match as the AWS one on any Linux machine, see the local
 mode in `sprt.md`, and add `STARGAZER_MODE=match`,
 `STARGAZER_OPPONENT_ELO=<level>` and `STARGAZER_STOCKFISH=<path to
 stockfish>`; only `engines/test` is needed.
+
+"Run match" uses the same AWS settings as "Run SPRT" (secrets and
+variables; see `sprt.md`, "Where the AWS settings live"), passed on with
+`secrets: inherit`.
