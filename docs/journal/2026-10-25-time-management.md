@@ -151,3 +151,8 @@ the endgame needed thinking. That's the case for a sudden-death pacing
 rule (roadmap). By that arithmetic it should still have had a few
 seconds at the end, so the GUI probably takes more than the 50 ms
 `Move Overhead` keeps back; 200 was suggested.
+It then turned out the game was played on an older build: Charlie had
+pulled but not rebuilt, so the GUI ran whatever was built before. The
+pacing problem stands, but the strength in that game says little about
+the current engine. The play-it runbook now says to rebuild after every
+pull, and how to check a build with `bench`.
