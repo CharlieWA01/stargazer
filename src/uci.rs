@@ -238,6 +238,10 @@ fn parse_go(line: &str) -> GoLimits {
     }
 }
 
+/// Start another depth only while under this share of the target, in
+/// percent.
+const NEW_DEPTH_PERCENT: u64 = 60;
+
 /// How long to think, in milliseconds: a target (`soft`) and a ceiling
 /// never crossed (`hard`).
 #[derive(Debug, PartialEq)]
@@ -252,13 +256,14 @@ impl TimeBudget {
         elapsed_ms >= self.hard
     }
 
-    /// Between depths: each depth takes several times longer than the one
-    /// before, so past half the target there's no point starting another.
-    /// `percent` stretches or shrinks the target for this position (100:
-    /// as planned), never past the ceiling.
+    /// Between depths: each depth takes about twice as long as the one
+    /// before (late move reductions keep it that low), so past 60% of the
+    /// target there's little point starting another. `percent` stretches
+    /// the target for this position (100: as planned), never past the
+    /// ceiling.
     fn worth_another_depth(&self, elapsed_ms: u64, percent: u64) -> bool {
         let target = (self.soft * percent / 100).min(self.hard);
-        elapsed_ms < target / 2
+        elapsed_ms < target * NEW_DEPTH_PERCENT / 100
     }
 }
 
@@ -815,17 +820,16 @@ mod tests {
         assert_eq!(low.hard, 950);
         assert!(low.soft <= low.hard);
         // When to stop: inside a depth at the ceiling, between depths past
-        // half the target.
+        // 60% of the target.
         let budget = TimeBudget {
             soft: 1_000,
             hard: 3_000,
         };
-        assert!(budget.worth_another_depth(499, 100) && !budget.worth_another_depth(500, 100));
-        // Stretched or shrunk for the position, but never past the ceiling.
-        assert!(budget.worth_another_depth(749, 150) && !budget.worth_another_depth(750, 150));
-        assert!(budget.worth_another_depth(249, 50) && !budget.worth_another_depth(250, 50));
+        assert!(budget.worth_another_depth(599, 100) && !budget.worth_another_depth(600, 100));
+        // Stretched for the position, but never past the ceiling.
+        assert!(budget.worth_another_depth(1_199, 200) && !budget.worth_another_depth(1_200, 200));
         assert!(
-            budget.worth_another_depth(1_499, 1_000) && !budget.worth_another_depth(1_500, 1_000)
+            budget.worth_another_depth(1_799, 1_000) && !budget.worth_another_depth(1_800, 1_000)
         );
         assert!(!budget.out_of_time(2_999) && budget.out_of_time(3_000));
         // No clock: no time limit.

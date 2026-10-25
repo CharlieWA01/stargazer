@@ -108,3 +108,32 @@ A small, real gain, in line with the +10 to +30 expected for the whole
 rework. Unlike rule 2, it adds time only in the few positions where the
 search has just found a problem, instead of taking time from every
 move.
+
+## Rule 4: when to start a new depth
+
+### What was done
+- `src/uci.rs`: another depth starts only while under 60% of the target
+  (`NEW_DEPTH_PERCENT`), instead of 50%. The score-drop stretch and the
+  ceiling apply as before.
+
+### Why 60%
+Measured with `go depth 13`: the time used so far grows by about 1.2 to
+2 times per depth (start position, depths 10 to 13: 1.3, 1.6, 2.4, 4.0
+seconds; Kiwipete, depths 8 to 12: 2.7, 5.6, 10.0, 15.3, 25.0). Before
+late move reductions it was 3 to 5 times, which is what "half the
+target" was set for. A depth started at 60% now usually finishes around
+1.2 times the target, and the ceiling (3 times) still stops one that
+runs long.
+
+### How it was verified
+- The budget test moves its edges to 60% (599 ms starts another depth
+  at a 1,000 ms target, 600 doesn't; 1,199 and 1,200 at 200%; the
+  ceiling caps a 1,000% stretch at 1,799 and 1,800). Setting the
+  share back to 50% makes it fail.
+- 117 unit tests pass; `cargo fmt`, `clippy -D warnings` and the WASM
+  build are clean. Bench unchanged at 343857.
+- Selfplay: no time losses or illegal moves. The clocks ran lower than
+  before (10s+0.1: 0.4 and 0.2 seconds left after 140 half-moves; 3s+0:
+  about 50 ms each after 224), as expected when each move thinks a
+  little longer. The sudden-death SPRT is the real check on that.
+- SPRT: see the PR and the roadmap.

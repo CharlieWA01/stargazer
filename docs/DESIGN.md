@@ -127,7 +127,11 @@ $0). So:
     below the last depth's, the target for starting another depth is
     200%; a rising score changes nothing. It decides only whether to
     start another depth, never past the ceiling.
-  - The new-depth rule follows as its own PR.
+  - **Starting a new depth (7d):** another depth starts only while
+    under 60% of the target (was 50%). With late move reductions, the
+    time used so far grows by about 1.5 to 2 times per depth (measured
+    2026-10-25), so a depth started at 60% usually ends near 1.2 times
+    the target, well inside the ceiling.
 - **Transposition table: decided 2026-10-23** (built in two steps).
   - **Fingerprints (Zobrist hashing), step 2a, built:** a fixed random
     64-bit number for each piece on each square, for each combination of
