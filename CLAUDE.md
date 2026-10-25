@@ -95,7 +95,8 @@ python3 -m unittest discover -s rig -v              # after changing the test ri
   asks `should_stop`
 - `src/uci.rs`: UCI protocol handling (handshake, `position ... moves`,
   `go` with clocks, `movetime`, `depth`, `infinite`, `stop`; `go perft N`,
-  `d` to print the board, `eval`, `setoption name Hash`, `ucinewgame`);
+  `d` to print the board, `eval`, `setoption` for `Hash` and `Move
+  Overhead`, `ucinewgame`; a lone legal move is played at once);
   the search runs on its own thread
 - `rig/`: the SPRT test container (`Dockerfile`, `run_test.py`), the
   report the workflows post (`report.py`), and their tests; started by the

@@ -85,12 +85,15 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
         games (bench 1013571; #30)
   - [x] 6b: late move reductions: SPRT pass, +113.4 ± 36.5 Elo over
         264 games (bench 343857; #31)
-- [ ] Time-management rework, rule by rule, once the search has settled
-      (see the parking lot's position-aware idea; also "don't start a
-      depth that can't finish"; and sudden death: with no increment the
-      clock shrinks about 5% a move, so a long game ends at depth 1 or 2,
-      as in Charlie's 5+0 game against PyChess on 2026-10-23, lost on
-      time after being a queen up at move 44)
+- [ ] Time-management rework, rule by rule (design decided 2026-10-25;
+      background: the parking lot's position-aware idea, and Charlie's
+      5+0 games on 2026-10-23 and 1. e4 taking 24 seconds on 2026-10-24):
+  - [ ] 7a: one legal move played at once, `Move Overhead` option (no
+        SPRT; in review)
+  - [ ] 7b: best-move stability
+  - [ ] 7c: score drop
+  - [ ] 7d: when to start a new depth
+  - [ ] Sudden-death SPRT at 10 seconds + 0 for 7b to 7d together
 - [ ] Evaluation terms: mobility, pawn structure, king safety, and a
       "mop-up" term for won endgames (drive the losing king to the edge,
       bring your own king close; Charlie's endgame point, 2026-10-24,

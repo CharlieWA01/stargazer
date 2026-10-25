@@ -4,8 +4,11 @@
 //! Handles the startup handshake, `position startpos` or `position fen ...`
 //! (optionally followed by `moves ...`), `go` with a clock (`wtime btime
 //! winc binc movestogo`), `go movetime N`, `go depth N` and `go infinite`,
-//! `stop`, `quit`, and one option, `setoption name Hash value <MB>` (the
-//! transposition table's size, 1 to 1024 MB). Extras most engines share: `go perft N` (count move
+//! `stop`, `quit`, and two options: `setoption name Hash value <MB>` (the
+//! transposition table's size, 1 to 1024 MB) and `setoption name Move
+//! Overhead value <ms>` (time kept back on every move for the GUI or
+//! server to pass it on). With only one legal move and a clock running,
+//! the move is played at once. Extras most engines share: `go perft N` (count move
 //! sequences), `d` (print the board), `eval` (print the evaluation) and
 //! `bench` (a fixed search; its node count fingerprints the build).
 //!
@@ -31,8 +34,10 @@ use crate::tt::{self, Table};
 const DEFAULT_DEPTH: u32 = 5;
 
 /// Time kept back on every move for the GUI or Lichess to pass the move on,
-/// so the engine never loses on time by a whisker.
-const SAFETY_MARGIN_MS: u64 = 50;
+/// so the engine never loses on time by a whisker: the `Move Overhead`
+/// option's default, and its limit.
+const DEFAULT_MOVE_OVERHEAD_MS: u64 = 50;
+const MAX_MOVE_OVERHEAD_MS: u64 = 5_000;
 
 /// Output shared between this loop and the search thread.
 type Output<W> = Arc<Mutex<W>>;
@@ -78,6 +83,7 @@ pub fn run<W: Write + Send + 'static>(input: impl BufRead, output: W) {
     // needs the earlier ones for the repetition rule.
     let mut game = vec![Position::startpos()];
     let mut thinking: Option<Thinking> = None;
+    let mut move_overhead = DEFAULT_MOVE_OVERHEAD_MS;
     let memory: SharedMemory = Arc::new(Mutex::new(Memory {
         table: Table::new(tt::DEFAULT_MB),
         history: History::new(),
@@ -111,6 +117,12 @@ pub fn run<W: Write + Send + 'static>(input: impl BufRead, output: W) {
                         tt::DEFAULT_MB
                     ),
                 );
+                say(
+                    &output,
+                    format!(
+                        "option name Move Overhead type spin default {DEFAULT_MOVE_OVERHEAD_MS} min 0 max {MAX_MOVE_OVERHEAD_MS}"
+                    ),
+                );
                 say(&output, "uciok");
             }
             "isready" => say(&output, "readyok"),
@@ -121,11 +133,14 @@ pub fn run<W: Write + Send + 'static>(input: impl BufRead, output: W) {
                 memory.table.clear();
                 memory.history.clear();
             }
-            "setoption" => match parse_hash_option(&line) {
-                Some(megabytes) => memory.lock().unwrap().table = Table::new(megabytes),
+            "setoption" => match parse_option(&line) {
+                Some(EngineOption::Hash(megabytes)) => {
+                    memory.lock().unwrap().table = Table::new(megabytes)
+                }
+                Some(EngineOption::MoveOverhead(ms)) => move_overhead = ms,
                 None => say(
                     &output,
-                    "info string unknown option (only Hash is supported)",
+                    "info string unknown option (Hash and Move Overhead are supported)",
                 ),
             },
             "position" => match parse_position(&line) {
@@ -134,7 +149,7 @@ pub fn run<W: Write + Send + 'static>(input: impl BufRead, output: W) {
                 // and keep the old position.
                 Err(reason) => say(&output, format!("info string invalid position: {reason}")),
             },
-            "go" => thinking = go(&line, &game, &memory, &output),
+            "go" => thinking = go(&line, &game, &memory, &output, move_overhead),
             // Not part of UCI, but most engines have it: print the board.
             "d" => say(&output, current(&game)),
             // Also not UCI: the evaluation of the current position, without
@@ -248,9 +263,9 @@ impl TimeBudget {
 /// time left (or a share of it until the next time control) plus most of
 /// the increment, and never more than three times that. Returns `None`
 /// when there's no clock or move time, so the search has no time limit.
-fn time_budget(limits: &GoLimits, side: Color) -> Option<TimeBudget> {
+fn time_budget(limits: &GoLimits, side: Color, move_overhead: u64) -> Option<TimeBudget> {
     if let Some(movetime) = limits.movetime {
-        let hard = movetime.saturating_sub(SAFETY_MARGIN_MS).max(1);
+        let hard = movetime.saturating_sub(move_overhead).max(1);
         return Some(TimeBudget { soft: hard, hard });
     }
     let index = match side {
@@ -259,7 +274,7 @@ fn time_budget(limits: &GoLimits, side: Color) -> Option<TimeBudget> {
     };
     let remaining = limits.time[index]?;
     let increment = limits.increment[index];
-    let available = remaining.saturating_sub(SAFETY_MARGIN_MS).max(1);
+    let available = remaining.saturating_sub(move_overhead).max(1);
     let share = match limits.moves_to_go {
         Some(moves) => (moves + 1).min(20),
         None => 20,
@@ -269,14 +284,35 @@ fn time_budget(limits: &GoLimits, side: Color) -> Option<TimeBudget> {
     Some(TimeBudget { soft, hard })
 }
 
-/// `setoption name Hash value 64`: the table size in megabytes, kept
-/// between 1 and 1024. `None` for any other option or a bad value.
-fn parse_hash_option(line: &str) -> Option<usize> {
+/// An option a GUI can set.
+#[derive(Debug, PartialEq)]
+enum EngineOption {
+    /// The table size in megabytes, kept between 1 and 1024.
+    Hash(usize),
+    /// Milliseconds kept back on every move, kept between 0 and 5000.
+    MoveOverhead(u64),
+}
+
+/// `setoption name Hash value 64` or `setoption name Move Overhead value
+/// 100` (option names ignore case and may have spaces). `None` for any
+/// other option or a bad value.
+fn parse_option(line: &str) -> Option<EngineOption> {
     let words: Vec<&str> = line.split_whitespace().collect();
-    match words.as_slice() {
-        ["setoption", "name", name, "value", value] if name.eq_ignore_ascii_case("hash") => {
-            value.parse().ok().map(|mb: usize| mb.clamp(1, MAX_HASH_MB))
-        }
+    let value_at = words.iter().position(|&w| w == "value")?;
+    if words.get(1) != Some(&"name") || value_at != words.len() - 2 {
+        return None;
+    }
+    let name = words[2..value_at].join(" ").to_lowercase();
+    let value = words[value_at + 1];
+    match name.as_str() {
+        "hash" => value
+            .parse()
+            .ok()
+            .map(|mb: usize| EngineOption::Hash(mb.clamp(1, MAX_HASH_MB))),
+        "move overhead" => value
+            .parse()
+            .ok()
+            .map(|ms: u64| EngineOption::MoveOverhead(ms.min(MAX_MOVE_OVERHEAD_MS))),
         _ => None,
     }
 }
@@ -290,6 +326,7 @@ fn go<W: Write + Send + 'static>(
     game: &[Position],
     memory: &SharedMemory,
     output: &Output<W>,
+    move_overhead: u64,
 ) -> Option<Thinking> {
     let words: Vec<&str> = line.split_whitespace().skip(1).collect();
     if words.first() == Some(&"perft") {
@@ -309,7 +346,19 @@ fn go<W: Write + Send + 'static>(
     }
 
     let limits = parse_go(line);
-    let budget = time_budget(&limits, current(game).side_to_move);
+    let budget = time_budget(&limits, current(game).side_to_move, move_overhead);
+    // Only one legal move and a clock running: nothing to think about, so
+    // save the time. (`go depth` and `go infinite` still search, for
+    // anyone who wants to see the analysis.)
+    let moves = legal_moves(current(game));
+    if let [only] = moves.as_slice()
+        && budget.is_some()
+        && !limits.infinite
+        && limits.depth.is_none()
+    {
+        say(output, format!("bestmove {only}"));
+        return None;
+    }
     let max_depth = match (limits.depth, limits.infinite || budget.is_some()) {
         (Some(depth), _) => depth,
         (None, true) => MAX_PLY as u32,
@@ -489,18 +538,74 @@ mod tests {
         assert!(
             respond("uci\n").contains("option name Hash type spin default 16 min 1 max 1024\n")
         );
-        assert_eq!(parse_hash_option("setoption name Hash value 64"), Some(64));
-        assert_eq!(parse_hash_option("setoption name hash value 0"), Some(1));
+        let hash = |line| parse_option(line);
         assert_eq!(
-            parse_hash_option("setoption name Hash value 99999"),
-            Some(1024)
+            hash("setoption name Hash value 64"),
+            Some(EngineOption::Hash(64))
         );
-        assert_eq!(parse_hash_option("setoption name Hash value lots"), None);
-        assert_eq!(parse_hash_option("setoption name Ponder value true"), None);
+        assert_eq!(
+            hash("setoption name hash value 0"),
+            Some(EngineOption::Hash(1))
+        );
+        assert_eq!(
+            hash("setoption name Hash value 99999"),
+            Some(EngineOption::Hash(1024))
+        );
+        assert_eq!(hash("setoption name Hash value lots"), None);
+        assert_eq!(hash("setoption name Ponder value true"), None);
         // A search still works after resizing and after a new game.
         let reply = respond("setoption name Hash value 1\nucinewgame\ngo depth 3\n");
         assert!(reply.contains("bestmove "), "{reply}");
         assert!(respond("setoption name Ponder value true\n").starts_with("info string"));
+    }
+
+    #[test]
+    fn the_move_overhead_option_is_offered_and_understood() {
+        assert!(
+            respond("uci\n")
+                .contains("option name Move Overhead type spin default 50 min 0 max 5000\n")
+        );
+        assert_eq!(
+            parse_option("setoption name Move Overhead value 200"),
+            Some(EngineOption::MoveOverhead(200))
+        );
+        assert_eq!(
+            parse_option("setoption name move overhead value 99999"),
+            Some(EngineOption::MoveOverhead(5000))
+        );
+        assert_eq!(parse_option("setoption name Move Overhead value -1"), None);
+        assert_eq!(parse_option("setoption name Move Overhead"), None);
+        // It's what's kept back: a 1-second move time with 300 ms kept
+        // back leaves 700 ms.
+        let limits = parse_go("go movetime 1000");
+        assert_eq!(
+            time_budget(&limits, Color::White, 300),
+            Some(TimeBudget {
+                soft: 700,
+                hard: 700
+            })
+        );
+        // And the loop passes the option on: with 900 of a 1000 ms move
+        // time kept back, the answer comes in about 100 ms, not 950.
+        let (reply, took) =
+            timed("setoption name Move Overhead value 900\nposition startpos\ngo movetime 1000\n");
+        assert!(reply.contains("bestmove "), "{reply}");
+        assert!(took < Duration::from_millis(500), "{took:?}");
+    }
+
+    #[test]
+    fn a_lone_legal_move_is_played_at_once() {
+        // White's king on h1 is checked by the rook on a1 and can only go
+        // to h2: g1 is on the rook's line, and the bishop on g2 is guarded
+        // by the pawn on f3.
+        let fen = "position fen 7k/8/8/8/8/5p2/6b1/r6K w - - 0 1";
+        let (reply, took) = timed(&format!("{fen}\ngo wtime 60000 btime 60000\n"));
+        assert_eq!(reply, "bestmove h1h2\n");
+        assert!(took < Duration::from_millis(500), "{took:?}");
+        // With a depth asked for, it still searches and reports.
+        let reply = respond(&format!("{fen}\ngo depth 3\n"));
+        assert!(reply.contains("info depth 3"), "{reply}");
+        assert!(reply.ends_with("bestmove h1h2\n"), "{reply}");
     }
 
     #[test]
@@ -659,7 +764,7 @@ mod tests {
         };
         // A minute, no increment: 3 seconds target, 9 seconds ceiling.
         assert_eq!(
-            time_budget(&clock(60_000, 1, 0, 0), Color::White),
+            time_budget(&clock(60_000, 1, 0, 0), Color::White, 50),
             Some(TimeBudget {
                 soft: 3_000,
                 hard: 9_000
@@ -667,14 +772,14 @@ mod tests {
         );
         // The side to move's clock is the one used.
         assert_eq!(
-            time_budget(&clock(1, 60_000, 0, 2_000), Color::Black),
+            time_budget(&clock(1, 60_000, 0, 2_000), Color::Black, 50),
             Some(TimeBudget {
                 soft: 4_500,
                 hard: 13_500
             })
         );
         // Almost out of time: never plan more than what's left, minus the margin.
-        let low = time_budget(&clock(1_000, 1_000, 3_000, 3_000), Color::White).unwrap();
+        let low = time_budget(&clock(1_000, 1_000, 3_000, 3_000), Color::White, 50).unwrap();
         assert_eq!(low.hard, 950);
         assert!(low.soft <= low.hard);
         // When to stop: inside a depth at the ceiling, between depths past
@@ -686,7 +791,7 @@ mod tests {
         assert!(budget.worth_another_depth(499) && !budget.worth_another_depth(500));
         assert!(!budget.out_of_time(2_999) && budget.out_of_time(3_000));
         // No clock: no time limit.
-        assert_eq!(time_budget(&GoLimits::default(), Color::White), None);
+        assert_eq!(time_budget(&GoLimits::default(), Color::White, 50), None);
     }
 
     #[test]

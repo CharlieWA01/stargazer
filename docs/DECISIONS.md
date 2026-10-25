@@ -571,3 +571,28 @@ balance each other. Separate SPRTs keep every number clean.
 depths 5 to 7); LMR should cut far more. A reduced search can miss a
 quiet move that only works deep down, until the re-search catches it.
 
+## 2026-10-25: Time-management rework
+**Decision (Charlie's choices):** (1) four rules, in this order, each
+its own PR: the basics (a lone legal move is played at once; a `Move
+Overhead` option, default 50 ms), then best-move stability (move sooner
+when the best move hasn't changed for several depths, think longer when
+it just changed), then a score drop (think longer when the score falls
+by about a third of a pawn), then a less cautious rule for starting a
+new depth. Rules 2 to 4 each get the standard SPRT; rule 1 only unit
+tests. (2) After the four, one extra SPRT at 10 seconds + 0 for the
+whole set against the version before rule 2, so sudden death (no
+increment) is tested too. (3) The numbers start from common values,
+tested as written; tuning comes later.
+**Alternatives:** (1) only the two rules that react to the position.
+(2) standard SPRTs only; or a real 5+0 (5 minutes each: about 10
+minutes a game, a day or more per SPRT); or 5 seconds + 0, where the
+overhead starts to matter more than the search. (3) two or three
+settings per rule now.
+**Why:** each rule is cheap and measured on its own; 8+0.08 has an
+increment, so it can't show how a rule behaves when the clock only
+shrinks, which is how Charlie plays (5+0); 10 seconds + 0 keeps that
+shape at rig speed and costs about as much as a standard test.
+**Cost:** a few cents per SPRT; one non-standard SPRT (16 vCPU, under
+an hour), approved here. Expected gain is small, maybe +10 to +30 Elo in
+all.
+
