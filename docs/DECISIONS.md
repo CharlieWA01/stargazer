@@ -614,3 +614,29 @@ shrink to 75%); or drop rules 2 and 3 together.
 shows a gain, with tuning later; a 24-Elo loss points to a flawed idea,
 not a slightly wrong number. The milder version is parked.
 **Cost:** one SPRT (a few cents).
+
+## 2026-10-25: The Lichess bot runs on EC2, 10am to 10pm Central
+**Decision (Charlie's choice):** one EC2 t4g.small (ARM, unlimited CPU
+credits) in workloads-prod, started and stopped by EventBridge Scheduler
+from 10am to 10pm Central, 12 hours a day to start. The schedule drains
+the bot before stopping it, so no game is cut off.
+**Alternatives (monthly, always on):** EC2 t4g.small always on ($17 to
+$20); t4g.micro (about $19 once its smaller CPU allowance runs out, and
+1 GB is tight); on-demand Fargate ARM at 1 vCPU ($32.50) or 0.5 vCPU
+($18, half speed, so a weaker engine than the one SPRT measured);
+Fargate on a schedule (about $5 for 4 hours an evening); waiting for the
+homelab ($0, 6 to 12 months away).
+**Why:** a full core while the engine thinks, for about half the price
+of Fargate; no stop limit (ECS gives a container at most 120 seconds,
+far shorter than a game), so draining is simple; and EC2 is central to
+the Solutions Architect exam. The upkeep is automated (security updates,
+no SSH, rebuilt from the latest image by Terraform) to keep to "nothing
+to babysit". The schedule halves the cost; 12 hours still allows about
+60 games a day against Lichess's cap of 100 bot games a day.
+**Cost:** about $9 to $10 a month: $6.13 instance + $1.83 public IPv4 +
+$0.64 disk + about $1.50 extra CPU. Prod would spend about $17 a month,
+so its $20 budget should rise to about $25 (to decide with the
+Terraform PR). The t4g.small free trial (to 31 December 2026) may cover
+the instance hours, if Charlie's accounts qualify.
+**Trade-offs:** an instance to keep patched, unlike Fargate; people who
+challenge the bot outside the hours find it offline.

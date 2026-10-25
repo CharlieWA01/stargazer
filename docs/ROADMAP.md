@@ -11,7 +11,7 @@ against Stockfish measured about 1900; DECISIONS.md). Design state: `docs/DESIGN
 | 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. *(done 2026-10-20)* |
 | 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. *(done 2026-10-22)* |
 | 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. *(started 2026-10-23)* |
-| 5 | **Going public** | Running as a Lichess bot with a real rating. |
+| 5 | **Going public** | Running as a Lichess bot with a real rating. *(design started 2026-10-25; host decided: EC2, 10am to 10pm Central)* |
 | 6 | **Stretch** | NNUE evaluation, multithreading. |
 
 ### Milestone 1 steps

@@ -282,16 +282,29 @@ $0). So:
   speed-only change must leave it unchanged.
 
 ### 6. Deployment
-- Lichess bot via lichess-bot; where it's hosted (home server, cheap VPS).
-  The bot account is registered (an account becomes a BOT only if it has
-  played no games, and the upgrade can't be undone, so it stays unused until
-  then). The bot only connects out to Lichess, so nothing is exposed. Likely
-  host: the planned homelab mini PC (no extra cost); a small always-on cloud
-  server would be about $5 to $15 a month (Lambda can't hold the connection).
-  **Not Fargate Spot** (decided 2026-10-21): a reclaimed machine would
-  abandon live games. Regular Fargate works but costs about $29 a month
-  always-on for 1 vCPU (N. Virginia rates), so if it's Fargate it runs on a
-  schedule (about $4 a month for 4 hours an evening). Decided in Milestone 5.
+- Lichess bot via lichess-bot. The bot account is registered (an account
+  becomes a BOT only if it has played no games, and the upgrade can't be
+  undone, so it stays unused until then). The bot only connects out to
+  Lichess, so nothing is exposed. **Not Fargate Spot** (decided
+  2026-10-21): a reclaimed machine would abandon live games.
+- **Host: decided 2026-10-25.** One EC2 t4g.small (ARM, 2 burstable
+  vCPUs, 2 GB, "unlimited" CPU credits) in workloads-prod, Amazon Linux
+  2023, no inbound ports, no SSH (Session Manager), rebuilt by Terraform
+  (cloud-homelab) rather than hand-tended. It runs **10am to 10pm Central**
+  (America/Chicago, so it follows daylight saving), 12 hours to start:
+  EventBridge Scheduler starts it, tells the bot to drain at 21:15 (no new
+  games, finish the current one) and stops it once no game is running, or
+  at 22:45 at the latest. About $9 to $10 a month (always on would be $17
+  to $20; always-on Fargate at 1 vCPU $32.50). lichess-bot stops cleanly
+  only on SIGINT, so its service uses `KillSignal=SIGINT`.
+- Lichess rules that shape it (checked 2026-10-25): at most 100 games a
+  day against other bots (lichess-bot reads the limit and waits); challenge
+  games only, no pools or tournaments except bot events; no UltraBullet.
+- **Open (Milestone 5 design, journal 2026-10-25-lichess-bot-design):**
+  the SRE layer (SLOs, burn-rate alerts, an observer Lambda, DynamoDB for
+  live records, S3 + Athena for history, a status page on the portfolio
+  site), deploys gated on SPRT that let games finish, time controls,
+  budgets, and whether the repo goes public.
 - Portfolio tile (decided 2026-10-20): **both** a "play it here" page on the
   portfolio site, with the engine running in the visitor's browser (see
   "Runs in a browser"), and a link to the Lichess bot's profile to show its
