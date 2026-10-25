@@ -96,7 +96,8 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
   - [x] 7c: score drop (more than 30 centipawns down from the last depth:
         200% of the target): SPRT +10.9 ± 8.7 Elo over 2,651 games (PR #34)
   - [ ] 7d: when to start a new depth (60% of the target instead of 50%;
-        PR #35, SPRT running)
+        PR #35): 8+0.08 inconclusive, +3.3 ± 6.7 Elo over 5,827 games,
+        stopped; judged at 60 seconds + 0.6 instead (SPRT running)
   - [ ] Sudden-death SPRT at 10 seconds + 0 for the rules kept, against
         the version before 7c
   - [ ] Sudden-death pacing: with no increment, spend a smaller share of
