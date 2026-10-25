@@ -45,6 +45,13 @@ the engine, and the bot's config and installer, so the server
 - The release workflow and `setup.sh` run for real only after merge (the
   first tag, then the server's first boot); the runbook covers both.
 
+## The first release
+Charlie tagged `v0.1.0` after the repo went public. The Release workflow
+took about a minute and published `stargazer-aarch64-linux` (SHA-256
+`c320870f…01f05e4`, bench 343857 nodes, the same count as `main`'s
+SPRT base). The downloaded file matched its checksum and is a 64-bit ARM
+Linux program. `bot/ENGINE` now names it.
+
 ## Impact
 Nothing changes for the engine. The bot is ready to install once the
 first release exists and the server is built. The repo gains one

@@ -1,5 +1,5 @@
 # The Stargazer release the bot runs, and its SHA-256 checksum from the
 # release page. A deploy is a PR that changes these two lines
-# (docs/runbooks/lichess-bot.md). Empty until the first release.
-tag=
-sha256=
+# (docs/runbooks/lichess-bot.md).
+tag=v0.1.0
+sha256=c320870f6e1ceca2de22758f7c89e8364658173a1f9cca6d6721ab5fd01f05e4
