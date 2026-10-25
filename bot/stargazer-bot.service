@@ -1,0 +1,34 @@
+# Stargazer's Lichess bot. Installed by bot/setup.sh.
+[Unit]
+Description=Stargazer's Lichess bot (lichess-bot + the Stargazer engine)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=stargazer-bot
+Environment=TOKEN_PARAMETER=@TOKEN_PARAMETER@
+ExecStart=/opt/stargazer-bot/run.sh
+WorkingDirectory=/opt/stargazer-bot
+
+# Stopping lets the current game finish. lichess-bot only listens for SIGINT
+# (not systemd's usual SIGTERM), and with quit_after_all_games_finish it
+# takes no new games and exits when the game ends. "mixed" sends that SIGINT
+# to lichess-bot alone: sent to the whole group it would also kill the
+# engine mid-game. A game can't outlast 10+5, so 75 minutes is a backstop.
+KillSignal=SIGINT
+KillMode=mixed
+TimeoutStopSec=75min
+
+# A crash is restarted; a clean exit (the evening drain) is not.
+Restart=on-failure
+RestartSec=10
+
+# Hardening: it can write only its own folders.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/stargazer-bot /var/log/stargazer-bot
+
+[Install]
+WantedBy=multi-user.target

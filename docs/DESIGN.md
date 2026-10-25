@@ -318,7 +318,23 @@ $0). So:
   real rating. The page says the browser version is single-threaded and so
   a little weaker than the rated one. The tile links to Lichess rather than
   fetching the rating live, so the site makes no calls to other servers.
-- Release process: how and when versions get tagged and built.
+- Release process: **decided 2026-10-25.** A version is released by
+  pushing a tag `vX.Y.Z` that matches `Cargo.toml`'s version. The
+  `Release` workflow tests it, builds it for ARM Linux on Ubuntu 24.04,
+  and publishes a GitHub release with the binary
+  (`stargazer-aarch64-linux`), its SHA-256 and its `bench` node count.
+  Star names (the roadmap's table) can be given to releases at
+  milestones; which ones is still open.
+- **The bot's software (decided 2026-10-25):** `bot/` holds lichess-bot's
+  config, the lichess-bot commit to use (`LICHESS_BOT_COMMIT`), the engine
+  release to run (`ENGINE`: tag and checksum), the installer (`setup.sh`),
+  the start script (`run.sh`, which reads the Lichess token from SSM) and
+  the systemd service. A deploy is a PR that changes `ENGINE` (or the
+  config), then `setup.sh` at the merged commit through Session Manager;
+  the restart lets the current game finish (`KillSignal=SIGINT`,
+  `KillMode=mixed`). The server runs Ubuntu 24.04 (security updates are
+  automatic, and it matches the build machine), not Amazon Linux 2023 as
+  first sketched. Runbook: `docs/runbooks/lichess-bot.md`.
 
 ### 7. Project housekeeping
 - License: **decided 2026-10-25: GPL-3.0-or-later** (what Stockfish

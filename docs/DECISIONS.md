@@ -695,3 +695,37 @@ and could release it under other terms later; outside contributions come
 in under the GPL, so including them in a closed version would need their
 authors' permission.
 **Cost:** none.
+
+## 2026-10-25: The bot gets its engine from a GitHub release per tag
+**Decision (Charlie's choice):** a version is released by pushing a tag
+`vX.Y.Z` that matches `Cargo.toml`. The `Release` workflow tests, builds
+the engine for 64-bit ARM Linux (the bot's server) and publishes it on the
+Releases page with its SHA-256 and `bench` count. `bot/ENGINE` names the
+tag and checksum the bot runs; the server downloads that file and refuses
+it if the checksum doesn't match.
+**Alternatives:** build from source on the server at each deploy (a Rust
+toolchain on a 2 GB machine, minutes of build time inside playing hours,
+and no fixed file to point at); upload builds to an S3 bucket from
+Actions (another bucket and IAM role, for no gain over Releases).
+**Why:** the bot plays a named, tested version, and anyone can see which
+one and download it. A deploy is a small PR (change `bot/ENGINE`), and a
+rollback is the previous commit. Free.
+**Cost:** $0.
+
+## 2026-10-25: The bot's software: lichess-bot under systemd on Ubuntu 24.04
+**Decision:** the server runs lichess-bot (pinned to a commit) as a
+systemd service, set up by `bot/setup.sh` at a pinned commit of this
+repo. Stopping or restarting the service sends SIGINT, so lichess-bot
+finishes the game in progress and takes no new one (systemd waits up to
+75 minutes; only the main process gets the signal, so the engine isn't
+killed mid-game). The Lichess token is read from SSM Parameter Store at
+each start and is never on disk, in the repo or in Terraform. The OS is
+Ubuntu 24.04 LTS, not Amazon Linux 2023 as the design first said.
+**Alternatives:** Docker on the server (another layer for one process);
+Amazon Linux 2023 (works, but updates are by new AMI rather than daily
+security updates, and CI builds on Ubuntu).
+**Why:** the fewest moving parts that still let a deploy or the evening
+shutdown wait for a game to end. Ubuntu installs security updates on its
+own (`unattended-upgrades`, rebooting at 04:00 when the bot is off) and
+matches the build machine.
+**Cost:** $0 beyond the server.

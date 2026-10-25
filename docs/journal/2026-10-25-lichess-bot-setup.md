@@ -1,0 +1,52 @@
+# 2026-10-25: The Lichess bot's software and releases
+
+## Goal
+Build the parts of Milestone 5 that live in this repo: a way to release
+the engine, and the bot's config and installer, so the server
+(cloud-homelab) has something to run.
+
+## What was done
+- **Releases.** `.github/workflows/release.yml` runs on a `v*` tag: it
+  checks the tag matches `Cargo.toml`, runs the tests, cross-compiles for
+  64-bit ARM Linux and publishes `stargazer-aarch64-linux` with its
+  SHA-256 and `bench` count. Charlie chose this over building on the
+  server (DECISIONS.md).
+- **`bot/`.** lichess-bot's `config.yml` (casual only, bullet and blitz
+  plus rapid up to 10+5, increments up to 5 s, one game at a time,
+  matchmaking against other bots), the pinned lichess-bot commit, the
+  engine release (`ENGINE`, empty until the first tag), the installer
+  `setup.sh`, `run.sh`, the systemd service and log rotation.
+- **Checks.** `bot/test_bot.py` (run in CI) checks the settings games
+  depend on: the bot finishes games before quitting, there's no token in
+  the file, one game at a time, casual only, the time limits, the UCI
+  options exist in `src/uci.rs`, the service stops with SIGINT, and the
+  pins are exact.
+- **Runbook:** `docs/runbooks/lichess-bot.md` (token, BOT upgrade, first
+  release, deploys, rollback).
+
+## Problems and fixes
+- The design said Amazon Linux 2023; Ubuntu 24.04 was picked instead for
+  automatic security updates and parity with CI (DECISIONS.md). The
+  engine only needs glibc 2.34, so either would run it.
+- Installing the AWS CLI as a snap under a locked-down systemd service is
+  fragile, so `setup.sh` uses AWS's own installer.
+- A test for "casual only" first matched the word "rated" in a comment;
+  it now reads values, not comments.
+
+## How it was verified
+- lichess-bot's own config loader (at the pinned commit) accepted
+  `config.yml`, warning only about Lichess's 100 bot games a day, which
+  lichess-bot handles by waiting.
+- python-chess drove Stargazer with the config's UCI options and got a
+  move.
+- `python3 -m unittest discover -s bot -v`: 8 tests pass; each was broken
+  on purpose once to see it fail.
+- `cargo fmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
+- The release workflow and `setup.sh` run for real only after merge (the
+  first tag, then the server's first boot); the runbook covers both.
+
+## Impact
+Nothing changes for the engine. The bot is ready to install once the
+first release exists and the server is built. The repo gains one
+workflow with write access to releases (`contents: write`), triggered
+only by tags.
