@@ -39,3 +39,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-24 | [#31](https://github.com/CharlieWA01/stargazer/pull/31) | Late move reductions (step 6b) |
 | 2026-10-24 | [#32](https://github.com/CharlieWA01/stargazer/pull/32) | Docs: Stockfish match after LMR (about 2180) |
 | 2026-10-25 | [#33](https://github.com/CharlieWA01/stargazer/pull/33) | Time rule 1: lone legal move played at once, Move Overhead option (step 7a) |
+| 2026-10-25 | [#34](https://github.com/CharlieWA01/stargazer/pull/34) | Time management: best-move stability dropped (SPRT -24.5), score drop kept (SPRT +10.9) |
