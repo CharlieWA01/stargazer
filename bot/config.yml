@@ -1,0 +1,117 @@
+# lichess-bot's settings for Stargazer's Lichess bot (Milestone 5).
+#
+# Based on lichess-bot's config.yml.default at the commit in
+# LICHESS_BOT_COMMIT. Decisions behind the values: docs/DECISIONS.md,
+# 2026-10-25 (host, time controls) and docs/DESIGN.md section 6.
+#
+# No token here: run.sh reads it from AWS SSM Parameter Store at start and
+# hands it over in LICHESS_BOT_TOKEN, which lichess-bot prefers to this file.
+token: ""
+url: "https://lichess.org/"
+
+engine:
+  dir: "/opt/stargazer-bot/engine/"
+  name: "stargazer"                 # a link to the installed release (setup.sh)
+  working_dir: ""
+  protocol: "uci"
+  ponder: false                     # one core: thinking on the opponent's time would only steal from ourselves
+  debug: false
+
+  polyglot:
+    enabled: false                  # no opening book yet (parking lot)
+
+  draw_or_resign:
+    resign_enabled: false           # play every game out; casual losses cost nothing
+    offer_draw_enabled: false
+
+  online_moves:
+    chessdb_book:
+      enabled: false
+    lichess_cloud_analysis:
+      enabled: false                # the engine's own moves only
+    lichess_opening_explorer:
+      enabled: false
+    online_egtb:
+      enabled: false
+
+  lichess_bot_tbs:
+    syzygy:
+      enabled: false
+    gaviota:
+      enabled: false
+
+  uci_options:                      # only options Stargazer has (src/uci.rs)
+    Hash: 256                       # MB; the server has 2 GB
+    Move Overhead: 100              # ms kept back per move for the engine's own overhead
+
+  silence_stderr: false
+
+abort_time: 30
+fake_think_time: false
+rate_limiting_delay: 0
+move_overhead: 500                  # ms lichess-bot keeps back for network lag (Ohio to Lichess)
+max_takebacks_accepted: 0
+quit_after_all_games_finish: true   # SIGINT (systemctl stop) finishes the game first, then exits
+
+correspondence:
+  move_time: 60
+  checkin_period: 300
+  disconnect_time: 150
+  ponder: false
+
+challenge:                          # challenges from others
+  concurrency: 1                    # one game at a time: the engine gets the whole core
+  games_reserved_for_humans: 0
+  sort_by: "first"
+  preference: "none"
+  accept_bot: true
+  only_bot: false
+  max_increment: 5                  # rapid up to 10+5 (also turns down rare blitz like 3+10)
+  min_increment: 0
+  max_base: 600
+  min_base: 0
+  variants:
+    - standard
+  time_controls:                    # every standard bullet and blitz, rapid up to 10+5 (2026-10-25)
+    - bullet
+    - blitz
+    - rapid
+  modes:
+    - casual                        # rated once Milestone 4's time work is in
+  recent_bot_challenge_age: 60
+  max_recent_bot_challenges: 2      # no bot farms it with back-to-back challenges
+  bullet_requires_increment: false
+  max_simultaneous_games_per_user: 1
+
+greeting:
+  hello: "Hi {opponent}! I'm {me}, a chess engine written from scratch in Rust. Good luck!"
+  goodbye: "Good game! Thanks for playing."
+  hello_spectators: "Hi! I'm {me}, a from-scratch Rust chess engine (github.com/CharlieWA01/stargazer)."
+  goodbye_spectators: "Thanks for watching!"
+
+pgn_directory: "/opt/stargazer-bot/games"   # every game as a PGN file, for history later (S3)
+pgn_file_grouping: "game"
+
+matchmaking:                        # challenging other bots while idle
+  allow_matchmaking: true
+  allow_during_games: false
+  challenge_variant: "standard"
+  challenge_timeout: 1              # minutes idle before it challenges someone (the minimum)
+  challenge_initial_time:           # seconds, picked at random
+    - 60
+    - 120
+    - 180
+    - 300
+    - 600
+  challenge_increment:              # seconds, picked at random
+    - 0
+    - 1
+    - 2
+    - 3
+    - 5
+  opponent_rating_difference: 300
+  rating_preference: "none"
+  challenge_mode: "casual"
+  challenge_filter: coarse          # a bot that declines once isn't asked again
+  include_challenge_block_list: false
+  challenge_decliner_file_name: "/opt/stargazer-bot/state/decliners.txt"

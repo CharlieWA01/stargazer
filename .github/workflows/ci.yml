@@ -30,3 +30,6 @@ jobs:
       # browser"). Building the library for WebAssembly proves it still can.
       - name: Browser (WebAssembly) build
         run: cargo build --lib --release --target wasm32-unknown-unknown
+      # The Lichess bot's settings (bot/): the ones a game depends on.
+      - name: Bot config checks
+        run: python3 -m unittest discover -s bot -v
