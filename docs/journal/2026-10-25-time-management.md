@@ -136,7 +136,12 @@ runs long.
   before (10s+0.1: 0.4 and 0.2 seconds left after 140 half-moves; 3s+0:
   about 50 ms each after 224), as expected when each move thinks a
   little longer. The sudden-death SPRT is the real check on that.
-- SPRT: see the PR and the roadmap.
+- SPRT at 8+0.08: **inconclusive**, +3.3 ± 6.7 Elo over 5,827 games
+  (LLR -1.46, drifting slowly toward "not stronger"). Too small an effect
+  for this test to settle quickly, and it was holding the rig, so Charlie
+  stopped it in ECS after about 2.3 hours and chose to judge the rule at
+  60 seconds + 0.6 instead, where deeper searches should show whether
+  the per-depth cost matters. That SPRT: see the PR and the roadmap.
 
 ## Charlie's 5+0 game against Stockfish (2026-10-25)
 

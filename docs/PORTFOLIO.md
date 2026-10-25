@@ -40,7 +40,7 @@ after check extensions and late move reductions (2184 ± 35, 61.9%
 against Stockfish 2100).
 
 ## Games played in testing
-About **22,800** games so far, counted from the recorded test runs (a
+About **28,600** games so far, counted from the recorded test runs (a
 few hundred quick checks, such as self-play and container smoke tests,
 aren't counted). Updated with each test.
 
@@ -52,9 +52,9 @@ local checks), so roughly **4.5 cents per 1,000 games**.
 | What | Games |
 |---|---|
 | Milestone 3: proving the rig fair (first AWS runs, local checks, two 2,000-game self-matches) | 6,619 |
-| Milestone 4 SPRTs: #16 503, #19 235, #21 588, #22 1,095, #23 1,572, #25 6,282, #28 392, #30 753, #31 264, #34 626 + 2,651 | 14,961 |
+| Milestone 4 SPRTs: #16 503, #19 235, #21 588, #22 1,095, #23 1,572, #25 6,282, #28 392, #30 753, #31 264, #34 626 + 2,651, #35 5,827 | 20,788 |
 | Stockfish matches: 2026-10-24 against 1800, 1900, then 2100 | 1,200 |
-| **Total** | **22,780** |
+| **Total** | **28,607** |
 
 ## What makes it interesting
 - **Two targets from one codebase:** a native engine (chess GUIs, Lichess
