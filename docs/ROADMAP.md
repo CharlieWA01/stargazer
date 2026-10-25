@@ -99,6 +99,10 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
         PR #35, SPRT running)
   - [ ] Sudden-death SPRT at 10 seconds + 0 for the rules kept, against
         the version before 7c
+  - [ ] Long-control confirmation at 60 seconds + 0.6 for the rules kept,
+        against the same version (DECISIONS.md, 2026-10-25)
+  - [ ] The milder best-move stability rule (parking lot), tested at
+        60 seconds + 0.6
 - [ ] Evaluation terms: mobility, pawn structure, king safety, and a
       "mop-up" term for won endgames (drive the losing king to the edge,
       bring your own king close; Charlie's endgame point, 2026-10-24,
