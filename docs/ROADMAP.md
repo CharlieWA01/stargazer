@@ -99,6 +99,11 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
         PR #35, SPRT running)
   - [ ] Sudden-death SPRT at 10 seconds + 0 for the rules kept, against
         the version before 7c
+  - [ ] Sudden-death pacing: with no increment, spend a smaller share of
+        the clock early (a thirtieth to a fortieth instead of a
+        twentieth) and keep more for the endgame. Charlie's 5+0 game on
+        2026-10-25 was winning at move 44 and was lost in the endgame on
+        about a second a move (journal)
   - [ ] Long-control confirmation at 60 seconds + 0.6 for the rules kept,
         against the same version (DECISIONS.md, 2026-10-25)
   - [ ] The milder best-move stability rule (parking lot), tested at
@@ -129,6 +134,13 @@ Next after Milestone 4. The bot doubles as Charlie's SRE showcase.
   $30 a month, most of prod's budget, and EC2 is on the ask-first list:
   price both properly before deciding.
 - Playing Stargazer from the portfolio page (WebAssembly) stays planned.
+- **A database (Charlie, 2026-10-25), for practical AWS experience:**
+  DynamoDB (on demand, pennies) for the bot's live records: games,
+  challenges, rating over time, SLO counters; S3 + Athena stays the home
+  of whole-game history. On the engine side, an opening book and endgame
+  tablebases are chess databases (local files); the book could be built
+  from the bot's own games. RDS and Aurora bill hourly (ask first) and
+  only make sense if the opening trainer happens.
 
 ## Release names
 

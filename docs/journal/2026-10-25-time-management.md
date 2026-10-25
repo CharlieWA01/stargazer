@@ -137,3 +137,17 @@ runs long.
   about 50 ms each after 224), as expected when each move thinks a
   little longer. The sudden-death SPRT is the real check on that.
 - SPRT: see the PR and the roadmap.
+
+## Charlie's 5+0 game against Stockfish (2026-10-25)
+
+Charlie played Stargazer against Stockfish 15.1 in a GUI at 5 minutes, no
+increment: 84 moves, lost (mated as the clock ran out). Replayed with
+Stargazer at depth 12 on each position: White about +1.5 to +2 pawns
+from move 20 to 44, then a slow slide (46. Kd4, where Kf4 was preferred;
+0.0 by 54. a5; lost by 58. Nc2; 64. d6 the last blunder). With no
+increment the engine spends a twentieth of what's left on each move:
+about 15 seconds on move 1, 1.5 by move 46, 0.6 by move 64, just when
+the endgame needed thinking. That's the case for a sudden-death pacing
+rule (roadmap). By that arithmetic it should still have had a few
+seconds at the end, so the GUI probably takes more than the 50 ms
+`Move Overhead` keeps back; 200 was suggested.
