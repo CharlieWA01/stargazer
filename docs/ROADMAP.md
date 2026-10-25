@@ -88,8 +88,8 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
 - [ ] Time-management rework, rule by rule (design decided 2026-10-25;
       background: the parking lot's position-aware idea, and Charlie's
       5+0 games on 2026-10-23 and 1. e4 taking 24 seconds on 2026-10-24):
-  - [ ] 7a: one legal move played at once, `Move Overhead` option (no
-        SPRT; in review)
+  - [x] 7a: one legal move played at once, `Move Overhead` option (no
+        SPRT; PR #33)
   - [ ] 7b: best-move stability (150% after a change, 50% once settled
         for 4 depths; in review)
   - [ ] 7c: score drop
