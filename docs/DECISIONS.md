@@ -596,3 +596,21 @@ shape at rig speed and costs about as much as a standard test.
 an hour), approved here. Expected gain is small, maybe +10 to +30 Elo in
 all.
 
+
+## 2026-10-25: Best-move stability dropped
+**Decision (Charlie's choice):** rule 2 of the time-management rework
+(stretch the target to 150% when the best move just changed, shrink it
+to 50% once it has held for 4 depths) is dropped, and its code taken out
+again. The score-drop rule (rule 3) is built on its own, without it.
+**Result:** SPRT against main, 626 games: -24.5 ± 19.4 Elo; the test
+accepted "not stronger".
+**Why it lost (best guess):** the first few depths take microseconds
+and nearly always agree, so "held for 4 depths" was true on almost
+every move, and the engine stopped after about a quarter of its planned
+time. At 8+0.08 the time saved never paid off later in the game.
+**Alternatives:** one milder retry now (count only depths 6 and up,
+shrink to 75%); or drop rules 2 and 3 together.
+**Why:** the rework's rule is that each step stays only if its SPRT
+shows a gain, with tuning later; a 24-Elo loss points to a flawed idea,
+not a slightly wrong number. The milder version is parked.
+**Cost:** one SPRT (a few cents).

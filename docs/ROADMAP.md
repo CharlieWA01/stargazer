@@ -88,18 +88,42 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
 - [ ] Time-management rework, rule by rule (design decided 2026-10-25;
       background: the parking lot's position-aware idea, and Charlie's
       5+0 games on 2026-10-23 and 1. e4 taking 24 seconds on 2026-10-24):
-  - [ ] 7a: one legal move played at once, `Move Overhead` option (no
-        SPRT; in review)
-  - [ ] 7b: best-move stability
-  - [ ] 7c: score drop
+  - [x] 7a: one legal move played at once, `Move Overhead` option (no
+        SPRT; PR #33)
+  - [x] 7b: best-move stability (150% after a change, 50% once settled
+        for 4 depths): **tried and dropped**, SPRT -24.5 ± 19.4 Elo over
+        626 games (PR #34); a milder version is parked
+  - [x] 7c: score drop (more than 30 centipawns down from the last depth:
+        200% of the target): SPRT +10.9 ± 8.7 Elo over 2,651 games (PR #34)
   - [ ] 7d: when to start a new depth
-  - [ ] Sudden-death SPRT at 10 seconds + 0 for 7b to 7d together
+  - [ ] Sudden-death SPRT at 10 seconds + 0 for the rules kept, against
+        the version before 7c
 - [ ] Evaluation terms: mobility, pawn structure, king safety, and a
       "mop-up" term for won endgames (drive the losing king to the edge,
       bring your own king close; Charlie's endgame point, 2026-10-24,
       after the queen-up shuffling game against PyChess) (design section
       first)
 - [ ] Texel tuning (design section first)
+
+### Milestone 5 ideas (Charlie, 2026-10-25; not designed yet)
+
+Next after Milestone 4. The bot doubles as Charlie's SRE showcase.
+
+- **The engine battleground:** Lichess bots mostly play other bots, and
+  lichess-bot's matchmaking can challenge other bots while idle, so the
+  bot keeps itself busy. Check the matchmaking settings and Lichess's bot
+  rules against the current docs before designing.
+- **The SRE layer:** SLOs (challenges answered, games finished without
+  losing on time, time to reconnect) with burn-rate alerts and a public
+  status page; deploys that let running games finish first; a new engine
+  version ships only after passing its SPRT; chaos drills written up as
+  postmortems; an AI responder that opens an issue or fix PR for Charlie
+  to approve; game history in S3, queried with Athena for public stats.
+- **Hosting:** not Fargate Spot (a reclaimed task abandons its games); the
+  bot needs always-on CPU. On-demand Fargate at 1 vCPU is roughly $25 to
+  $30 a month, most of prod's budget, and EC2 is on the ask-first list:
+  price both properly before deciding.
+- Playing Stargazer from the portfolio page (WebAssembly) stays planned.
 
 ## Release names
 
@@ -126,6 +150,14 @@ a release is tagged and built (DESIGN.md section 6).
 
 ## Parking lot
 
+- An opening-trainer website (Charlie, 2026-10-25): pick an opening and
+  drill it to a set depth against an engine that always plays that line,
+  since openings come up too rarely in games to remember. A possible
+  paid product later; a separate project, not part of the engine.
+- A milder best-move stability rule (time management): count only depths
+  6 and up (the first few take microseconds and nearly always agree),
+  and shrink to about 75% instead of 50%. The 50% version lost 24 Elo
+  (2026-10-25).
 - NNUE evaluation (Milestone 6); the evaluation is built to be swappable.
 - Magic bitboards for sliding pieces, and fully legal move generation, if
   `bench` shows either is worth it.

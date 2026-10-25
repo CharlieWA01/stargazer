@@ -118,8 +118,16 @@ $0). So:
   searched first, so if another finished move beats it, that move is
   played (Milestone 4, 2026-10-23). Also `go depth`,
   `go movetime`, `go infinite`. Built in PR #9.
-  **Rework decided 2026-10-25** (DECISIONS.md): best-move stability, a
-  score drop and the new-depth rule follow as their own PRs.
+  **Rework decided 2026-10-25** (DECISIONS.md), rule by rule:
+  - **Best-move stability (7b): tried and dropped** (150% after a
+    change, 50% once the best move had held for 4 depths): it lost
+    24.5 ± 19.4 Elo, because the shallow depths nearly always agree and
+    the engine stopped after a quarter of its planned time.
+  - **Score drop (7c):** if a depth's score is more than 30 centipawns
+    below the last depth's, the target for starting another depth is
+    200%; a rising score changes nothing. It decides only whether to
+    start another depth, never past the ceiling.
+  - The new-depth rule follows as its own PR.
 - **Transposition table: decided 2026-10-23** (built in two steps).
   - **Fingerprints (Zobrist hashing), step 2a, built:** a fixed random
     64-bit number for each piece on each square, for each combination of

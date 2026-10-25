@@ -41,3 +41,70 @@ on 2026-10-24, where 1. e4 took 24 seconds.
 Forced moves (a king with one escape, the only recapture) no longer use
 any clock. No strength test: in rig games such positions are rare, and
 the option only matters with a slow connection.
+
+## Rule 2: best-move stability
+
+### What was done
+- `src/uci.rs`: after each depth, the UCI layer notes the search's best
+  move. If it has just changed, the target for this move is stretched
+  to 150% (the search is still making up its mind); if it has been the
+  same for 4 depths in a row after the first, the target shrinks to 50%
+  (it's very likely right); otherwise 100%. The target only decides
+  whether to start another depth, and never goes past the ceiling, which
+  still stops a depth in the middle.
+
+### How it was verified
+- New tests: the stretched and shrunk targets (and the ceiling as a
+  cap), and the 100/50/150 sequence as the best move settles and then
+  changes. Turning the 50% into 100% makes the second fail.
+- 117 unit tests pass; `cargo fmt`, `clippy -D warnings`, the WASM build
+  and selfplay are clean. Bench unchanged at 343857.
+- First move with 5 minutes each: from the start position, depth 14 in
+  9.2 seconds either way (the best move wasn't settled long enough); in
+  a calm middlegame where Nd5 stayed best, depth 11 in 4.1 seconds
+  instead of depth 12 in 12.5 seconds.
+- SPRT against main: **failed**, -24.5 ± 19.4 Elo over 626 games (178
+  wins, 226 draws, 222 losses; LLR -2.98).
+
+### Problems and fixes
+- The rule lost. The best guess at why: the first few depths take
+  microseconds and nearly always agree, so "the same move for 4 depths"
+  was true on almost every move, and the engine started no new depth
+  past a quarter of its planned time. The saving at the clock was real
+  (the 12.5 to 4.1 seconds above), but thinking less on every move cost
+  more than the saved time won back. Charlie chose to drop it
+  (DECISIONS.md, "Best-move stability dropped"); a milder version is in
+  the parking lot.
+
+### Impact
+None in the engine: the code came out again in the same PR. What it
+taught: a time rule has to tell a truly settled move from one that is
+only settled at depths too shallow to matter.
+
+## Rule 3: score drop
+
+### What was done
+- `src/uci.rs`: a small `ScoreWatch` remembers the score each depth
+  gave. If the new depth's score is more than 30 centipawns (about a
+  third of a pawn) below the last one, the search has just seen trouble
+  coming, so the target for starting another depth becomes 200%: twice
+  the time, to look for a way out. A rising score changes nothing. The
+  ceiling still caps it all, so it can't lose on time.
+- `TimeBudget::worth_another_depth` keeps the `percent` argument from
+  rule 2, which now carries only the score-drop stretch.
+
+### How it was verified
+- New test: a fall of exactly 30 is ignored, a fall of 31 or more gives
+  200%, a steady score goes back to 100%, and a rise does nothing.
+  Making a drop give 100% makes it fail.
+- 117 unit tests pass; `cargo fmt`, `clippy -D warnings`, the WASM build
+  and selfplay are clean. Bench unchanged at 343857.
+- SPRT against main: **passed**, +10.9 ± 8.7 Elo over 2,651 games (883
+  wins, 969 draws, 799 losses; LLR 3.0). It ran past the workflow's
+  wait, so the verdict came from the SPRT report workflow.
+
+### Impact
+A small, real gain, in line with the +10 to +30 expected for the whole
+rework. Unlike rule 2, it adds time only in the few positions where the
+search has just found a problem, instead of taking time from every
+move.

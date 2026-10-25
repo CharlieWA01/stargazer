@@ -254,8 +254,37 @@ impl TimeBudget {
 
     /// Between depths: each depth takes several times longer than the one
     /// before, so past half the target there's no point starting another.
-    fn worth_another_depth(&self, elapsed_ms: u64) -> bool {
-        elapsed_ms < self.soft / 2
+    /// `percent` stretches or shrinks the target for this position (100:
+    /// as planned), never past the ceiling.
+    fn worth_another_depth(&self, elapsed_ms: u64, percent: u64) -> bool {
+        let target = (self.soft * percent / 100).min(self.hard);
+        elapsed_ms < target / 2
+    }
+}
+
+/// The score each depth gave, to notice when the search has just found a
+/// problem.
+#[derive(Default)]
+struct ScoreWatch {
+    last: Option<i32>,
+}
+
+/// A fall in score, from one depth to the next, big enough to mean the
+/// search has just found a problem: about a third of a pawn.
+const SCORE_DROP_CP: i32 = 30;
+
+impl ScoreWatch {
+    /// After a depth, with that depth's score: how much of the target to
+    /// allow, in percent. If the score has fallen by more than a third of
+    /// a pawn since the last depth, the search has just seen trouble
+    /// coming: twice the target, to look for a way out. Otherwise as
+    /// planned; a rising score changes nothing.
+    fn after_depth(&mut self, score: i32) -> u64 {
+        let dropped = self
+            .last
+            .is_some_and(|last| score < last.saturating_sub(SCORE_DROP_CP));
+        self.last = Some(score);
+        if dropped { 200 } else { 100 }
     }
 }
 
@@ -377,6 +406,7 @@ fn go<W: Write + Send + 'static>(
         let elapsed = || started.elapsed().as_millis() as u64;
         let mut memory = memory.lock().unwrap();
         let Memory { table, history } = &mut *memory;
+        let mut scores = ScoreWatch::default();
         let best = search(
             &game,
             max_depth,
@@ -387,13 +417,15 @@ fn go<W: Write + Send + 'static>(
                 stop.load(Ordering::Relaxed)
                     || budget.as_ref().is_some_and(|b| b.out_of_time(elapsed()))
             },
-            // Between depths: report, then decide whether to go deeper.
+            // Between depths: report, then decide whether to go deeper,
+            // allowing more time when the score has just fallen.
             &mut |report| {
                 say(&output, info_line(report, started));
+                let percent = scores.after_depth(report.score);
                 !stop.load(Ordering::Relaxed)
                     && budget
                         .as_ref()
-                        .is_none_or(|b| b.worth_another_depth(elapsed()))
+                        .is_none_or(|b| b.worth_another_depth(elapsed(), percent))
             },
         );
         // `go infinite` must not answer until told to stop, even if the
@@ -788,10 +820,31 @@ mod tests {
             soft: 1_000,
             hard: 3_000,
         };
-        assert!(budget.worth_another_depth(499) && !budget.worth_another_depth(500));
+        assert!(budget.worth_another_depth(499, 100) && !budget.worth_another_depth(500, 100));
+        // Stretched or shrunk for the position, but never past the ceiling.
+        assert!(budget.worth_another_depth(749, 150) && !budget.worth_another_depth(750, 150));
+        assert!(budget.worth_another_depth(249, 50) && !budget.worth_another_depth(250, 50));
+        assert!(
+            budget.worth_another_depth(1_499, 1_000) && !budget.worth_another_depth(1_500, 1_000)
+        );
         assert!(!budget.out_of_time(2_999) && budget.out_of_time(3_000));
         // No clock: no time limit.
         assert_eq!(time_budget(&GoLimits::default(), Color::White, 50), None);
+    }
+
+    #[test]
+    fn a_falling_score_gets_twice_the_time() {
+        let mut scores = ScoreWatch::default();
+        // The first depth: nothing to compare with yet.
+        assert_eq!(scores.after_depth(40), 100);
+        // Down by exactly a third of a pawn: not yet a problem.
+        assert_eq!(scores.after_depth(10), 100);
+        // Down by more: twice the target.
+        assert_eq!(scores.after_depth(-21), 200);
+        // Steady again: as planned.
+        assert_eq!(scores.after_depth(-21), 100);
+        // A rising score changes nothing.
+        assert_eq!(scores.after_depth(300), 100);
     }
 
     #[test]
