@@ -38,3 +38,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-24 | [#30](https://github.com/CharlieWA01/stargazer/pull/30) | Check extensions (step 6a) |
 | 2026-10-24 | [#31](https://github.com/CharlieWA01/stargazer/pull/31) | Late move reductions (step 6b) |
 | 2026-10-24 | [#32](https://github.com/CharlieWA01/stargazer/pull/32) | Docs: Stockfish match after LMR (about 2180) |
+| 2026-10-25 | [#33](https://github.com/CharlieWA01/stargazer/pull/33) | Time rule 1: lone legal move played at once, Move Overhead option (step 7a) |
