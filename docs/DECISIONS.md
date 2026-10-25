@@ -614,3 +614,26 @@ shrink to 75%); or drop rules 2 and 3 together.
 shows a gain, with tuning later; a 24-Elo loss points to a flawed idea,
 not a slightly wrong number. The milder version is parked.
 **Cost:** one SPRT (a few cents).
+
+## 2026-10-25: Long time controls to confirm time-management changes
+**Decision (Charlie's choice):** time-management changes get a
+confirmation test at a long time control, 60 seconds + 0.6 a game, as
+well as the standard 8+0.08 SPRT and the planned 10 seconds + 0. First
+up: the kept rules together against the version before the rework, then
+a milder best-move stability rule (parked) tested at the long control
+directly.
+**Why:** the rules are fractions of the clock, but what they react to
+isn't. At 8 seconds a move reaches about depth 8 to 10, at 5 minutes
+about 14 to 16. "The same best move for 4 depths" means depths 1 to 4 in
+a fast game (almost worthless) and 10 to 14 in a slow one, so rule 2 may
+have failed only because the test was fast. The fixed move overhead also
+weighs far more at short controls. Strong engine projects test at a
+short control and confirm at a long one for the same reason.
+**Alternatives:** short controls only (cheap, but blind to depth
+effects); a real 5-minute control (about 10 minutes a game, days per
+test).
+**Cost:** each long game costs about 7 times a standard one. The rig
+plays about 270 long games an hour on 16 vCPU, so a test may hit the
+8-hour limit (about 2,000 games) before a verdict; its Elo ± is still
+reported then. Under a dollar per test. Beyond the standing approval
+(under an hour), approved here.
