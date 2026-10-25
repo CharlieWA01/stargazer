@@ -23,7 +23,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use crate::board::{Color, Position};
-use crate::eval::evaluate;
+use crate::eval::{evaluate, game_phase};
 use crate::movegen::legal_moves;
 use crate::perft::divide;
 use crate::search::{History, MAX_PLY, Report, mate_in, search};
@@ -295,9 +295,19 @@ impl ScoreWatch {
 
 /// Plan this move's time (DESIGN.md section 3): about a twentieth of the
 /// time left (or a share of it until the next time control) plus most of
-/// the increment, and never more than three times that. Returns `None`
-/// when there's no clock or move time, so the search has no time limit.
-fn time_budget(limits: &GoLimits, side: Color, move_overhead: u64) -> Option<TimeBudget> {
+/// the increment, and never more than three times that. With no increment
+/// and no time control coming (sudden death), the clock never refills:
+/// share it over the moves the game probably has left instead, judged
+/// from the pieces still on the board (`sudden_death_moves_left`), and
+/// never plan more than a tenth of it.
+/// Returns `None` when there's no clock or move time, so the search has
+/// no time limit.
+fn time_budget(
+    limits: &GoLimits,
+    side: Color,
+    phase: i32,
+    move_overhead: u64,
+) -> Option<TimeBudget> {
     if let Some(movetime) = limits.movetime {
         let hard = movetime.saturating_sub(move_overhead).max(1);
         return Some(TimeBudget { soft: hard, hard });
@@ -309,13 +319,28 @@ fn time_budget(limits: &GoLimits, side: Color, move_overhead: u64) -> Option<Tim
     let remaining = limits.time[index]?;
     let increment = limits.increment[index];
     let available = remaining.saturating_sub(move_overhead).max(1);
+    let sudden_death = limits.moves_to_go.is_none() && increment == 0;
     let share = match limits.moves_to_go {
         Some(moves) => (moves + 1).min(20),
+        None if sudden_death => sudden_death_moves_left(phase),
         None => 20,
     };
     let soft = (remaining / share + increment * 3 / 4).min(available);
-    let hard = (soft * 3).min(available);
+    let mut hard = (soft * 3).min(available);
+    if sudden_death {
+        hard = hard.min(remaining / 10);
+    }
     Some(TimeBudget { soft, hard })
+}
+
+/// In sudden death, how many more moves the game probably lasts, judged
+/// from the pieces left (the evaluation's game phase, 24 with every piece
+/// on and 0 with only kings and pawns): 25 moves plus the phase, at most
+/// 45. So the engine thinks hardest when the pieces come off and the game
+/// turns into an endgame, and keeps a reserve while the board stays full
+/// (Charlie's choice, 2026-10-25).
+fn sudden_death_moves_left(phase: i32) -> u64 {
+    (25 + phase.clamp(0, 20)) as u64
 }
 
 /// An option a GUI can set.
@@ -380,7 +405,13 @@ fn go<W: Write + Send + 'static>(
     }
 
     let limits = parse_go(line);
-    let budget = time_budget(&limits, current(game).side_to_move, move_overhead);
+    let position = current(game);
+    let budget = time_budget(
+        &limits,
+        position.side_to_move,
+        game_phase(position),
+        move_overhead,
+    );
     // Only one legal move and a clock running: nothing to think about, so
     // save the time. (`go depth` and `go infinite` still search, for
     // anyone who wants to see the analysis.)
@@ -616,7 +647,7 @@ mod tests {
         // back leaves 700 ms.
         let limits = parse_go("go movetime 1000");
         assert_eq!(
-            time_budget(&limits, Color::White, 300),
+            time_budget(&limits, Color::White, 24, 300),
             Some(TimeBudget {
                 soft: 700,
                 hard: 700
@@ -793,30 +824,71 @@ mod tests {
     }
 
     #[test]
+    fn sudden_death_expects_fewer_moves_as_pieces_come_off() {
+        // Every piece on (phase 24) is capped at 45.
+        assert_eq!(sudden_death_moves_left(24), 45);
+        assert_eq!(sudden_death_moves_left(20), 45);
+        // A queen and a rook each (12).
+        assert_eq!(sudden_death_moves_left(12), 37);
+        // Knight against bishop (2).
+        assert_eq!(sudden_death_moves_left(2), 27);
+        // Kings and pawns only.
+        assert_eq!(sudden_death_moves_left(0), 25);
+    }
+
+    #[test]
     fn the_time_budget() {
         let clock = |wtime, btime, winc, binc| GoLimits {
             time: [Some(wtime), Some(btime)],
             increment: [winc, binc],
             ..GoLimits::default()
         };
-        // A minute, no increment: 3 seconds target, 9 seconds ceiling.
+        // A minute with an increment: a twentieth plus most of the
+        // increment, three times that as the ceiling.
         assert_eq!(
-            time_budget(&clock(60_000, 1, 0, 0), Color::White, 50),
+            time_budget(&clock(60_000, 1, 1_000, 0), Color::White, 24, 50),
             Some(TimeBudget {
-                soft: 3_000,
-                hard: 9_000
+                soft: 3_750,
+                hard: 11_250
             })
+        );
+        // A minute, no increment (sudden death), every piece on the board:
+        // shared over 45 moves, ceiling three times that (under a tenth of
+        // the clock).
+        assert_eq!(
+            time_budget(&clock(60_000, 1, 0, 0), Color::White, 24, 50),
+            Some(TimeBudget {
+                soft: 1_333,
+                hard: 3_999
+            })
+        );
+        // Only kings and pawns left: shared over 25 moves, and the ceiling
+        // is held to a tenth of the clock.
+        assert_eq!(
+            time_budget(&clock(60_000, 1, 0, 0), Color::White, 0, 50),
+            Some(TimeBudget {
+                soft: 2_400,
+                hard: 6_000
+            })
+        );
+        // A time control coming (moves to go): shared out over those moves,
+        // increment or not.
+        let mut control = clock(60_000, 1, 0, 0);
+        control.moves_to_go = Some(9);
+        assert_eq!(
+            time_budget(&control, Color::White, 24, 50).map(|b| b.soft),
+            Some(6_000)
         );
         // The side to move's clock is the one used.
         assert_eq!(
-            time_budget(&clock(1, 60_000, 0, 2_000), Color::Black, 50),
+            time_budget(&clock(1, 60_000, 0, 2_000), Color::Black, 24, 50),
             Some(TimeBudget {
                 soft: 4_500,
                 hard: 13_500
             })
         );
         // Almost out of time: never plan more than what's left, minus the margin.
-        let low = time_budget(&clock(1_000, 1_000, 3_000, 3_000), Color::White, 50).unwrap();
+        let low = time_budget(&clock(1_000, 1_000, 3_000, 3_000), Color::White, 24, 50).unwrap();
         assert_eq!(low.hard, 950);
         assert!(low.soft <= low.hard);
         // When to stop: inside a depth at the ceiling, between depths past
@@ -833,7 +905,10 @@ mod tests {
         );
         assert!(!budget.out_of_time(2_999) && budget.out_of_time(3_000));
         // No clock: no time limit.
-        assert_eq!(time_budget(&GoLimits::default(), Color::White, 50), None);
+        assert_eq!(
+            time_budget(&GoLimits::default(), Color::White, 24, 50),
+            None
+        );
     }
 
     #[test]

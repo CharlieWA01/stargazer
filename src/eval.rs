@@ -138,6 +138,22 @@ const TABLES: [[[i32; 64]; 2]; 6] = {
     result
 };
 
+/// How much of the middlegame is left, from 24 (every piece on the
+/// board) down to 0 (only kings and pawns): knights and bishops count 1,
+/// rooks 2, queens 4, both sides together. The same count `evaluate`
+/// blends with; the clock uses it too, to judge how long the game has
+/// left (`uci.rs`).
+pub fn game_phase(position: &Position) -> i32 {
+    let mut phase = 0;
+    for color in Color::BOTH {
+        for (kind_index, kind) in PieceKind::ALL.into_iter().enumerate() {
+            let count = position.pieces(Piece { color, kind }).count() as i32;
+            phase += PHASE_WEIGHT[kind_index] * count;
+        }
+    }
+    phase.min(FULL_PHASE)
+}
+
 /// Score the position for the side to move, in centipawns.
 pub fn evaluate(position: &Position) -> i32 {
     // Totals from White's point of view: White's pieces add, Black's subtract.
@@ -188,6 +204,23 @@ mod tests {
 
     fn eval(fen: &str) -> i32 {
         evaluate(&Position::from_fen(fen).unwrap())
+    }
+
+    #[test]
+    fn game_phase_counts_the_pieces_left() {
+        let phase = |fen: &str| game_phase(&Position::from_fen(fen).unwrap());
+        assert_eq!(game_phase(&Position::startpos()), 24);
+        // A queen and a rook each: 2 x (4 + 2).
+        assert_eq!(
+            phase("3qk2r/pppppppp/8/8/8/8/PPPPPPPP/3QK2R w - - 0 30"),
+            12
+        );
+        // Knight against bishop: 1 + 1.
+        assert_eq!(phase("8/5k2/4b3/8/8/2N5/4K3/8 w - - 0 50"), 2);
+        // Kings and pawns only.
+        assert_eq!(phase("8/5kp1/8/8/8/8/4KP2/8 w - - 0 60"), 0);
+        // Extra queens from promotions don't push it past 24.
+        assert_eq!(phase("qqqqk3/8/8/8/8/8/8/QQQQK3 w - - 0 80"), 24);
     }
 
     /// The same position with the colours swapped and the board turned
