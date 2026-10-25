@@ -108,15 +108,18 @@ $0). So:
   principal variation search.
 - **Time:** a target of one twentieth of the remaining time (or a share
   until the next time control, with `movestogo`) plus three quarters of the
-  increment, and a ceiling of three times the target. Both stay 50 ms
-  inside the clock. Inside a depth the search stops at the ceiling; between
+  increment, and a ceiling of three times the target. Both stay inside
+  the clock by the `Move Overhead` option (50 ms unless set; added
+  2026-10-25). With only one legal move and a clock running, the move is
+  played at once. Inside a depth the search stops at the ceiling; between
   depths it starts another only if under half the target, because each
   depth takes several times longer than the last. A depth cut short by the
   ceiling still counts for the moves it finished: last depth's best move is
   searched first, so if another finished move beats it, that move is
   played (Milestone 4, 2026-10-23). Also `go depth`,
-  `go movetime`, `go infinite`. Built in PR #9. Smarter, position-aware
-  time use is parked (ROADMAP.md).
+  `go movetime`, `go infinite`. Built in PR #9.
+  **Rework decided 2026-10-25** (DECISIONS.md): best-move stability, a
+  score drop and the new-depth rule follow as their own PRs.
 - **Transposition table: decided 2026-10-23** (built in two steps).
   - **Fingerprints (Zobrist hashing), step 2a, built:** a fixed random
     64-bit number for each piece on each square, for each combination of

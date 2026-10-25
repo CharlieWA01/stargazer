@@ -11,6 +11,7 @@ go movetime 2000      # think for 2 seconds
 go depth 6            # or: search 6 half-moves deep
 go infinite           # think until you type: stop
 setoption name Hash value 64   # memory for the transposition table, in MB (default 16)
+setoption name Move Overhead value 200   # ms kept back each move for a slow GUI or connection (default 50)
 eval                  # the evaluation, from White's side
 d                     # print the board
 quit
