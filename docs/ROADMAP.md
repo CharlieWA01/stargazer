@@ -90,11 +90,14 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
       5+0 games on 2026-10-23 and 1. e4 taking 24 seconds on 2026-10-24):
   - [x] 7a: one legal move played at once, `Move Overhead` option (no
         SPRT; PR #33)
-  - [ ] 7b: best-move stability (150% after a change, 50% once settled
-        for 4 depths; in review)
-  - [ ] 7c: score drop
+  - [x] 7b: best-move stability (150% after a change, 50% once settled
+        for 4 depths): **tried and dropped**, SPRT -24.5 ± 19.4 Elo over
+        626 games (PR #34); a milder version is parked
+  - [ ] 7c: score drop (more than 30 centipawns down from the last depth:
+        200% of the target; PR #34, SPRT running)
   - [ ] 7d: when to start a new depth
-  - [ ] Sudden-death SPRT at 10 seconds + 0 for 7b to 7d together
+  - [ ] Sudden-death SPRT at 10 seconds + 0 for the rules kept, against
+        the version before 7c
 - [ ] Evaluation terms: mobility, pawn structure, king safety, and a
       "mop-up" term for won endgames (drive the losing king to the edge,
       bring your own king close; Charlie's endgame point, 2026-10-24,
@@ -127,6 +130,10 @@ a release is tagged and built (DESIGN.md section 6).
 
 ## Parking lot
 
+- A milder best-move stability rule (time management): count only depths
+  6 and up (the first few take microseconds and nearly always agree),
+  and shrink to about 75% instead of 50%. The 50% version lost 24 Elo
+  (2026-10-25).
 - NNUE evaluation (Milestone 6); the evaluation is built to be swappable.
 - Magic bitboards for sliding pieces, and fully legal move generation, if
   `bench` shows either is worth it.

@@ -120,3 +120,28 @@ that way.
   work in the benchmark, which starts every position fresh, yet passed
   at +25 ± 16 Elo in real games, where what it learns carries from move
   to move. A benchmark measures what it can see; the match is the test.
+
+## The idea that lost: when a good hypothesis fails the test
+**Tags:** Testing, Process, Judgment
+
+- **Situation:** After a run of gains (the engine went from about 1900
+  to about 2180 against Stockfish in a day), I reworked how it spends
+  its clock. The second rule was a textbook idea from strong engines:
+  once the same best move has held for several depths of search, stop
+  thinking and play it. On one sample position it cut a 12.5-second
+  move to 4.1 seconds.
+- **Task:** Keep it only if it makes the engine stronger, measured with
+  the same statistical test (SPRT) as every other change.
+- **Action:** Ran the test against the previous version. It failed
+  clearly: -24.5 ± 19.4 Elo over 626 games, our first loss. Instead of
+  tweaking numbers until it passed, I looked for why: the first few
+  depths finish in microseconds and nearly always agree, so "settled for
+  4 depths" was true on almost every move, and the engine routinely
+  stopped after a quarter of its planned time. Dropped the rule, kept
+  the write-up, parked a milder version for later, and tested the next
+  rule on its own.
+- **Result:** The engine didn't get weaker, because nothing merges
+  without passing. The one-position measurement that looked like a win
+  (a third of the time) was exactly the effect that lost games. Lesson:
+  a hypothesis is only as good as its test, a failed one is still data,
+  and "it looks faster" is not "it plays better".

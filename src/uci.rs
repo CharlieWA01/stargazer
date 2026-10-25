@@ -24,7 +24,7 @@ use std::time::{Duration, Instant};
 
 use crate::board::{Color, Position};
 use crate::eval::evaluate;
-use crate::movegen::{Move, legal_moves};
+use crate::movegen::legal_moves;
 use crate::perft::divide;
 use crate::search::{History, MAX_PLY, Report, mate_in, search};
 use crate::tt::{self, Table};
@@ -262,34 +262,29 @@ impl TimeBudget {
     }
 }
 
-/// How settled the search's choice is: the best move after each depth,
-/// and how many depths in a row it has been the same.
+/// The score each depth gave, to notice when the search has just found a
+/// problem.
 #[derive(Default)]
-struct Stability {
-    best: Option<Move>,
-    same_for: u32,
+struct ScoreWatch {
+    last: Option<i32>,
 }
 
-impl Stability {
-    /// After a depth, with that depth's best move: how much of the target
-    /// to allow, in percent. A move that has just changed gets more time
-    /// (the search is still making up its mind); one that has been best
-    /// for 4 depths or more in a row gets half (it's very likely right).
-    fn after_depth(&mut self, best: Option<Move>) -> u64 {
-        if best.is_some() && best == self.best {
-            self.same_for += 1;
-        } else {
-            self.same_for = 0;
-        }
-        let changed = self.best.is_some() && best != self.best;
-        self.best = best;
-        if changed {
-            150
-        } else if self.same_for >= 4 {
-            50
-        } else {
-            100
-        }
+/// A fall in score, from one depth to the next, big enough to mean the
+/// search has just found a problem: about a third of a pawn.
+const SCORE_DROP_CP: i32 = 30;
+
+impl ScoreWatch {
+    /// After a depth, with that depth's score: how much of the target to
+    /// allow, in percent. If the score has fallen by more than a third of
+    /// a pawn since the last depth, the search has just seen trouble
+    /// coming: twice the target, to look for a way out. Otherwise as
+    /// planned; a rising score changes nothing.
+    fn after_depth(&mut self, score: i32) -> u64 {
+        let dropped = self
+            .last
+            .is_some_and(|last| score < last.saturating_sub(SCORE_DROP_CP));
+        self.last = Some(score);
+        if dropped { 200 } else { 100 }
     }
 }
 
@@ -411,7 +406,7 @@ fn go<W: Write + Send + 'static>(
         let elapsed = || started.elapsed().as_millis() as u64;
         let mut memory = memory.lock().unwrap();
         let Memory { table, history } = &mut *memory;
-        let mut stability = Stability::default();
+        let mut scores = ScoreWatch::default();
         let best = search(
             &game,
             max_depth,
@@ -423,11 +418,10 @@ fn go<W: Write + Send + 'static>(
                     || budget.as_ref().is_some_and(|b| b.out_of_time(elapsed()))
             },
             // Between depths: report, then decide whether to go deeper,
-            // allowing more time while the best move keeps changing and
-            // less once it has settled.
+            // allowing more time when the score has just fallen.
             &mut |report| {
                 say(&output, info_line(report, started));
-                let percent = stability.after_depth(report.pv.first().copied());
+                let percent = scores.after_depth(report.score);
                 !stop.load(Ordering::Relaxed)
                     && budget
                         .as_ref()
@@ -839,24 +833,18 @@ mod tests {
     }
 
     #[test]
-    fn a_settled_best_move_gets_less_time_and_a_new_one_more() {
-        let opening = legal_moves(&Position::startpos());
-        let find = |text: &str| opening.iter().copied().find(|mv| mv.to_string() == text);
-        let (e4, d4) = (find("e2e4"), find("d2d4"));
-        let mut stability = Stability::default();
+    fn a_falling_score_gets_twice_the_time() {
+        let mut scores = ScoreWatch::default();
         // The first depth: nothing to compare with yet.
-        assert_eq!(stability.after_depth(e4), 100);
-        // The same move for 1, 2 and 3 more depths: as planned.
-        assert_eq!(stability.after_depth(e4), 100);
-        assert_eq!(stability.after_depth(e4), 100);
-        assert_eq!(stability.after_depth(e4), 100);
-        // Best for 4 depths in a row after the first: half.
-        assert_eq!(stability.after_depth(e4), 50);
-        assert_eq!(stability.after_depth(e4), 50);
-        // A new best move: half as much again as planned, and the count
-        // starts over.
-        assert_eq!(stability.after_depth(d4), 150);
-        assert_eq!(stability.after_depth(d4), 100);
+        assert_eq!(scores.after_depth(40), 100);
+        // Down by exactly a third of a pawn: not yet a problem.
+        assert_eq!(scores.after_depth(10), 100);
+        // Down by more: twice the target.
+        assert_eq!(scores.after_depth(-21), 200);
+        // Steady again: as planned.
+        assert_eq!(scores.after_depth(-21), 100);
+        // A rising score changes nothing.
+        assert_eq!(scores.after_depth(300), 100);
     }
 
     #[test]

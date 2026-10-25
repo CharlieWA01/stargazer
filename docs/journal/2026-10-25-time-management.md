@@ -63,4 +63,40 @@ the option only matters with a slow connection.
   9.2 seconds either way (the best move wasn't settled long enough); in
   a calm middlegame where Nd5 stayed best, depth 11 in 4.1 seconds
   instead of depth 12 in 12.5 seconds.
+- SPRT against main: **failed**, -24.5 ± 19.4 Elo over 626 games (178
+  wins, 226 draws, 222 losses; LLR -2.98).
+
+### Problems and fixes
+- The rule lost. The best guess at why: the first few depths take
+  microseconds and nearly always agree, so "the same move for 4 depths"
+  was true on almost every move, and the engine started no new depth
+  past a quarter of its planned time. The saving at the clock was real
+  (the 12.5 to 4.1 seconds above), but thinking less on every move cost
+  more than the saved time won back. Charlie chose to drop it
+  (DECISIONS.md, "Best-move stability dropped"); a milder version is in
+  the parking lot.
+
+### Impact
+None in the engine: the code came out again in the same PR. What it
+taught: a time rule has to tell a truly settled move from one that is
+only settled at depths too shallow to matter.
+
+## Rule 3: score drop
+
+### What was done
+- `src/uci.rs`: a small `ScoreWatch` remembers the score each depth
+  gave. If the new depth's score is more than 30 centipawns (about a
+  third of a pawn) below the last one, the search has just seen trouble
+  coming, so the target for starting another depth becomes 200%: twice
+  the time, to look for a way out. A rising score changes nothing. The
+  ceiling still caps it all, so it can't lose on time.
+- `TimeBudget::worth_another_depth` keeps the `percent` argument from
+  rule 2, which now carries only the score-drop stretch.
+
+### How it was verified
+- New test: a fall of exactly 30 is ignored, a fall of 31 or more gives
+  200%, a steady score goes back to 100%, and a rise does nothing.
+  Making a drop give 100% makes it fail.
+- 117 unit tests pass; `cargo fmt`, `clippy -D warnings`, the WASM build
+  and selfplay are clean. Bench unchanged at 343857.
 - SPRT: see the PR and the roadmap.
