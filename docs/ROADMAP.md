@@ -90,7 +90,8 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
       5+0 games on 2026-10-23 and 1. e4 taking 24 seconds on 2026-10-24):
   - [ ] 7a: one legal move played at once, `Move Overhead` option (no
         SPRT; in review)
-  - [ ] 7b: best-move stability
+  - [ ] 7b: best-move stability (150% after a change, 50% once settled
+        for 4 depths; in review)
   - [ ] 7c: score drop
   - [ ] 7d: when to start a new depth
   - [ ] Sudden-death SPRT at 10 seconds + 0 for 7b to 7d together

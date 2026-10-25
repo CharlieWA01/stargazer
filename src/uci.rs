@@ -24,7 +24,7 @@ use std::time::{Duration, Instant};
 
 use crate::board::{Color, Position};
 use crate::eval::evaluate;
-use crate::movegen::legal_moves;
+use crate::movegen::{Move, legal_moves};
 use crate::perft::divide;
 use crate::search::{History, MAX_PLY, Report, mate_in, search};
 use crate::tt::{self, Table};
@@ -254,8 +254,42 @@ impl TimeBudget {
 
     /// Between depths: each depth takes several times longer than the one
     /// before, so past half the target there's no point starting another.
-    fn worth_another_depth(&self, elapsed_ms: u64) -> bool {
-        elapsed_ms < self.soft / 2
+    /// `percent` stretches or shrinks the target for this position (100:
+    /// as planned), never past the ceiling.
+    fn worth_another_depth(&self, elapsed_ms: u64, percent: u64) -> bool {
+        let target = (self.soft * percent / 100).min(self.hard);
+        elapsed_ms < target / 2
+    }
+}
+
+/// How settled the search's choice is: the best move after each depth,
+/// and how many depths in a row it has been the same.
+#[derive(Default)]
+struct Stability {
+    best: Option<Move>,
+    same_for: u32,
+}
+
+impl Stability {
+    /// After a depth, with that depth's best move: how much of the target
+    /// to allow, in percent. A move that has just changed gets more time
+    /// (the search is still making up its mind); one that has been best
+    /// for 4 depths or more in a row gets half (it's very likely right).
+    fn after_depth(&mut self, best: Option<Move>) -> u64 {
+        if best.is_some() && best == self.best {
+            self.same_for += 1;
+        } else {
+            self.same_for = 0;
+        }
+        let changed = self.best.is_some() && best != self.best;
+        self.best = best;
+        if changed {
+            150
+        } else if self.same_for >= 4 {
+            50
+        } else {
+            100
+        }
     }
 }
 
@@ -377,6 +411,7 @@ fn go<W: Write + Send + 'static>(
         let elapsed = || started.elapsed().as_millis() as u64;
         let mut memory = memory.lock().unwrap();
         let Memory { table, history } = &mut *memory;
+        let mut stability = Stability::default();
         let best = search(
             &game,
             max_depth,
@@ -387,13 +422,16 @@ fn go<W: Write + Send + 'static>(
                 stop.load(Ordering::Relaxed)
                     || budget.as_ref().is_some_and(|b| b.out_of_time(elapsed()))
             },
-            // Between depths: report, then decide whether to go deeper.
+            // Between depths: report, then decide whether to go deeper,
+            // allowing more time while the best move keeps changing and
+            // less once it has settled.
             &mut |report| {
                 say(&output, info_line(report, started));
+                let percent = stability.after_depth(report.pv.first().copied());
                 !stop.load(Ordering::Relaxed)
                     && budget
                         .as_ref()
-                        .is_none_or(|b| b.worth_another_depth(elapsed()))
+                        .is_none_or(|b| b.worth_another_depth(elapsed(), percent))
             },
         );
         // `go infinite` must not answer until told to stop, even if the
@@ -788,10 +826,37 @@ mod tests {
             soft: 1_000,
             hard: 3_000,
         };
-        assert!(budget.worth_another_depth(499) && !budget.worth_another_depth(500));
+        assert!(budget.worth_another_depth(499, 100) && !budget.worth_another_depth(500, 100));
+        // Stretched or shrunk for the position, but never past the ceiling.
+        assert!(budget.worth_another_depth(749, 150) && !budget.worth_another_depth(750, 150));
+        assert!(budget.worth_another_depth(249, 50) && !budget.worth_another_depth(250, 50));
+        assert!(
+            budget.worth_another_depth(1_499, 1_000) && !budget.worth_another_depth(1_500, 1_000)
+        );
         assert!(!budget.out_of_time(2_999) && budget.out_of_time(3_000));
         // No clock: no time limit.
         assert_eq!(time_budget(&GoLimits::default(), Color::White, 50), None);
+    }
+
+    #[test]
+    fn a_settled_best_move_gets_less_time_and_a_new_one_more() {
+        let opening = legal_moves(&Position::startpos());
+        let find = |text: &str| opening.iter().copied().find(|mv| mv.to_string() == text);
+        let (e4, d4) = (find("e2e4"), find("d2d4"));
+        let mut stability = Stability::default();
+        // The first depth: nothing to compare with yet.
+        assert_eq!(stability.after_depth(e4), 100);
+        // The same move for 1, 2 and 3 more depths: as planned.
+        assert_eq!(stability.after_depth(e4), 100);
+        assert_eq!(stability.after_depth(e4), 100);
+        assert_eq!(stability.after_depth(e4), 100);
+        // Best for 4 depths in a row after the first: half.
+        assert_eq!(stability.after_depth(e4), 50);
+        assert_eq!(stability.after_depth(e4), 50);
+        // A new best move: half as much again as planned, and the count
+        // starts over.
+        assert_eq!(stability.after_depth(d4), 150);
+        assert_eq!(stability.after_depth(d4), 100);
     }
 
     #[test]

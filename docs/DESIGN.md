@@ -118,8 +118,12 @@ $0). So:
   searched first, so if another finished move beats it, that move is
   played (Milestone 4, 2026-10-23). Also `go depth`,
   `go movetime`, `go infinite`. Built in PR #9.
-  **Rework decided 2026-10-25** (DECISIONS.md): best-move stability, a
-  score drop and the new-depth rule follow as their own PRs.
+  **Rework decided 2026-10-25** (DECISIONS.md), rule by rule:
+  - **Best-move stability (7b):** after each depth the target is
+    stretched to 150% if the best move just changed, and shrunk to 50%
+    once it has been the same for 4 depths in a row; it decides only
+    whether to start another depth, never past the ceiling.
+  - A score drop and the new-depth rule follow as their own PRs.
 - **Transposition table: decided 2026-10-23** (built in two steps).
   - **Fingerprints (Zobrist hashing), step 2a, built:** a fixed random
     64-bit number for each piece on each square, for each combination of
