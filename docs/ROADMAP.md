@@ -11,7 +11,7 @@ against Stockfish measured about 1900; DECISIONS.md). Design state: `docs/DESIGN
 | 2 | **It plays** | Full UCI support and a basic search and evaluation; playable in a GUI. *(done 2026-10-20)* |
 | 3 | **Testing rig** | SPRT pipeline in place; every strength change gets measured. *(done 2026-10-22)* |
 | 4 | **Getting strong** | Search and evaluation improvements, each proven by SPRT. *(started 2026-10-23)* |
-| 5 | **Going public** | Running as a Lichess bot with a real rating. *(design started 2026-10-25; host decided: EC2, 10am to 10pm Central)* |
+| 5 | **Going public** | Running as a Lichess bot with a real rating. *(live on Lichess as StargazerEngine since 2026-10-26, rated; the SRE layer is next)* |
 | 6 | **Stretch** | NNUE evaluation, multithreading. |
 
 ### Milestone 1 steps
@@ -111,7 +111,7 @@ Design: journal 2026-10-25-lichess-bot-design and DESIGN.md section 6.
 
 - [x] Decided (2026-10-25): EC2 t4g.small, 10am to 10pm Central; time
       controls; prod budget $25; repo public under GPL-3.0; releases on
-      GitHub per tag (#36 and this PR)
+      GitHub per tag (#36, #37)
 - [ ] 5a, the bot plays (rated from 2026-10-26):
   - [x] Release workflow (a `v*` tag builds the ARM engine and publishes
         it), the bot's files in `bot/` (lichess-bot config, installer,

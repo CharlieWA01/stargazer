@@ -288,8 +288,8 @@ $0). So:
   Lichess, so nothing is exposed. **Not Fargate Spot** (decided
   2026-10-21): a reclaimed machine would abandon live games.
 - **Host: decided 2026-10-25.** One EC2 t4g.small (ARM, 2 burstable
-  vCPUs, 2 GB, "unlimited" CPU credits) in workloads-prod, Amazon Linux
-  2023, no inbound ports, no SSH (Session Manager), rebuilt by Terraform
+  vCPUs, 2 GB, "unlimited" CPU credits) in workloads-prod, Ubuntu 24.04
+  (see "The bot's software" below), no inbound ports, no SSH (Session Manager), rebuilt by Terraform
   (cloud-homelab) rather than hand-tended. It runs **10am to 10pm Central**
   (America/Chicago, so it follows daylight saving), 12 hours to start:
   EventBridge Scheduler starts it, tells the bot to drain at 21:15 (no new
@@ -313,13 +313,15 @@ $0). So:
   the SRE layer (SLOs, burn-rate alerts, an observer Lambda, DynamoDB for
   live records, S3 + Athena for history, a status page on the portfolio
   site) and deploys gated on SPRT that let games finish. Prod's budget
-  rises to $25 (cloud-homelab PR #28).
+  rose to $25 for the server (cloud-homelab PR #28).
 - Portfolio tile (decided 2026-10-20): **both** a "play it here" page on the
   portfolio site, with the engine running in the visitor's browser (see
   "Runs in a browser"), and a link to the Lichess bot's profile to show its
   real rating. The page says the browser version is single-threaded and so
   a little weaker than the rated one. The tile links to Lichess rather than
   fetching the rating live, so the site makes no calls to other servers.
+  Until the browser version exists, the tile links straight to the
+  Lichess profile (portfolio DECISIONS.md, 2026-10-26).
 - Release process: **decided 2026-10-25.** A version is released by
   pushing a tag `vX.Y.Z` that matches `Cargo.toml`'s version. The
   `Release` workflow tests it, builds it for ARM Linux on Ubuntu 24.04,
