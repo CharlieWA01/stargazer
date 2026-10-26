@@ -822,10 +822,13 @@ best-move stability rule.
 SPRT if it does no harm: bounds [-10, 0] Elo instead of [0, 10]. It is
 then confirmed at 60 seconds a game, the longest control the rig can
 afford in its 8-hour limit (about 2,500 games). A change that only ties
-is kept only with a written reason it helps in real games that
-self-play can't show (a mechanism, for example lag or opponents who
-ponder), plus something observable in real play to check it later
-(for example clock left at move 60, or losses on time on Lichess).
+is kept only if we can articulate a reason it helps in real games,
+written down here (for example lag or opponents who ponder). Charlie
+chose this broader wording over Claude's draft, which also required a
+specific mechanism and something observable to check later: time
+management clearly needs work when you watch real time-control games,
+so a clear reason is enough. Where there is something to watch in real
+play (clock left at move 60, losses on time), note it.
 Partly supersedes "keep only gains" (2026-10-25) for time management;
 search and evaluation changes still need [0, 10].
 **Alternatives:** keep requiring a gain (time-management effects are
@@ -836,8 +839,8 @@ alone (far too noisy: 100 games is about ±50 Elo).
 **Why:** Charlie wants the engine strong at Lichess time controls
 (minutes), which can't be tested directly. Short self-play tests see
 neither network lag nor opponents who ponder, and both make a starved
-clock cost more. A no-harm test plus a stated reason lets such changes
-in without letting every neutral tweak pile up (rule 4 had no stated
-reason and stays dropped).
+clock cost more. A no-harm test plus a reason we can articulate lets
+such changes in without letting every neutral tweak pile up (rule 4
+stays dropped unless someone gives it one).
 **Cost:** one 60-second test per change kept (under a dollar); the SPRT
 report now words a no-harm verdict as "no weaker".

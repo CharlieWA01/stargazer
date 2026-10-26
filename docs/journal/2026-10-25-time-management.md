@@ -238,7 +238,8 @@ controls (minutes), where the advantage might show and which we can't
 afford to test (a 5+0 SPRT would take about 30 hours). Agreed: a
 time-management change now only has to show no harm ([-10, 0] Elo),
 then pass a 60-second confirmation, and a change that only ties needs a
-written real-game reason (DECISIONS.md, 2026-10-26).
+reason we can articulate (Charlie broadened Claude's stricter draft;
+DECISIONS.md, 2026-10-26).
 
 - D re-run as a no-harm test at 60 seconds + 0 against main, PR #35.
 - `rig/report.py` worded every pass as "stronger"; a test with an upper
