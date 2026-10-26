@@ -241,7 +241,10 @@ then pass a 60-second confirmation, and a change that only ties needs a
 reason we can articulate (Charlie broadened Claude's stricter draft;
 DECISIONS.md, 2026-10-26).
 
-- D re-run as a no-harm test at 60 seconds + 0 against main, PR #35.
+- D re-run as a no-harm test at 60 seconds + 0 against main, PR #35:
+  **passed**, +0.9 ± 8.7 Elo over 3,707 games (1,115 wins, 1,484 draws,
+  1,108 losses; LLR 3.01). D stays. The report still said "stronger",
+  since it ran from main before the wording fix; read it as "no weaker".
 - `rig/report.py` worded every pass as "stronger"; a test with an upper
   bound of 0 or less now reads "no weaker" / "weaker". New test
   `test_a_no_harm_test_says_no_weaker`, seen failing with the wording

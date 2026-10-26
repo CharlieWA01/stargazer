@@ -801,6 +801,13 @@ game turns into an endgame, and paces a position set up from a FEN by
 its pieces, not its move number. B is kept for a head-to-head test.
 **Cost:** a little code (the evaluation's phase count is shared with the
 UCI layer); one 10 seconds + 0 SPRT, then the head-to-head.
+**Result (2026-10-26):** 10 seconds + 0 against [0, 10]: failed, -8.2 ±
+13.1 Elo over 1,815 games. Re-run under the no-harm bar (below), 60
+seconds + 0 against [-10, 0]: **passed**, +0.9 ± 8.7 over 3,707 games
+(LLR 3.01). Kept. The reason we can articulate: on Lichess, lag and
+opponents who ponder make a starved endgame clock cost more than
+self-play shows, and D keeps more clock for the endgame. To watch: clock
+left at move 60 and losses on time in no-increment Lichess games.
 
 ## 2026-10-26: The new-depth rule (60%) dropped
 **Decision:** rule 4 of the time-management rework (start another depth
