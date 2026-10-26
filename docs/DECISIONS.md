@@ -729,3 +729,15 @@ shutdown wait for a game to end. Ubuntu installs security updates on its
 own (`unattended-upgrades`, rebooting at 04:00 when the bot is off) and
 matches the build machine.
 **Cost:** $0 beyond the server.
+
+## 2026-10-26: The bot challenges bots rated 1600 to 2400
+**Decision:** lichess-bot's matchmaking picks opponents from a fixed
+rating range, 1600 to 2400, instead of "within 300 of our own rating".
+**Alternatives:** keep the 300-point window (it centres on the bot's
+Lichess rating, which starts high for a new BOT and never moves in casual
+games, so it kept challenging 2700 to 3300 bots); no limit (mostly
+mismatches either way).
+**Why:** the Stockfish matches put Stargazer at about 2180 (2026-10-24);
+a range around that gives games worth playing and results worth reading.
+Widen or move it when the bot plays rated and has a real rating.
+**Cost:** none.

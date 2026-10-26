@@ -109,7 +109,12 @@ matchmaking:                        # challenging other bots while idle
     - 2
     - 3
     - 5
-  opponent_rating_difference: 300
+  # A fixed range, not "within 300 of our rating": a new bot's Lichess
+  # rating starts high (lichess-bot looked for 2700 to 3300) and casual
+  # games never move it. About 2180 on the Stockfish scale (2026-10-24).
+  opponent_min_rating: 1600
+  opponent_max_rating: 2400
+  opponent_rating_difference:
   rating_preference: "none"
   challenge_mode: "casual"
   challenge_filter: coarse          # a bot that declines once isn't asked again
