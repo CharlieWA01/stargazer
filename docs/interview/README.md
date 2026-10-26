@@ -226,3 +226,27 @@ that way.
   Lesson: a recommendation optimised for simplicity isn't always the one
   that matches the domain; bring your own knowledge, ask for the
   comparison, and then let the test decide.
+
+## The cost the test couldn't see: pondering and wasted time
+**Tags:** Testing, Judgment, Production
+
+- **Situation:** Every time-management change was proven with self-play
+  SPRTs: the new version against the old, thousands of games. Then the
+  engine went live on Lichess as a bot, and I watched it sit in time
+  trouble against other bots.
+- **Task:** Work out whether our tests were measuring what matters in
+  real games.
+- **Action:** I noticed something the tests couldn't: many Lichess bots
+  ponder (keep thinking on my engine's clock), and mine doesn't yet. So
+  every second my engine overspends on an obvious move is also free
+  thinking time for the opponent: wasted time costs twice. In self-play
+  neither side ponders, so that cost is invisible to the SPRT. I raised
+  it, had it recorded, and it changed the plan: retry the "move sooner
+  once the best move is settled" rule that had lost in self-play, and
+  consider a benchmark match against Stockfish with pondering switched
+  on, which would show the effect.
+- **Result:** The time-management results are now read with that in
+  mind: a neutral self-play result can still be a real-game gain, and a
+  rule that saves time is worth more than the SPRT says. Lesson: know
+  what your test environment leaves out; production showed a cost the
+  lab couldn't, and it came from watching the real thing run.
