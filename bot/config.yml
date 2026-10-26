@@ -14,7 +14,7 @@ engine:
   name: "stargazer"                 # a link to the installed release (setup.sh)
   working_dir: ""
   protocol: "uci"
-  ponder: false                     # one core: thinking on the opponent's time would only steal from ourselves
+  ponder: false                     # the engine has no `go ponder` / `ponderhit` yet (ROADMAP parking lot)
   debug: false
 
   polyglot:

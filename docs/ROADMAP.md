@@ -192,6 +192,16 @@ a release is tagged and built (DESIGN.md section 6).
   early when one move is clearly best or forced. All inside a soft target
   and a hard ceiling. Each rule kept only if SPRT shows a gain. Scheduled
   as Milestone 4's time-management rework, after the pruning steps.
+- Pondering (Charlie asked, 2026-10-26): think on the opponent's time.
+  The engine guesses the reply (the second move of its principal
+  variation), searches it on `go ponder`, and on `ponderhit` turns that
+  search into the real one under the normal clock rules; `stop` means the
+  guess was wrong. Lichess allows it for bots. Worth most in bullet and
+  blitz, where the bot has run short of time. Costs: engine work, and
+  about $2 to $3 a month more burst CPU on the t4g.small (it would think
+  nearly all game instead of about half). After Milestone 4's
+  time-management rework, since both touch the clock; proven by an SPRT
+  with pondering on, then `ponder: true` in `bot/config.yml`.
 - Multithreading (Lazy SMP), native build only.
 - A null-move "verification search" (after a pass cuts off, search the
   position again a little shallower to confirm), against middlegame

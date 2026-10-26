@@ -308,7 +308,8 @@ $0). So:
   blitz, rapid]`, `max_base: 600`, `max_increment: 5`; the increment cap
   also turns down rare blitz controls like 3+10). No classical or
   correspondence: long games would eat playing time and could run past
-  the evening drain. One game at a time, no pondering.
+  the evening drain. One game at a time, no pondering (the engine doesn't
+  support it yet; parked in the roadmap, 2026-10-26).
 - **Open (Milestone 5 design, journal 2026-10-25-lichess-bot-design):**
   the SRE layer (SLOs, burn-rate alerts, an observer Lambda, DynamoDB for
   live records, S3 + Athena for history, a status page on the portfolio
