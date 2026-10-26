@@ -74,6 +74,12 @@ Linux program. `bot/ENGINE` now names it.
   Linux 2023 for the host, notes the portfolio tile links to Lichess
   until the browser version exists, and says prod's budget rose (past
   tense); the roadmap's Milestone 5 line says the bot is live.
+- Pondering, 2026-10-26: Charlie asked whether the bot thinks on the
+  opponent's time. It doesn't: the engine has no `go ponder` or
+  `ponderhit`, and `bot/config.yml` has `ponder: false`. The config's
+  comment gave the wrong reason ("would only steal from ourselves"; the
+  core is idle on the opponent's turn), so it now gives the real one, and
+  pondering is parked in the roadmap with its cost.
 
 ## Impact
 Nothing changes for the engine. The bot is ready to install once the
