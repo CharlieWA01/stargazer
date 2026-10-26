@@ -741,3 +741,18 @@ mismatches either way).
 a range around that gives games worth playing and results worth reading.
 Widen or move it when the bot plays rated and has a real rating.
 **Cost:** none.
+
+## 2026-10-26: The bot plays rated games now, not after Milestone 4
+**Decision (Charlie's choice):** lichess-bot challenges other bots to
+rated games and accepts both rated and casual challenges. This replaces
+"casual until Milestone 4's time work is in" (DESIGN.md section 6, time
+controls, 2026-10-25).
+**Alternatives:** stay casual until Milestone 4 lands (its first rating
+would reflect the finished time management).
+**Why:** on its first night many bots declined casual challenges ("send
+me a rated challenge instead"), and casual games never give the bot a
+real rating, so it stayed at a provisional 3000 and matchmaking was slow.
+Rated games bring more opponents and a real rating within a few dozen
+games. Some losses on time before Milestone 4 cost rating, which comes
+back once it lands; those games also show where the clock handling hurts.
+**Cost:** none.

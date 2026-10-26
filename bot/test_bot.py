@@ -34,12 +34,13 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(setting("concurrency"), "1")
         self.assertEqual(setting("ponder"), "false")
 
-    def test_casual_only_for_now(self):
+    def test_rated_play(self):
+        # Rated from 2026-10-26: accepts both, challenges rated.
         text = config_text()
         block = re.search(r"^  modes:\n((?:    - .*\n)+)", text, re.M).group(1)
         modes = [line.split("#")[0].strip(" -") for line in block.splitlines()]
-        self.assertEqual(modes, ["casual"])
-        self.assertEqual(setting("challenge_mode"), "casual")
+        self.assertEqual(modes, ["casual", "rated"])
+        self.assertEqual(setting("challenge_mode"), "rated")
 
     def test_rapid_capped_at_10_plus_5(self):
         self.assertEqual(setting("max_base"), "600")
