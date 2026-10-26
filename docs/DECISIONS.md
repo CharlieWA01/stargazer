@@ -696,6 +696,67 @@ in under the GPL, so including them in a closed version would need their
 authors' permission.
 **Cost:** none.
 
+## 2026-10-25: The bot gets its engine from a GitHub release per tag
+**Decision (Charlie's choice):** a version is released by pushing a tag
+`vX.Y.Z` that matches `Cargo.toml`. The `Release` workflow tests, builds
+the engine for 64-bit ARM Linux (the bot's server) and publishes it on the
+Releases page with its SHA-256 and `bench` count. `bot/ENGINE` names the
+tag and checksum the bot runs; the server downloads that file and refuses
+it if the checksum doesn't match.
+**Alternatives:** build from source on the server at each deploy (a Rust
+toolchain on a 2 GB machine, minutes of build time inside playing hours,
+and no fixed file to point at); upload builds to an S3 bucket from
+Actions (another bucket and IAM role, for no gain over Releases).
+**Why:** the bot plays a named, tested version, and anyone can see which
+one and download it. A deploy is a small PR (change `bot/ENGINE`), and a
+rollback is the previous commit. Free.
+**Cost:** $0.
+
+## 2026-10-25: The bot's software: lichess-bot under systemd on Ubuntu 24.04
+**Decision:** the server runs lichess-bot (pinned to a commit) as a
+systemd service, set up by `bot/setup.sh` at a pinned commit of this
+repo. Stopping or restarting the service sends SIGINT, so lichess-bot
+finishes the game in progress and takes no new one (systemd waits up to
+75 minutes; only the main process gets the signal, so the engine isn't
+killed mid-game). The Lichess token is read from SSM Parameter Store at
+each start and is never on disk, in the repo or in Terraform. The OS is
+Ubuntu 24.04 LTS, not Amazon Linux 2023 as the design first said.
+**Alternatives:** Docker on the server (another layer for one process);
+Amazon Linux 2023 (works, but updates are by new AMI rather than daily
+security updates, and CI builds on Ubuntu).
+**Why:** the fewest moving parts that still let a deploy or the evening
+shutdown wait for a game to end. Ubuntu installs security updates on its
+own (`unattended-upgrades`, rebooting at 04:00 when the bot is off) and
+matches the build machine.
+**Cost:** $0 beyond the server.
+
+## 2026-10-26: The bot challenges bots rated 1600 to 2400
+**Decision:** lichess-bot's matchmaking picks opponents from a fixed
+rating range, 1600 to 2400, instead of "within 300 of our own rating".
+**Alternatives:** keep the 300-point window (it centres on the bot's
+Lichess rating, which starts high for a new BOT and never moves in casual
+games, so it kept challenging 2700 to 3300 bots); no limit (mostly
+mismatches either way).
+**Why:** the Stockfish matches put Stargazer at about 2180 (2026-10-24);
+a range around that gives games worth playing and results worth reading.
+Widen or move it when the bot plays rated and has a real rating.
+**Cost:** none.
+
+## 2026-10-26: The bot plays rated games now, not after Milestone 4
+**Decision (Charlie's choice):** lichess-bot challenges other bots to
+rated games and accepts both rated and casual challenges. This replaces
+"casual until Milestone 4's time work is in" (DESIGN.md section 6, time
+controls, 2026-10-25).
+**Alternatives:** stay casual until Milestone 4 lands (its first rating
+would reflect the finished time management).
+**Why:** on its first night many bots declined casual challenges ("send
+me a rated challenge instead"), and casual games never give the bot a
+real rating, so it stayed at a provisional 3000 and matchmaking was slow.
+Rated games bring more opponents and a real rating within a few dozen
+games. Some losses on time before Milestone 4 cost rating, which comes
+back once it lands; those games also show where the clock handling hurts.
+**Cost:** none.
+
 ## 2026-10-25: Long time controls to confirm time-management changes
 **Decision (Charlie's choice):** time-management changes get a
 confirmation test at a long time control, 60 seconds + 0.6 a game, as

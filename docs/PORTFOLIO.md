@@ -39,6 +39,15 @@ of about 2000 reached on that scale, and **about 2180** that evening
 after check extensions and late move reductions (2184 ± 35, 61.9%
 against Stockfish 2100).
 
+## On Lichess
+Since 2026-10-26 it plays rated games on Lichess as
+[StargazerEngine](https://lichess.org/@/StargazerEngine), 10am to 10pm
+US Central, from one small ARM server on AWS (EC2 t4g.small, about $10 a
+month) that starts, drains and stops itself on a schedule. A tagged
+release builds the exact program it runs; deploys wait for the game in
+progress to finish. First rated games: a loss to a 2100 bot, a win
+against a 1750.
+
 ## Games played in testing
 About **28,600** games so far, counted from the recorded test runs (a
 few hundred quick checks, such as self-play and container smoke tests,
