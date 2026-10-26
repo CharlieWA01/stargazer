@@ -816,3 +816,28 @@ games (another 8 hours for a likely sub-5-Elo effect).
 nothing; the rig is better spent on the pacing rule and the milder
 best-move stability rule.
 **Cost:** two long SPRTs, under two dollars together.
+
+## 2026-10-26: Time-management changes need only do no harm
+**Decision:** (Charlie) a time-management change passes its short-control
+SPRT if it does no harm: bounds [-10, 0] Elo instead of [0, 10]. It is
+then confirmed at 60 seconds a game, the longest control the rig can
+afford in its 8-hour limit (about 2,500 games). A change that only ties
+is kept only with a written reason it helps in real games that
+self-play can't show (a mechanism, for example lag or opponents who
+ponder), plus something observable in real play to check it later
+(for example clock left at move 60, or losses on time on Lichess).
+Partly supersedes "keep only gains" (2026-10-25) for time management;
+search and evaluation changes still need [0, 10].
+**Alternatives:** keep requiring a gain (time-management effects are
+small, so this drops changes that may help at real time controls, which
+are what Charlie wants the engine good at); test at 5 minutes a game
+(about 30 hours a test, past the rig's limit); judge by Lichess games
+alone (far too noisy: 100 games is about ±50 Elo).
+**Why:** Charlie wants the engine strong at Lichess time controls
+(minutes), which can't be tested directly. Short self-play tests see
+neither network lag nor opponents who ponder, and both make a starved
+clock cost more. A no-harm test plus a stated reason lets such changes
+in without letting every neutral tweak pile up (rule 4 had no stated
+reason and stays dropped).
+**Cost:** one 60-second test per change kept (under a dollar); the SPRT
+report now words a no-harm verdict as "no weaker".

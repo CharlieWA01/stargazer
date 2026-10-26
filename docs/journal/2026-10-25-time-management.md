@@ -230,3 +230,19 @@ version, thinking 2.25 times longer there, makes better early
 decisions, which engines convert. The endgame time the rule buys came
 too late to pay for that. Charlie's lost 5+0 game was also played on an
 older build, so it overstated how badly the endgame was starved.
+
+## A new bar for time management (2026-10-26)
+Charlie's point: rule 4 and D are both close to zero at the short
+controls we test, but the engine is meant to be good at Lichess time
+controls (minutes), where the advantage might show and which we can't
+afford to test (a 5+0 SPRT would take about 30 hours). Agreed: a
+time-management change now only has to show no harm ([-10, 0] Elo),
+then pass a 60-second confirmation, and a change that only ties needs a
+written real-game reason (DECISIONS.md, 2026-10-26).
+
+- D re-run as a no-harm test at 60 seconds + 0 against main, PR #35.
+- `rig/report.py` worded every pass as "stronger"; a test with an upper
+  bound of 0 or less now reads "no weaker" / "weaker". New test
+  `test_a_no_harm_test_says_no_weaker`, seen failing with the wording
+  switched off, then passing (22 rig tests). The report workflow runs
+  from main, so the new wording shows only after #35 merges.
