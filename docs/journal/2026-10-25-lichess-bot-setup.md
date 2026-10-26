@@ -67,6 +67,10 @@ Linux program. `bot/ENGINE` now names it.
   challenge instead"). Charlie chose rated play now rather than after
   Milestone 4 (DECISIONS.md, 2026-10-26).
 
+- First rated games, 2026-10-26: a loss to a 2100 bot (a blunder, then
+  time pressure), a win against a 1750. PORTFOLIO.md and an interview
+  story ("Launch night") record the launch.
+
 ## Impact
 Nothing changes for the engine. The bot is ready to install once the
 first release exists and the server is built. The repo gains one
