@@ -127,8 +127,9 @@ $0). So:
     below the last depth's, the target for starting another depth is
     200%; a rising score changes nothing. It decides only whether to
     start another depth, never past the ceiling.
-  - **Starting a new depth (7d):** another depth starts only while
-    under 60% of the target (was 50%). With late move reductions, the
+  - **Starting a new depth (7d): tried and dropped** (neutral at 8+0.08
+    and at 60 seconds + 0.6, 2026-10-26); it stays at 50%. The idea:
+    another depth starts only while under 60% of the target. With late move reductions, the
     time used so far grows by about 1.5 to 2 times per depth (measured
     2026-10-25), so a depth started at 60% usually ends near 1.2 times
     the target, well inside the ceiling.

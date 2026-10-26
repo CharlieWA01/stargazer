@@ -95,16 +95,16 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
         626 games (PR #34); a milder version is parked
   - [x] 7c: score drop (more than 30 centipawns down from the last depth:
         200% of the target): SPRT +10.9 ± 8.7 Elo over 2,651 games (PR #34)
-  - [ ] 7d: when to start a new depth (60% of the target instead of 50%;
-        PR #35): 8+0.08 inconclusive, +3.3 ± 6.7 Elo over 5,827 games,
-        stopped; judged at 60 seconds + 0.6 instead (SPRT running)
+  - [x] 7d: when to start a new depth (60% of the target instead of 50%):
+        **tried and dropped**, neutral at both speeds: 8+0.08 +3.3 ± 6.7
+        Elo over 5,827 games (stopped), 60 seconds + 0.6 +1.7 ± 9.6 over
+        2,695 games (8-hour limit) (PR #35)
   - [ ] Sudden-death SPRT at 10 seconds + 0 for the rules kept, against
         the version before 7c
   - [ ] Sudden-death pacing (Charlie's game on 2026-10-25 was winning at
         move 44 and lost in the endgame on about a second a move): share
         the clock over 25 + game phase moves (at most 45) when there's no
-        increment; built on PR #35, 10 seconds + 0 SPRT against rule 4's
-        version
+        increment; PR #35, 10 seconds + 0 SPRT against main
   - [ ] Pacing by move number (option B) against pacing by material (D),
         head to head at 10 seconds + 0
   - [ ] Long-control confirmation at 60 seconds + 0.6 for the rules kept,

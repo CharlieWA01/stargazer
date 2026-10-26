@@ -141,7 +141,27 @@ runs long.
   for this test to settle quickly, and it was holding the rig, so Charlie
   stopped it in ECS after about 2.3 hours and chose to judge the rule at
   60 seconds + 0.6 instead, where deeper searches should show whether
-  the per-depth cost matters. That SPRT: see the PR and the roadmap.
+  the per-depth cost matters.
+- SPRT at 60 seconds + 0.6: **inconclusive**, +1.7 ± 9.6 Elo over 2,695
+  games (LLR -1.39), stopped at the 8-hour limit (2026-10-26, about
+  04:00 UTC). Neutral at both speeds, so by the rework's rule (kept only
+  if it gains) its code came out again on the same PR, before the
+  pacing rule was tested against main.
+
+### What the two tests say
+The cost of each new depth did fall with late move reductions, but
+"start under 50% or 60%" changes when the engine stops by only a sliver
+of the clock, and the two choices play about the same. Not worth a
+number we can't show helps.
+
+### Pondering (a note from the Lichess bot, 2026-10-26)
+Many Lichess bots ponder (think on Stargazer's time); Stargazer doesn't
+yet. Charlie's point: every second Stargazer overspends is also free
+thinking time for such an opponent, so wasted time costs it twice in
+real games. Self-play SPRTs can't see that, since neither side ponders;
+a Stockfish match with pondering switched on could. The real-game value
+of the time rules is probably larger than the SPRTs show, which also
+argues for retrying best-move stability (the milder version is built).
 
 ## Charlie's 5+0 game against Stockfish (2026-10-25)
 
@@ -198,5 +218,5 @@ Charlie chose D. B is kept on a local branch for a head-to-head test.
   rule shrinks the clock geometrically in a very long game; the 50 ms
   move overhead is what keeps it from flagging, and the 10 seconds + 0
   SPRT counts any time loss as a loss.
-- SPRT at 10 seconds + 0 against the rule 4 version (so it measures this
-  rule alone): see the PR and the roadmap.
+- SPRT at 10 seconds + 0 against main (rule 4 had been taken out by
+  then, see below): see the PR and the roadmap.

@@ -801,3 +801,18 @@ game turns into an endgame, and paces a position set up from a FEN by
 its pieces, not its move number. B is kept for a head-to-head test.
 **Cost:** a little code (the evaluation's phase count is shared with the
 UCI layer); one 10 seconds + 0 SPRT, then the head-to-head.
+
+## 2026-10-26: The new-depth rule (60%) dropped
+**Decision:** rule 4 of the time-management rework (start another depth
+while under 60% of the target instead of 50%) is taken out again,
+following the rework's rule that a change stays only if its SPRT shows a
+gain (2026-10-25). Charlie had asked to judge it at the long control.
+**Result:** 8+0.08, +3.3 ± 6.7 Elo over 5,827 games (stopped, holding
+the rig); 60 seconds + 0.6, +1.7 ± 9.6 over 2,695 games (8-hour limit).
+Neither reached a verdict, and both are close to zero.
+**Alternatives:** keep it as harmless; run the long test again for more
+games (another 8 hours for a likely sub-5-Elo effect).
+**Why:** a number we can't show helps is a number to maintain for
+nothing; the rig is better spent on the pacing rule and the milder
+best-move stability rule.
+**Cost:** two long SPRTs, under two dollars together.
