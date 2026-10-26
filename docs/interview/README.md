@@ -172,3 +172,30 @@ that way.
   the code, the history or the logs, at no cost. The lesson I'd repeat:
   "public repo" means the CI logs too, not just the code.
 
+## Launch night: three bugs that only showed up in production
+**Tags:** Process, Testing, Design
+
+- **Situation:** I put my chess engine on Lichess as a bot: one small AWS
+  server, built with Terraform, that installs a tagged release and plays
+  from 10am to 10pm. Everything passed its checks (`terraform validate`,
+  config tests, lichess-bot's own config loader) before the first apply.
+- **Task:** Get it from "applied" to "playing", and learn what the checks
+  had missed.
+- **Action:** Worked through it one failure at a time, reading logs
+  instead of guessing. First, AWS refused a security group description
+  with an apostrophe in it, something only the real API checks. Second,
+  the server booted but never installed the bot: the firewall allowed
+  only HTTPS out, and Ubuntu's package mirrors use plain HTTP. I couldn't
+  open a shell (the Session Manager plugin wasn't installed), so I ran
+  commands through AWS Run Command and read the output back. Allowing
+  port 80 out was safe because apt verifies every package's signature.
+  Third, the bot was online but got no games: a new bot's rating starts
+  at a provisional 3000, so it only challenged 3000-rated bots, and its
+  casual games would never move that rating. A fixed opponent range,
+  then switching to rated play, fixed it.
+- **Result:** Its first rated games the same evening (a loss to a 2100,
+  a win against a 1750). Each fix was a small PR with the cause written
+  down, and the runbook now covers reading logs without a shell and
+  re-running a failed first boot. The lesson: validation proves the
+  config is well-formed, not that the system works; plan for the first
+  run to teach you something.
