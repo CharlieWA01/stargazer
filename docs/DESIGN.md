@@ -132,6 +132,13 @@ $0). So:
     time used so far grows by about 1.5 to 2 times per depth (measured
     2026-10-25), so a depth started at 60% usually ends near 1.2 times
     the target, well inside the ceiling.
+  - **Sudden-death pacing (decided 2026-10-25, Charlie's choice):** with
+    no increment and no `movestogo`, the clock is shared over an estimate
+    of the moves left instead of a fixed twentieth: 25 plus the game
+    phase (the evaluation's count of pieces left, 24 with all on), at
+    most 45. The ceiling is also held to a tenth of the clock. So the
+    engine keeps a reserve while the board is full and thinks hardest as
+    the pieces come off. Increment games are unchanged.
 - **Transposition table: decided 2026-10-23** (built in two steps).
   - **Fingerprints (Zobrist hashing), step 2a, built:** a fixed random
     64-bit number for each piece on each square, for each combination of

@@ -100,11 +100,13 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
         stopped; judged at 60 seconds + 0.6 instead (SPRT running)
   - [ ] Sudden-death SPRT at 10 seconds + 0 for the rules kept, against
         the version before 7c
-  - [ ] Sudden-death pacing: with no increment, spend a smaller share of
-        the clock early (a thirtieth to a fortieth instead of a
-        twentieth) and keep more for the endgame. Charlie's 5+0 game on
-        2026-10-25 was winning at move 44 and was lost in the endgame on
-        about a second a move (journal)
+  - [ ] Sudden-death pacing (Charlie's game on 2026-10-25 was winning at
+        move 44 and lost in the endgame on about a second a move): share
+        the clock over 25 + game phase moves (at most 45) when there's no
+        increment; built on PR #35, 10 seconds + 0 SPRT against rule 4's
+        version
+  - [ ] Pacing by move number (option B) against pacing by material (D),
+        head to head at 10 seconds + 0
   - [ ] Long-control confirmation at 60 seconds + 0.6 for the rules kept,
         against the same version (DECISIONS.md, 2026-10-25)
   - [ ] The milder best-move stability rule (parking lot), tested at

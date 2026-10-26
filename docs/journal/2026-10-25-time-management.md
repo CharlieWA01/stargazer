@@ -161,3 +161,42 @@ pulled but not rebuilt, so the GUI ran whatever was built before. The
 pacing problem stands, but the strength in that game says little about
 the current engine. The play-it runbook now says to rebuild after every
 pull, and how to check a build with `bench`.
+
+## Sudden-death pacing (option D, Charlie's choice)
+
+### What was done
+- `src/eval.rs`: `game_phase`, the evaluation's count of pieces left (24
+  with all on, 0 with only kings and pawns), now its own tested
+  function. `evaluate` is unchanged, so bench is too.
+- `src/uci.rs`: with no increment and no `movestogo`, the clock is
+  shared over `sudden_death_moves_left(phase)` = 25 + phase, at most 45,
+  instead of 20; the ceiling is held to a tenth of the clock.
+
+### The choice
+Claude first recommended a fixed fortieth (A). Charlie asked how time
+should really be spread (middlegame most, then endgame, then opening),
+which favoured an estimate of the moves left. Two versions were drafted
+and compared on Charlie's 5+0 game: by move number (B) and by material
+(D). Replayed on that game, both give about 3 to 5 seconds a move in the
+part that was lost (moves 46 to 64) instead of 0.6 to 2.6; D spends
+most as the trades happen (5.4 s at move 30, 5.1 s at move 40), B keeps
+a little more for a very long ending (1.8 s against 1.3 s at move 84).
+Charlie chose D. B is kept on a local branch for a head-to-head test.
+
+### How it was verified
+- New tests: the phase count (full board 24, a queen and rook each 12,
+  knight against bishop 2, kings and pawns 0, extra queens capped at
+  24); the moves-left estimate (45, 37, 27, 25); the budget with every
+  piece on (1,333 ms of a minute, ceiling 3,999) and with only pawns
+  (2,400 ms, ceiling held to 6,000, a tenth). Each fails when its rule
+  is broken.
+- 119 unit tests pass; `cargo fmt`, `clippy -D warnings` and the WASM
+  build are clean. Bench unchanged at 343857.
+- Selfplay: no time losses. At 3 seconds + 0 a 300-ply game (the
+  selfplay limit) ended with about 0.3 seconds on each clock on its own,
+  and with 37 and 49 ms on top of rule 4. Any "share of what's left"
+  rule shrinks the clock geometrically in a very long game; the 50 ms
+  move overhead is what keeps it from flagging, and the 10 seconds + 0
+  SPRT counts any time loss as a loss.
+- SPRT at 10 seconds + 0 against the rule 4 version (so it measures this
+  rule alone): see the PR and the roadmap.

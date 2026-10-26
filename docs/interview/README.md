@@ -172,3 +172,29 @@ that way.
   the code, the history or the logs, at no cost. The lesson I'd repeat:
   "public repo" means the CI logs too, not just the code.
 
+
+## Not taking the recommendation: pacing a game with no increment
+**Tags:** Judgment, Process, Design
+
+- **Situation:** In a 5-minute game with no increment, my engine was
+  winning against Stockfish until move 44, then lost the endgame on
+  about a second a move: it spent a fixed twentieth of its clock each
+  move, so the clock shrank by 5% a move and was nearly gone when the
+  hard part came.
+- **Task:** Decide how the engine should spread its time. Claude (the
+  AI writing the code with me) laid out three options and recommended
+  the simplest: spend a fortieth instead of a twentieth.
+- **Action:** I didn't take it. My reasoning as a player was that the
+  middlegame needs the most time, then the endgame, then the opening.
+  A fixed fraction doesn't know which phase it's in. I asked for the two
+  "estimate the moves left" versions to be compared side by side on my
+  actual game: one by move number, one by the material still on the
+  board. I chose material: it thinks hardest when the pieces come off
+  and the game changes character, and it isn't fooled by a game that
+  trades down early.
+- **Result:** Both versions roughly double the endgame thinking time
+  compared with before, and the one I picked is tested on its own at
+  10 seconds + 0, with the move-number version kept for a head-to-head.
+  Lesson: a recommendation optimised for simplicity isn't always the one
+  that matches the domain; bring your own knowledge, ask for the
+  comparison, and then let the test decide.

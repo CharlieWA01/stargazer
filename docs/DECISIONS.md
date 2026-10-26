@@ -718,3 +718,25 @@ plays about 270 long games an hour on 16 vCPU, so a test may hit the
 8-hour limit (about 2,000 games) before a verdict; its Elo ± is still
 reported then. Under a dollar per test. Beyond the standing approval
 (under an hour), approved here.
+
+## 2026-10-25: Sudden-death pacing by the material left
+**Decision (Charlie's choice):** with no increment and no `movestogo`,
+the engine shares its clock over an estimate of the moves the game has
+left, judged from the pieces on the board: 25 plus the game phase (the
+number the evaluation already blends with: knight or bishop 1, rook 2,
+queen 4, 24 with everything on), at most 45. The ceiling is held to a
+tenth of the clock. Increment games keep the twentieth.
+**Alternatives** (`/mnt/project-files/stargazer/` design notes, kept in
+the journal): (A) a fixed fortieth instead of a twentieth, Claude's
+first recommendation, one number; (B) an estimate from the move number
+(45, a quarter less each move, at least 25); a lower ceiling on its own.
+**Why:** Charlie's 5+0 game was lost in an endgame played on 0.6 to 1.5
+seconds a move. All three options roughly double the time in that
+phase. Charlie's view is that the middlegame needs the most time, then
+the endgame, then the opening (which a book will cover later). A and B
+follow the move number, so a game that trades down early still gets
+"opening" pacing; D follows what's on the board, spends the most as the
+game turns into an endgame, and paces a position set up from a FEN by
+its pieces, not its move number. B is kept for a head-to-head test.
+**Cost:** a little code (the evaluation's phase count is shared with the
+UCI layer); one 10 seconds + 0 SPRT, then the head-to-head.
