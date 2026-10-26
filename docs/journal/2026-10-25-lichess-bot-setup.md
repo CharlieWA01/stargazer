@@ -52,6 +52,17 @@ took about a minute and published `stargazer-aarch64-linux` (SHA-256
 SPRT base). The downloaded file matched its checksum and is a 64-bit ARM
 Linux program. `bot/ENGINE` now names it.
 
+## First night on Lichess
+- First boot failed (the server's firewall blocked Ubuntu's HTTP package
+  mirrors; fixed in cloud-homelab), then `setup.sh` ran cleanly: engine
+  v0.1.0, bench 343857.
+- Its challenges went unanswered for a few minutes: lichess-bot looked
+  for opponents rated 2700 to 3300. A new BOT account's rating starts
+  high, `opponent_rating_difference` is measured from it, and casual
+  games never change it. The first game it got was against a 3000 bot.
+  `config.yml` now uses a fixed range, 1600 to 2400, around the ~2180
+  estimate from the Stockfish matches (DECISIONS.md).
+
 ## Impact
 Nothing changes for the engine. The bot is ready to install once the
 first release exists and the server is built. The repo gains one
