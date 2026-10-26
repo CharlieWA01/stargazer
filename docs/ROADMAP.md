@@ -104,7 +104,8 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
   - [ ] Sudden-death pacing (Charlie's game on 2026-10-25 was winning at
         move 44 and lost in the endgame on about a second a move): share
         the clock over 25 + game phase moves (at most 45) when there's no
-        increment; PR #35, 10 seconds + 0 SPRT against main
+        increment; PR #35, 10 seconds + 0 SPRT against main: **failed**,
+        -8.2 ± 13.1 Elo over 1,815 games (Charlie to decide what next)
   - [ ] Pacing by move number (option B) against pacing by material (D),
         head to head at 10 seconds + 0
   - [ ] Long-control confirmation at 60 seconds + 0.6 for the rules kept,

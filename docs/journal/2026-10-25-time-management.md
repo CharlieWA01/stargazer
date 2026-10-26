@@ -219,4 +219,14 @@ Charlie chose D. B is kept on a local branch for a head-to-head test.
   move overhead is what keeps it from flagging, and the 10 seconds + 0
   SPRT counts any time loss as a loss.
 - SPRT at 10 seconds + 0 against main (rule 4 had been taken out by
-  then, see below): see the PR and the roadmap.
+  then, see below): **failed**, -8.2 ± 13.1 Elo over 1,815 games (575
+  wins, 622 draws, 618 losses; LLR -2.97), 2026-10-26.
+
+### Why it might have lost (not yet checked)
+At 10 seconds a game, move 1 now gets about 0.22 seconds instead of
+0.5: a full board expects 45 moves left instead of 20. In self-play
+both sides then think less in the opening and middlegame, and the old
+version, thinking 2.25 times longer there, makes better early
+decisions, which engines convert. The endgame time the rule buys came
+too late to pay for that. Charlie's lost 5+0 game was also played on an
+older build, so it overstated how badly the endgame was starved.
