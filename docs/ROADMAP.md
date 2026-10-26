@@ -202,6 +202,11 @@ a release is tagged and built (DESIGN.md section 6).
   nearly all game instead of about half). After Milestone 4's
   time-management rework, since both touch the clock; proven by an SPRT
   with pondering on, then `ponder: true` in `bot/config.yml`.
+  Charlie's point (2026-10-26): the other side of this is that many
+  Lichess bots ponder, so every second Stargazer spends thinking is also
+  thinking time for them. Overspending on easy moves costs twice against
+  them, which self-play SPRT (where neither side ponders) can't show. So
+  the time-management rework matters more than the self-play numbers say.
 - Multithreading (Lazy SMP), native build only.
 - A null-move "verification search" (after a pass cuts off, search the
   position again a little shallower to confirm), against middlegame
