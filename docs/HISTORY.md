@@ -43,3 +43,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-25 | [#36](https://github.com/CharlieWA01/stargazer/pull/36) | Lichess bot decisions, GPL-3.0 licence, and prepare the repo for going public |
 | 2026-10-25 | [#37](https://github.com/CharlieWA01/stargazer/pull/37) | Lichess bot: release workflow, config and installer |
 | 2026-10-25 | [#38](https://github.com/CharlieWA01/stargazer/pull/38) | Pin the Lichess bot to release v0.1.0 |
+| 2026-10-25 | [#39](https://github.com/CharlieWA01/stargazer/pull/39) | Bot matchmaking: challenge bots rated 1600 to 2400 |
