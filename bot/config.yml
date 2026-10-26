@@ -21,7 +21,7 @@ engine:
     enabled: false                  # no opening book yet (parking lot)
 
   draw_or_resign:
-    resign_enabled: false           # play every game out; casual losses cost nothing
+    resign_enabled: false           # play every game out
     offer_draw_enabled: false
 
   online_moves:
@@ -77,7 +77,8 @@ challenge:                          # challenges from others
     - blitz
     - rapid
   modes:
-    - casual                        # rated once Milestone 4's time work is in
+    - casual
+    - rated                         # rated from 2026-10-26 (Charlie)
   recent_bot_challenge_age: 60
   max_recent_bot_challenges: 2      # no bot farms it with back-to-back challenges
   bullet_requires_increment: false
@@ -110,13 +111,14 @@ matchmaking:                        # challenging other bots while idle
     - 3
     - 5
   # A fixed range, not "within 300 of our rating": a new bot's Lichess
-  # rating starts high (lichess-bot looked for 2700 to 3300) and casual
-  # games never move it. About 2180 on the Stockfish scale (2026-10-24).
+  # rating starts at a provisional 3000 (lichess-bot looked for 2700 to
+  # 3300). About 2180 on the Stockfish scale (2026-10-24). Revisit once
+  # rated games have given it a real rating.
   opponent_min_rating: 1600
   opponent_max_rating: 2400
   opponent_rating_difference:
   rating_preference: "none"
-  challenge_mode: "casual"
+  challenge_mode: "rated"           # many bots turn down casual challenges
   challenge_filter: coarse          # a bot that declines once isn't asked again
   include_challenge_block_list: false
   challenge_decliner_file_name: "/opt/stargazer-bot/state/decliners.txt"

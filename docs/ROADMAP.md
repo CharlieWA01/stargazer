@@ -112,17 +112,19 @@ Design: journal 2026-10-25-lichess-bot-design and DESIGN.md section 6.
 - [x] Decided (2026-10-25): EC2 t4g.small, 10am to 10pm Central; time
       controls; prod budget $25; repo public under GPL-3.0; releases on
       GitHub per tag (#36 and this PR)
-- [ ] 5a, the bot plays (casual):
+- [ ] 5a, the bot plays (rated from 2026-10-26):
   - [x] Release workflow (a `v*` tag builds the ARM engine and publishes
         it), the bot's files in `bot/` (lichess-bot config, installer,
         service), their checks in CI
-  - [ ] The server in cloud-homelab's Terraform (network, role, schedule);
-        Charlie applies
-  - [ ] Charlie: the Lichess token in SSM, the account upgraded to BOT,
-        the first release tagged, then the first boot
-        (`docs/runbooks/lichess-bot.md`)
+  - [x] The server in cloud-homelab's Terraform (network, role, schedule);
+        Charlie applied 2026-10-25
+  - [x] Charlie: the Lichess token in SSM, the account upgraded to BOT,
+        the first release tagged (v0.1.0), then the first boot
+        (`docs/runbooks/lichess-bot.md`); first games 2026-10-26
+  - [x] Matchmaking: opponents rated 1600 to 2400 (#39); rated play
+  - [ ] A day on the schedule: the 9:15pm drain and the 10am start
 - [ ] 5b: the observer Lambda, DynamoDB records, SLO metrics and
-      burn-rate alarms; rated play once Milestone 4's time work is in
+      burn-rate alarms
 - [ ] 5c: game history in S3 with Athena; the status page
 - [ ] 5d: deploys gated on SPRT, from GitHub Actions, with rollback
 - [ ] 5e: chaos drills, written up as postmortems

@@ -300,7 +300,9 @@ $0). So:
 - Lichess rules that shape it (checked 2026-10-25): at most 100 games a
   day against other bots (lichess-bot reads the limit and waits); challenge
   games only, no pools or tournaments except bot events; no UltraBullet.
-- **Time controls (decided 2026-10-25):** while it plays casual, it
+- **Rated play (decided 2026-10-26):** it challenges other bots to rated
+  games and accepts rated and casual challenges (DECISIONS.md).
+- **Time controls (decided 2026-10-25):** it
   accepts every standard bullet and blitz control, with or without
   increment, and rapid up to 10+5 (lichess-bot: `time_controls: [bullet,
   blitz, rapid]`, `max_base: 600`, `max_increment: 5`; the increment cap

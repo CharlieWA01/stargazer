@@ -63,6 +63,10 @@ Linux program. `bot/ENGINE` now names it.
   `config.yml` now uses a fixed range, 1600 to 2400, around the ~2180
   estimate from the Stockfish matches (DECISIONS.md).
 
+- Many bots turned down casual challenges ("Please send me a rated
+  challenge instead"). Charlie chose rated play now rather than after
+  Milestone 4 (DECISIONS.md, 2026-10-26).
+
 ## Impact
 Nothing changes for the engine. The bot is ready to install once the
 first release exists and the server is built. The repo gains one
