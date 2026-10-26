@@ -45,3 +45,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-25 | [#38](https://github.com/CharlieWA01/stargazer/pull/38) | Pin the Lichess bot to release v0.1.0 |
 | 2026-10-25 | [#39](https://github.com/CharlieWA01/stargazer/pull/39) | Bot matchmaking: challenge bots rated 1600 to 2400 |
 | 2026-10-25 | [#40](https://github.com/CharlieWA01/stargazer/pull/40) | Bot: play rated games |
+| 2026-10-25 | [#41](https://github.com/CharlieWA01/stargazer/pull/41) | docs: the bot's launch in the portfolio summary, an interview story, and tidying |
