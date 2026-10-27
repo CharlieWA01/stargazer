@@ -143,7 +143,8 @@ Design: journal 2026-10-25-lichess-bot-design and DESIGN.md section 6.
   - [x] A day on the schedule: the 9:15pm drain and the 10am start
         (checked 2026-10-26)
 - [ ] 5b: the observer Lambda, DynamoDB records, SLO metrics and
-      burn-rate alarms
+      burn-rate alarms (decided 2026-10-27; built in cloud-homelab,
+      waiting for Charlie's apply; then two weeks report-only and targets)
 - [ ] 5c: game history in S3 with Athena; the status page
 - [ ] 5d: deploys gated on SPRT, from GitHub Actions, with rollback
 - [ ] 5e: chaos drills, written up as postmortems
