@@ -129,7 +129,7 @@ Design: journal 2026-10-25-lichess-bot-design and DESIGN.md section 6.
 - [x] Decided (2026-10-25): EC2 t4g.small, 10am to 10pm Central; time
       controls; prod budget $25; repo public under GPL-3.0; releases on
       GitHub per tag (#36, #37)
-- [ ] 5a, the bot plays (rated from 2026-10-26):
+- [x] 5a, the bot plays (rated from 2026-10-26):
   - [x] Release workflow (a `v*` tag builds the ARM engine and publishes
         it), the bot's files in `bot/` (lichess-bot config, installer,
         service), their checks in CI
@@ -139,7 +139,8 @@ Design: journal 2026-10-25-lichess-bot-design and DESIGN.md section 6.
         the first release tagged (v0.1.0), then the first boot
         (`docs/runbooks/lichess-bot.md`); first games 2026-10-26
   - [x] Matchmaking: opponents rated 1600 to 2400 (#39); rated play
-  - [ ] A day on the schedule: the 9:15pm drain and the 10am start
+  - [x] A day on the schedule: the 9:15pm drain and the 10am start
+        (checked 2026-10-26)
 - [ ] 5b: the observer Lambda, DynamoDB records, SLO metrics and
       burn-rate alarms
 - [ ] 5c: game history in S3 with Athena; the status page

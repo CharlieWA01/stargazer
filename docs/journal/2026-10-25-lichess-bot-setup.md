@@ -80,6 +80,18 @@ Linux program. `bot/ENGINE` now names it.
   comment gave the wrong reason ("would only steal from ourselves"; the
   core is idle on the opponent's turn), so it now gives the real one, and
   pondering is parked in the roadmap with its cost.
+- First day on the schedule, checked 2026-10-26 (send-command; output
+  shape below, times UTC). The 02:15 drain waited for the game in
+  progress: lichess-bot logged "Game over" for that game at 02:23:27,
+  then "Termination requested - stopping restart cycle", and systemd
+  "Stopped" at 02:23:28; `last -x` shows the shutdown at 02:23, well
+  before the 03:45 hard stop. The 15:00 start booted the server and
+  systemd "Started stargazer-bot" at 15:00:43; by 20:45 it was mid-game
+  (searching to depth 15). systemd also logged "Killing process ...
+  (python) with signal SIGKILL" right after lichess-bot exited: that's
+  `KillMode=mixed` clearing a leftover child once the main process had
+  already finished cleanly, after the game, so no game is affected.
+  Milestone 5a is done.
 
 ## Impact
 Nothing changes for the engine. The bot is ready to install once the
