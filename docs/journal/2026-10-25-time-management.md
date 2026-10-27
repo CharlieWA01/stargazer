@@ -259,5 +259,15 @@ best move has held for 4 more depths and 150% right after it changes;
 `a_settled_best_move_gets_less_time_and_a_new_one_more`, seen failing
 with depths 1 to 5 counted again, then passing (121 tests). Bench is
 unchanged (343857): this only decides when to stop, which bench, a
-fixed-depth search, never asks. SPRTs under the no-harm bar: see the PR
-and the roadmap.
+fixed-depth search, never asks.
+
+SPRTs under the no-harm bar, [-10, 0] at 8+0.08:
+- First launch: AWS had no Fargate Spot capacity; the workflow gave up
+  after 3 tries and posted nothing on the PR, so it went unnoticed for
+  six hours. Lesson: check that a test started, not just that it was
+  launched.
+- Second: stopped by AWS (SIGTERM, almost certainly the Spot machine
+  taken back) at 1,692 games, -4.5 ± 11.2 Elo, no verdict.
+- Third: **passed**, +6.2 ± 12.0 over 1,731 games (559 wins, 645 draws,
+  527 losses; LLR 2.97). The first report with the "no weaker" wording.
+- Then the 60 seconds + 0.6 confirmation: see the PR and the roadmap.

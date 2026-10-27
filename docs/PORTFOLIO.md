@@ -49,7 +49,7 @@ progress to finish. First rated games: a loss to a 2100 bot, a win
 against a 1750.
 
 ## Games played in testing
-About **36,800** games so far, counted from the recorded test runs (a
+About **40,200** games so far, counted from the recorded test runs (a
 few hundred quick checks, such as self-play and container smoke tests,
 aren't counted). Updated with each test.
 
@@ -61,9 +61,9 @@ local checks), so roughly **4.5 cents per 1,000 games**.
 | What | Games |
 |---|---|
 | Milestone 3: proving the rig fair (first AWS runs, local checks, two 2,000-game self-matches) | 6,619 |
-| Milestone 4 SPRTs: #16 503, #19 235, #21 588, #22 1,095, #23 1,572, #25 6,282, #28 392, #30 753, #31 264, #34 626 + 2,651, #35 5,827 + 2,695 + 1,815 + 3,707 | 29,005 |
+| Milestone 4 SPRTs: #16 503, #19 235, #21 588, #22 1,095, #23 1,572, #25 6,282, #28 392, #30 753, #31 264, #34 626 + 2,651, #35 5,827 + 2,695 + 1,815 + 3,707, #44 1,692 + 1,731 | 32,428 |
 | Stockfish matches: 2026-10-24 against 1800, 1900, then 2100 | 1,200 |
-| **Total** | **36,824** |
+| **Total** | **40,247** |
 
 ## What makes it interesting
 - **Two targets from one codebase:** a native engine (chess GUIs, Lichess
