@@ -108,3 +108,145 @@ A small, real gain, in line with the +10 to +30 expected for the whole
 rework. Unlike rule 2, it adds time only in the few positions where the
 search has just found a problem, instead of taking time from every
 move.
+
+## Rule 4: when to start a new depth
+
+### What was done
+- `src/uci.rs`: another depth starts only while under 60% of the target
+  (`NEW_DEPTH_PERCENT`), instead of 50%. The score-drop stretch and the
+  ceiling apply as before.
+
+### Why 60%
+Measured with `go depth 13`: the time used so far grows by about 1.2 to
+2 times per depth (start position, depths 10 to 13: 1.3, 1.6, 2.4, 4.0
+seconds; Kiwipete, depths 8 to 12: 2.7, 5.6, 10.0, 15.3, 25.0). Before
+late move reductions it was 3 to 5 times, which is what "half the
+target" was set for. A depth started at 60% now usually finishes around
+1.2 times the target, and the ceiling (3 times) still stops one that
+runs long.
+
+### How it was verified
+- The budget test moves its edges to 60% (599 ms starts another depth
+  at a 1,000 ms target, 600 doesn't; 1,199 and 1,200 at 200%; the
+  ceiling caps a 1,000% stretch at 1,799 and 1,800). Setting the
+  share back to 50% makes it fail.
+- 117 unit tests pass; `cargo fmt`, `clippy -D warnings` and the WASM
+  build are clean. Bench unchanged at 343857.
+- Selfplay: no time losses or illegal moves. The clocks ran lower than
+  before (10s+0.1: 0.4 and 0.2 seconds left after 140 half-moves; 3s+0:
+  about 50 ms each after 224), as expected when each move thinks a
+  little longer. The sudden-death SPRT is the real check on that.
+- SPRT at 8+0.08: **inconclusive**, +3.3 ± 6.7 Elo over 5,827 games
+  (LLR -1.46, drifting slowly toward "not stronger"). Too small an effect
+  for this test to settle quickly, and it was holding the rig, so Charlie
+  stopped it in ECS after about 2.3 hours and chose to judge the rule at
+  60 seconds + 0.6 instead, where deeper searches should show whether
+  the per-depth cost matters.
+- SPRT at 60 seconds + 0.6: **inconclusive**, +1.7 ± 9.6 Elo over 2,695
+  games (LLR -1.39), stopped at the 8-hour limit (2026-10-26, about
+  04:00 UTC). Neutral at both speeds, so by the rework's rule (kept only
+  if it gains) its code came out again on the same PR, before the
+  pacing rule was tested against main.
+
+### What the two tests say
+The cost of each new depth did fall with late move reductions, but
+"start under 50% or 60%" changes when the engine stops by only a sliver
+of the clock, and the two choices play about the same. Not worth a
+number we can't show helps.
+
+### Pondering (a note from the Lichess bot, 2026-10-26)
+Many Lichess bots ponder (think on Stargazer's time); Stargazer doesn't
+yet. Charlie's point: every second Stargazer overspends is also free
+thinking time for such an opponent, so wasted time costs it twice in
+real games. Self-play SPRTs can't see that, since neither side ponders;
+a Stockfish match with pondering switched on could. The real-game value
+of the time rules is probably larger than the SPRTs show, which also
+argues for retrying best-move stability (the milder version is built).
+
+## Charlie's 5+0 game against Stockfish (2026-10-25)
+
+Charlie played Stargazer against Stockfish 15.1 in a GUI at 5 minutes, no
+increment: 84 moves, lost (mated as the clock ran out). Replayed with
+Stargazer at depth 12 on each position: White about +1.5 to +2 pawns
+from move 20 to 44, then a slow slide (46. Kd4, where Kf4 was preferred;
+0.0 by 54. a5; lost by 58. Nc2; 64. d6 the last blunder). With no
+increment the engine spends a twentieth of what's left on each move:
+about 15 seconds on move 1, 1.5 by move 46, 0.6 by move 64, just when
+the endgame needed thinking. That's the case for a sudden-death pacing
+rule (roadmap). By that arithmetic it should still have had a few
+seconds at the end, so the GUI probably takes more than the 50 ms
+`Move Overhead` keeps back; 200 was suggested.
+It then turned out the game was played on an older build: Charlie had
+pulled but not rebuilt, so the GUI ran whatever was built before. The
+pacing problem stands, but the strength in that game says little about
+the current engine. The play-it runbook now says to rebuild after every
+pull, and how to check a build with `bench`.
+
+## Sudden-death pacing (option D, Charlie's choice)
+
+### What was done
+- `src/eval.rs`: `game_phase`, the evaluation's count of pieces left (24
+  with all on, 0 with only kings and pawns), now its own tested
+  function. `evaluate` is unchanged, so bench is too.
+- `src/uci.rs`: with no increment and no `movestogo`, the clock is
+  shared over `sudden_death_moves_left(phase)` = 25 + phase, at most 45,
+  instead of 20; the ceiling is held to a tenth of the clock.
+
+### The choice
+Claude first recommended a fixed fortieth (A). Charlie asked how time
+should really be spread (middlegame most, then endgame, then opening),
+which favoured an estimate of the moves left. Two versions were drafted
+and compared on Charlie's 5+0 game: by move number (B) and by material
+(D). Replayed on that game, both give about 3 to 5 seconds a move in the
+part that was lost (moves 46 to 64) instead of 0.6 to 2.6; D spends
+most as the trades happen (5.4 s at move 30, 5.1 s at move 40), B keeps
+a little more for a very long ending (1.8 s against 1.3 s at move 84).
+Charlie chose D. B is kept on a local branch for a head-to-head test.
+
+### How it was verified
+- New tests: the phase count (full board 24, a queen and rook each 12,
+  knight against bishop 2, kings and pawns 0, extra queens capped at
+  24); the moves-left estimate (45, 37, 27, 25); the budget with every
+  piece on (1,333 ms of a minute, ceiling 3,999) and with only pawns
+  (2,400 ms, ceiling held to 6,000, a tenth). Each fails when its rule
+  is broken.
+- 119 unit tests pass; `cargo fmt`, `clippy -D warnings` and the WASM
+  build are clean. Bench unchanged at 343857.
+- Selfplay: no time losses. At 3 seconds + 0 a 300-ply game (the
+  selfplay limit) ended with about 0.3 seconds on each clock on its own,
+  and with 37 and 49 ms on top of rule 4. Any "share of what's left"
+  rule shrinks the clock geometrically in a very long game; the 50 ms
+  move overhead is what keeps it from flagging, and the 10 seconds + 0
+  SPRT counts any time loss as a loss.
+- SPRT at 10 seconds + 0 against main (rule 4 had been taken out by
+  then, see below): **failed**, -8.2 ± 13.1 Elo over 1,815 games (575
+  wins, 622 draws, 618 losses; LLR -2.97), 2026-10-26.
+
+### Why it might have lost (not yet checked)
+At 10 seconds a game, move 1 now gets about 0.22 seconds instead of
+0.5: a full board expects 45 moves left instead of 20. In self-play
+both sides then think less in the opening and middlegame, and the old
+version, thinking 2.25 times longer there, makes better early
+decisions, which engines convert. The endgame time the rule buys came
+too late to pay for that. Charlie's lost 5+0 game was also played on an
+older build, so it overstated how badly the endgame was starved.
+
+## A new bar for time management (2026-10-26)
+Charlie's point: rule 4 and D are both close to zero at the short
+controls we test, but the engine is meant to be good at Lichess time
+controls (minutes), where the advantage might show and which we can't
+afford to test (a 5+0 SPRT would take about 30 hours). Agreed: a
+time-management change now only has to show no harm ([-10, 0] Elo),
+then pass a 60-second confirmation, and a change that only ties needs a
+reason we can articulate (Charlie broadened Claude's stricter draft;
+DECISIONS.md, 2026-10-26).
+
+- D re-run as a no-harm test at 60 seconds + 0 against main, PR #35:
+  **passed**, +0.9 ± 8.7 Elo over 3,707 games (1,115 wins, 1,484 draws,
+  1,108 losses; LLR 3.01). D stays. The report still said "stronger",
+  since it ran from main before the wording fix; read it as "no weaker".
+- `rig/report.py` worded every pass as "stronger"; a test with an upper
+  bound of 0 or less now reads "no weaker" / "weaker". New test
+  `test_a_no_harm_test_says_no_weaker`, seen failing with the wording
+  switched off, then passing (22 rig tests). The report workflow runs
+  from main, so the new wording shows only after #35 merges.

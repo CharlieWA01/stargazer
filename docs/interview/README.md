@@ -199,3 +199,54 @@ that way.
   re-running a failed first boot. The lesson: validation proves the
   config is well-formed, not that the system works; plan for the first
   run to teach you something.
+
+
+## Not taking the recommendation: pacing a game with no increment
+**Tags:** Judgment, Process, Design
+
+- **Situation:** In a 5-minute game with no increment, my engine was
+  winning against Stockfish until move 44, then lost the endgame on
+  about a second a move: it spent a fixed twentieth of its clock each
+  move, so the clock shrank by 5% a move and was nearly gone when the
+  hard part came.
+- **Task:** Decide how the engine should spread its time. Claude (the
+  AI writing the code with me) laid out three options and recommended
+  the simplest: spend a fortieth instead of a twentieth.
+- **Action:** I didn't take it. My reasoning as a player was that the
+  middlegame needs the most time, then the endgame, then the opening.
+  A fixed fraction doesn't know which phase it's in. I asked for the two
+  "estimate the moves left" versions to be compared side by side on my
+  actual game: one by move number, one by the material still on the
+  board. I chose material: it thinks hardest when the pieces come off
+  and the game changes character, and it isn't fooled by a game that
+  trades down early.
+- **Result:** Both versions roughly double the endgame thinking time
+  compared with before, and the one I picked is tested on its own at
+  10 seconds + 0, with the move-number version kept for a head-to-head.
+  Lesson: a recommendation optimised for simplicity isn't always the one
+  that matches the domain; bring your own knowledge, ask for the
+  comparison, and then let the test decide.
+
+## The cost the test couldn't see: pondering and wasted time
+**Tags:** Testing, Judgment, Production
+
+- **Situation:** Every time-management change was proven with self-play
+  SPRTs: the new version against the old, thousands of games. Then the
+  engine went live on Lichess as a bot, and I watched it sit in time
+  trouble against other bots.
+- **Task:** Work out whether our tests were measuring what matters in
+  real games.
+- **Action:** I noticed something the tests couldn't: many Lichess bots
+  ponder (keep thinking on my engine's clock), and mine doesn't yet. So
+  every second my engine overspends on an obvious move is also free
+  thinking time for the opponent: wasted time costs twice. In self-play
+  neither side ponders, so that cost is invisible to the SPRT. I raised
+  it, had it recorded, and it changed the plan: retry the "move sooner
+  once the best move is settled" rule that had lost in self-play, and
+  consider a benchmark match against Stockfish with pondering switched
+  on, which would show the effect.
+- **Result:** The time-management results are now read with that in
+  mind: a neutral self-play result can still be a real-game gain, and a
+  rule that saves time is worth more than the SPRT says. Lesson: know
+  what your test environment leaves out; production showed a cost the
+  lab couldn't, and it came from watching the real thing run.

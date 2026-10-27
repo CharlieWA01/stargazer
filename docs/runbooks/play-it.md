@@ -26,6 +26,13 @@ engine in the GUI pointing at `target/release/stargazer` (no arguments,
 protocol UCI). Pick a time control and play. The engine uses the clock the
 GUI sends (`wtime`, `btime`, `winc`, `binc`).
 
+**After every `git pull`, build again** (`cargo build --release`): the
+pull only updates the source; the GUI runs whatever was last built. To
+check which build it is, `./target/release/stargazer bench` prints a node
+count that fingerprints the search (compare it with the latest entry in
+`docs/HISTORY.md` or the roadmap), and a release build runs at a few
+hundred thousand positions a second.
+
 ### On Charlie's Chromebook (Linux, Debian 12): PyChess
 ```sh
 sudo apt install pychess

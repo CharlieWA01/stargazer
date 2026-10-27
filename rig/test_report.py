@@ -43,6 +43,14 @@ class DescribeTest(unittest.TestCase):
         self.assertIn("my-branch", report)
         self.assertNotIn("SPRT report", report)
 
+    def test_a_no_harm_test_says_no_weaker(self):
+        no_harm = {**REQUEST, "elo0": "-10", "elo1": "0"}
+        report, _ = describe("sprt-1-1", no_harm, verdict("pass"), "STOPPED", "")
+        self.assertIn("no weaker", report)
+        self.assertNotIn("is stronger", report)
+        report, _ = describe("sprt-1-1", no_harm, verdict("fail"), "STOPPED", "")
+        self.assertIn("is weaker", report)
+
     def test_still_running_points_to_the_report_workflow(self):
         report, state = describe("sprt-1-1", REQUEST, verdict("running"), "RUNNING", "")
         self.assertEqual(state, "running")

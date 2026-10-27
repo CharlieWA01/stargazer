@@ -127,7 +127,19 @@ $0). So:
     below the last depth's, the target for starting another depth is
     200%; a rising score changes nothing. It decides only whether to
     start another depth, never past the ceiling.
-  - The new-depth rule follows as its own PR.
+  - **Starting a new depth (7d): tried and dropped** (neutral at 8+0.08
+    and at 60 seconds + 0.6, 2026-10-26); it stays at 50%. The idea:
+    another depth starts only while under 60% of the target. With late move reductions, the
+    time used so far grows by about 1.5 to 2 times per depth (measured
+    2026-10-25), so a depth started at 60% usually ends near 1.2 times
+    the target, well inside the ceiling.
+  - **Sudden-death pacing (decided 2026-10-25, Charlie's choice):** with
+    no increment and no `movestogo`, the clock is shared over an estimate
+    of the moves left instead of a fixed twentieth: 25 plus the game
+    phase (the evaluation's count of pieces left, 24 with all on), at
+    most 45. The ceiling is also held to a tenth of the clock. So the
+    engine keeps a reserve while the board is full and thinks hardest as
+    the pieces come off. Increment games are unchanged.
 - **Transposition table: decided 2026-10-23** (built in two steps).
   - **Fingerprints (Zobrist hashing), step 2a, built:** a fixed random
     64-bit number for each piece on each square, for each combination of

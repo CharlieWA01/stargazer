@@ -54,6 +54,13 @@ HEADLINES = {
     "done": "🏁 **Done**: every game played.",
 }
 
+# A "no harm" test (upper bound 0 or below, used for time management)
+# asks whether the new version is no weaker, not whether it's stronger.
+NO_HARM_HEADLINES = {
+    "pass": "✅ **Pass**: the new version is no weaker (a no-harm test).",
+    "fail": "❌ **Fail**: the new version is weaker (a no-harm test).",
+}
+
 
 def rounded_elo(elo, error):
     if elo is None:
@@ -94,7 +101,9 @@ def describe(run_id, request, verdict, task_status, stopped_reason):
         else:
             lines.append(f"⏳ **Starting** (task is {task_status}); no results yet.")
     else:
-        lines.append(HEADLINES.get(state, state))
+        no_harm = "elo1" in request and float(request["elo1"]) <= 0
+        headline = NO_HARM_HEADLINES.get(state) if no_harm else None
+        lines.append(headline or HEADLINES.get(state, state))
         if verdict.get("reason") and state != "running":
             lines.append(f"Reason: {verdict['reason']}.")
         results = verdict.get("results") or {}

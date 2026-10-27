@@ -756,3 +756,98 @@ Rated games bring more opponents and a real rating within a few dozen
 games. Some losses on time before Milestone 4 cost rating, which comes
 back once it lands; those games also show where the clock handling hurts.
 **Cost:** none.
+
+## 2026-10-25: Long time controls to confirm time-management changes
+**Decision (Charlie's choice):** time-management changes get a
+confirmation test at a long time control, 60 seconds + 0.6 a game, as
+well as the standard 8+0.08 SPRT and the planned 10 seconds + 0. First
+up: the kept rules together against the version before the rework, then
+a milder best-move stability rule (parked) tested at the long control
+directly.
+**Why:** the rules are fractions of the clock, but what they react to
+isn't. At 8 seconds a move reaches about depth 8 to 10, at 5 minutes
+about 14 to 16. "The same best move for 4 depths" means depths 1 to 4 in
+a fast game (almost worthless) and 10 to 14 in a slow one, so rule 2 may
+have failed only because the test was fast. The fixed move overhead also
+weighs far more at short controls. Strong engine projects test at a
+short control and confirm at a long one for the same reason.
+**Alternatives:** short controls only (cheap, but blind to depth
+effects); a real 5-minute control (about 10 minutes a game, days per
+test).
+**Cost:** each long game costs about 7 times a standard one. The rig
+plays about 270 long games an hour on 16 vCPU, so a test may hit the
+8-hour limit (about 2,000 games) before a verdict; its Elo ± is still
+reported then. Under a dollar per test. Beyond the standing approval
+(under an hour), approved here.
+
+## 2026-10-25: Sudden-death pacing by the material left
+**Decision (Charlie's choice):** with no increment and no `movestogo`,
+the engine shares its clock over an estimate of the moves the game has
+left, judged from the pieces on the board: 25 plus the game phase (the
+number the evaluation already blends with: knight or bishop 1, rook 2,
+queen 4, 24 with everything on), at most 45. The ceiling is held to a
+tenth of the clock. Increment games keep the twentieth.
+**Alternatives** (`/mnt/project-files/stargazer/` design notes, kept in
+the journal): (A) a fixed fortieth instead of a twentieth, Claude's
+first recommendation, one number; (B) an estimate from the move number
+(45, a quarter less each move, at least 25); a lower ceiling on its own.
+**Why:** Charlie's 5+0 game was lost in an endgame played on 0.6 to 1.5
+seconds a move. All three options roughly double the time in that
+phase. Charlie's view is that the middlegame needs the most time, then
+the endgame, then the opening (which a book will cover later). A and B
+follow the move number, so a game that trades down early still gets
+"opening" pacing; D follows what's on the board, spends the most as the
+game turns into an endgame, and paces a position set up from a FEN by
+its pieces, not its move number. B is kept for a head-to-head test.
+**Cost:** a little code (the evaluation's phase count is shared with the
+UCI layer); one 10 seconds + 0 SPRT, then the head-to-head.
+**Result (2026-10-26):** 10 seconds + 0 against [0, 10]: failed, -8.2 ±
+13.1 Elo over 1,815 games. Re-run under the no-harm bar (below), 60
+seconds + 0 against [-10, 0]: **passed**, +0.9 ± 8.7 over 3,707 games
+(LLR 3.01). Kept. The reason we can articulate: on Lichess, lag and
+opponents who ponder make a starved endgame clock cost more than
+self-play shows, and D keeps more clock for the endgame. To watch: clock
+left at move 60 and losses on time in no-increment Lichess games.
+
+## 2026-10-26: The new-depth rule (60%) dropped
+**Decision:** rule 4 of the time-management rework (start another depth
+while under 60% of the target instead of 50%) is taken out again,
+following the rework's rule that a change stays only if its SPRT shows a
+gain (2026-10-25). Charlie had asked to judge it at the long control.
+**Result:** 8+0.08, +3.3 ± 6.7 Elo over 5,827 games (stopped, holding
+the rig); 60 seconds + 0.6, +1.7 ± 9.6 over 2,695 games (8-hour limit).
+Neither reached a verdict, and both are close to zero.
+**Alternatives:** keep it as harmless; run the long test again for more
+games (another 8 hours for a likely sub-5-Elo effect).
+**Why:** a number we can't show helps is a number to maintain for
+nothing; the rig is better spent on the pacing rule and the milder
+best-move stability rule.
+**Cost:** two long SPRTs, under two dollars together.
+
+## 2026-10-26: Time-management changes need only do no harm
+**Decision:** (Charlie) a time-management change passes its short-control
+SPRT if it does no harm: bounds [-10, 0] Elo instead of [0, 10]. It is
+then confirmed at 60 seconds a game, the longest control the rig can
+afford in its 8-hour limit (about 2,500 games). A change that only ties
+is kept only if we can articulate a reason it helps in real games,
+written down here (for example lag or opponents who ponder). Charlie
+chose this broader wording over Claude's draft, which also required a
+specific mechanism and something observable to check later: time
+management clearly needs work when you watch real time-control games,
+so a clear reason is enough. Where there is something to watch in real
+play (clock left at move 60, losses on time), note it.
+Partly supersedes "keep only gains" (2026-10-25) for time management;
+search and evaluation changes still need [0, 10].
+**Alternatives:** keep requiring a gain (time-management effects are
+small, so this drops changes that may help at real time controls, which
+are what Charlie wants the engine good at); test at 5 minutes a game
+(about 30 hours a test, past the rig's limit); judge by Lichess games
+alone (far too noisy: 100 games is about ±50 Elo).
+**Why:** Charlie wants the engine strong at Lichess time controls
+(minutes), which can't be tested directly. Short self-play tests see
+neither network lag nor opponents who ponder, and both make a starved
+clock cost more. A no-harm test plus a reason we can articulate lets
+such changes in without letting every neutral tweak pile up (rule 4
+stays dropped unless someone gives it one).
+**Cost:** one 60-second test per change kept (under a dollar); the SPRT
+report now words a no-harm verdict as "no weaker".
