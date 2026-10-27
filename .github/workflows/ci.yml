@@ -31,5 +31,11 @@ jobs:
       - name: Browser (WebAssembly) build
         run: cargo build --lib --release --target wasm32-unknown-unknown
       # The Lichess bot's settings (bot/): the ones a game depends on.
+      # Fetches lichess-bot at the pinned commit, so the test that its log
+      # lines still match cloud-homelab's metric filters runs too.
       - name: Bot config checks
-        run: python3 -m unittest discover -s bot -v
+        run: |
+          git init -q /tmp/lichess-bot
+          git -C /tmp/lichess-bot fetch -q --depth 1 https://github.com/lichess-bot-devs/lichess-bot "$(cat bot/LICHESS_BOT_COMMIT)"
+          git -C /tmp/lichess-bot checkout -q FETCH_HEAD
+          LICHESS_BOT_SRC=/tmp/lichess-bot python3 -m unittest discover -s bot -v

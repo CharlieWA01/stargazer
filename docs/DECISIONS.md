@@ -851,3 +851,22 @@ such changes in without letting every neutral tweak pile up (rule 4
 stays dropped unless someone gives it one).
 **Cost:** one 60-second test per change kept (under a dollar); the SPRT
 report now words a no-harm verdict as "no weaker".
+
+## 2026-10-27: Watching the bot (Milestone 5b)
+
+**Decision (Charlie):** the five 5b choices, as recommended in the 5b
+decision doc. These are: SLOs measured from outside (online, time losses)
+and from the bot's log (accepts, drops, restarts, errors), report-only
+for two weeks except online; the observer's code in cloud-homelab; two
+burn-rate alarms on online plus one for the observer, by email; one
+DynamoDB table with a row per game and per day; checks every 5 minutes
+from 10:05 to 21:15. CloudWatch is where it all lands, without waiting
+for the homelab's Grafana (about a month away), which will read it there.
+**Changed from the proposal:** lichess-bot logs challenges it accepts
+but not ones it declines, and dropped connections but not reconnections,
+so two proposed SLOs ("answered within 30 seconds", "reconnects within 2
+minutes") became counts. Timing them would mean patching lichess-bot.
+**Guard:** `bot/test_bot.py` checks the filter patterns against sample
+lines and, in CI, against lichess-bot's code at the pinned commit.
+Details and costs (about $0): cloud-homelab DECISIONS.md, 2026-10-27.
+
