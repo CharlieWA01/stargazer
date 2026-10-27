@@ -322,10 +322,28 @@ $0). So:
   correspondence: long games would eat playing time and could run past
   the evening drain. One game at a time, no pondering (the engine doesn't
   support it yet; parked in the roadmap, 2026-10-26).
+- **Watching the bot (5b), decided 2026-10-27:** everything lands in
+  CloudWatch (namespace `Stargazer/Bot`); the homelab's Grafana reads it
+  later. Built in cloud-homelab (`terraform/prod/stargazer-observer.tf`,
+  its DECISIONS.md 2026-10-27):
+  - an **observer** Lambda checks Lichess's public API every 5 minutes
+    from 10:05 to 21:15 Chicago time (online? which games finished?),
+    with no token, and records each game and each day in one DynamoDB
+    table (`GAME#<id>` and `DAY#<date>` rows);
+  - **metric filters** count lichess-bot's own log lines: challenges
+    accepted, connection drops, restarts, errors. lichess-bot doesn't log
+    declines or reconnections, so "answered within 30 seconds" and
+    "reconnects within 2 minutes" are counts, not timings. `bot/test_bot.py`
+    checks the patterns against `bot/log-samples.txt` and, in CI, against
+    lichess-bot's code at the pinned commit, so a lichess-bot bump that
+    rewords a line fails CI instead of silently zeroing a metric;
+  - **SLOs:** online (99% of checks) has two burn-rate alarms (1 hour at
+    14 times the budget, 6 hours at 6 times) plus an "observer failing"
+    alarm, emailed through SNS; no on-call. Time losses and the log
+    counts are report-only for two weeks, then get targets.
 - **Open (Milestone 5 design, journal 2026-10-25-lichess-bot-design):**
-  the SRE layer (SLOs, burn-rate alerts, an observer Lambda, DynamoDB for
-  live records, S3 + Athena for history, a status page on the portfolio
-  site) and deploys gated on SPRT that let games finish. Prod's budget
+  S3 + Athena for game history and a status page on the portfolio site
+  (5c), and deploys gated on SPRT that let games finish (5d). Prod's budget
   rose to $25 for the server (cloud-homelab PR #28).
 - Portfolio tile (decided 2026-10-20): **both** a "play it here" page on the
   portfolio site, with the engine running in the visitor's browser (see

@@ -1,0 +1,9 @@
+# One example of each lichess-bot log line that cloud-homelab's metric
+# filters count (terraform/prod/stargazer-observer.tf), in the log file's
+# format: <time> <logger> (<file>:<line>) <LEVEL> <message>.
+# Opponent names replaced with "SomeBot". test_bot.py checks every
+# pattern still matches its line.
+ChallengesAccepted	2026-10-26 20:41:02,118 lib.lichess_bot (lichess_bot.py:520) INFO Accept Blitz rated challenge from SomeBot (2100) (AbCdEfGh)
+ConnectionDrops	2026-10-26 18:12:40,551 lib.lichess_bot (lichess_bot.py:128) WARNING Control stream error, reconnecting:
+Restarts	2026-10-26 18:13:05,007 lib.lichess_bot (lichess_bot.py:534) INFO Will restart lichess-bot
+Errors	2026-10-26 18:13:05,210 lib.model (model.py:157) ERROR Error while checking challenge AbCdEfGh:

@@ -5,6 +5,7 @@ They guard the settings a game depends on: a mistake here wouldn't show
 until the bot lost games on Lichess.
 """
 
+import os
 import re
 import unittest
 from pathlib import Path
@@ -72,6 +73,63 @@ class FilesTest(unittest.TestCase):
         if tag or sha:
             self.assertRegex(tag, r"^v\d+\.\d+\.\d+$")
             self.assertRegex(sha, r"^[0-9a-f]{64}$")
+
+
+# The lines cloud-homelab's metric filters count in lichess-bot's log
+# (terraform/prod/stargazer-observer.tf, DECISIONS.md 2026-10-27 there).
+# Keep these patterns the same as that file's `bot_log_metrics`. A
+# CloudWatch pattern in double quotes matches lines containing that text.
+LOG_METRICS = {
+    "ChallengesAccepted": "INFO Accept ",
+    "ConnectionDrops": "Control stream error, reconnecting",
+    "Restarts": "Will restart lichess-bot",
+    "Errors": " ERROR ",
+}
+
+# Where lichess-bot's code writes each line (the level for Errors comes
+# from its log format, not one message).
+LOG_SOURCES = {
+    "ChallengesAccepted": 'logger.info(f"Accept {',
+    "ConnectionDrops": 'logger.warning(f"Control stream error, reconnecting',
+    "Restarts": 'logger.info("Will restart lichess-bot")',
+    "Errors": '%(levelname)s %(message)s',
+}
+
+
+def log_samples():
+    samples = {}
+    for line in (HERE / "log-samples.txt").read_text().splitlines():
+        if line and not line.startswith("#"):
+            name, sample = line.split("\t", 1)
+            samples[name] = sample
+    return samples
+
+
+class LogMetricsTest(unittest.TestCase):
+    def test_every_pattern_matches_its_sample_line(self):
+        samples = log_samples()
+        self.assertEqual(set(samples), set(LOG_METRICS))
+        for name, pattern in LOG_METRICS.items():
+            with self.subTest(name):
+                self.assertIn(pattern, samples[name])
+
+    def test_patterns_dont_match_each_others_lines(self):
+        samples = log_samples()
+        for name, pattern in LOG_METRICS.items():
+            for other, sample in samples.items():
+                if other != name:
+                    with self.subTest(pattern=name, line=other):
+                        self.assertNotIn(pattern, sample)
+
+    @unittest.skipUnless(os.environ.get("LICHESS_BOT_SRC"),
+                         "set LICHESS_BOT_SRC to a lichess-bot checkout (CI does)")
+    def test_pinned_lichess_bot_still_writes_these_lines(self):
+        """A lichess-bot bump that rewords a message would silently zero a metric."""
+        src = Path(os.environ["LICHESS_BOT_SRC"])
+        code = "\n".join(p.read_text() for p in (src / "lib").glob("*.py"))
+        for name, fragment in LOG_SOURCES.items():
+            with self.subTest(name):
+                self.assertIn(fragment, code)
 
 
 if __name__ == "__main__":
