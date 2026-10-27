@@ -48,3 +48,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-10-25 | [#41](https://github.com/CharlieWA01/stargazer/pull/41) | docs: the bot's launch in the portfolio summary, an interview story, and tidying |
 | 2026-10-25 | [#42](https://github.com/CharlieWA01/stargazer/pull/42) | docs: park pondering; give the real reason the bot doesn't ponder |
 | 2026-10-27 | [#35](https://github.com/CharlieWA01/stargazer/pull/35) | Time management: sudden-death pacing by material; new-depth rule tried and dropped |
+| 2026-10-27 | [#43](https://github.com/CharlieWA01/stargazer/pull/43) | docs: the bot's first day on the schedule checks out; 5a done |
