@@ -20,6 +20,12 @@ for it. The infrastructure is cloud-homelab's (its journal
 ## Problems and fixes
 - Reading lichess-bot's code (commit f2b38b4) showed it doesn't log
   declined challenges or reconnections. Two proposed SLOs became counts.
+- Charlie's grep of the live log found all 15 ERROR lines came from
+  matchmaking: Lichess refusing a challenge the bot sent (the opponent
+  had played its 100 bot games for the day). Not faults, so they got
+  their own count, `ChallengesRefused`, and `Errors` now leaves out
+  matchmaking's lines (`" ERROR " -matchmaking`). `test_bot.py` learnt
+  CloudWatch's `-word` exclusion to check that.
 
 ## How it was verified
 - `python3 -m unittest discover -s bot -v`: passes offline (the source
@@ -28,9 +34,12 @@ for it. The infrastructure is cloud-homelab's (its journal
 - Proved both new tests fail when they should: a wrong pattern failed
   the sample test, and a wrong source fragment failed the source test.
   Both were then restored.
-- The sample lines follow lichess-bot's log format and messages; checking
-  them against the live log is pending Charlie's grep output.
+- Against the live log (today's and yesterday's files): 49 accept lines in
+  exactly the sample's format, 15 matchmaking ERROR lines (the
+  `ChallengesRefused` sample is one, opponent renamed), no drops or
+  restarts yet. Proved the split: the old `Errors` pattern failed
+  `test_patterns_dont_match_each_others_lines` on the refused line.
 
 ## Impact
 Nothing changes in the engine or the bot's behaviour. A lichess-bot bump
-now has to keep these four lines, or update the filters with it.
+now has to keep these five lines, or update the filters with it.

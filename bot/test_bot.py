@@ -77,13 +77,15 @@ class FilesTest(unittest.TestCase):
 
 # The lines cloud-homelab's metric filters count in lichess-bot's log
 # (terraform/prod/stargazer-observer.tf, DECISIONS.md 2026-10-27 there).
-# Keep these patterns the same as that file's `bot_log_metrics`. A
-# CloudWatch pattern in double quotes matches lines containing that text.
+# Keep these patterns the same as that file's `bot_log_metrics`, in
+# CloudWatch's syntax: a "quoted" term must be in the line, a -word must
+# not be.
 LOG_METRICS = {
-    "ChallengesAccepted": "INFO Accept ",
-    "ConnectionDrops": "Control stream error, reconnecting",
-    "Restarts": "Will restart lichess-bot",
-    "Errors": " ERROR ",
+    "ChallengesAccepted": '"INFO Accept "',
+    "ConnectionDrops": '"Control stream error, reconnecting"',
+    "Restarts": '"Will restart lichess-bot"',
+    "ChallengesRefused": '"ERROR {\'error\':"',
+    "Errors": '" ERROR " -matchmaking',
 }
 
 # Where lichess-bot's code writes each line (the level for Errors comes
@@ -92,8 +94,19 @@ LOG_SOURCES = {
     "ChallengesAccepted": 'logger.info(f"Accept {',
     "ConnectionDrops": 'logger.warning(f"Control stream error, reconnecting',
     "Restarts": 'logger.info("Will restart lichess-bot")',
+    "ChallengesRefused": "logger.error(response)",
     "Errors": '%(levelname)s %(message)s',
 }
+
+
+def matches(pattern, line):
+    """Does a CloudWatch text pattern (quoted terms, -word exclusions) match the line?"""
+    terms = re.findall(r'(-?)(?:"([^"]*)"|(\S+))', pattern)
+    for minus, quoted, word in terms:
+        found = (quoted or word) in line
+        if found == bool(minus):
+            return False
+    return True
 
 
 def log_samples():
@@ -111,7 +124,7 @@ class LogMetricsTest(unittest.TestCase):
         self.assertEqual(set(samples), set(LOG_METRICS))
         for name, pattern in LOG_METRICS.items():
             with self.subTest(name):
-                self.assertIn(pattern, samples[name])
+                self.assertTrue(matches(pattern, samples[name]), samples[name])
 
     def test_patterns_dont_match_each_others_lines(self):
         samples = log_samples()
@@ -119,7 +132,7 @@ class LogMetricsTest(unittest.TestCase):
             for other, sample in samples.items():
                 if other != name:
                     with self.subTest(pattern=name, line=other):
-                        self.assertNotIn(pattern, sample)
+                        self.assertFalse(matches(pattern, sample), sample)
 
     @unittest.skipUnless(os.environ.get("LICHESS_BOT_SRC"),
                          "set LICHESS_BOT_SRC to a lichess-bot checkout (CI does)")

@@ -6,4 +6,5 @@
 ChallengesAccepted	2026-10-26 20:41:02,118 lib.lichess_bot (lichess_bot.py:520) INFO Accept Blitz rated challenge from SomeBot (2100) (AbCdEfGh)
 ConnectionDrops	2026-10-26 18:12:40,551 lib.lichess_bot (lichess_bot.py:128) WARNING Control stream error, reconnecting:
 Restarts	2026-10-26 18:13:05,007 lib.lichess_bot (lichess_bot.py:534) INFO Will restart lichess-bot
+ChallengesRefused	2026-10-27 00:19:20,808 lib.matchmaking (matchmaking.py:129) ERROR {'error': 'SomeBot played 100 games against other bots today, please wait until 2026-10-28'}
 Errors	2026-10-26 18:13:05,210 lib.model (model.py:157) ERROR Error while checking challenge AbCdEfGh:

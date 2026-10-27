@@ -331,7 +331,8 @@ $0). So:
     with no token, and records each game and each day in one DynamoDB
     table (`GAME#<id>` and `DAY#<date>` rows);
   - **metric filters** count lichess-bot's own log lines: challenges
-    accepted, connection drops, restarts, errors. lichess-bot doesn't log
+    accepted, connection drops, restarts, challenges the bot sent that
+    Lichess refused, and other errors. lichess-bot doesn't log
     declines or reconnections, so "answered within 30 seconds" and
     "reconnects within 2 minutes" are counts, not timings. `bot/test_bot.py`
     checks the patterns against `bot/log-samples.txt` and, in CI, against
