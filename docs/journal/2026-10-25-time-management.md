@@ -250,3 +250,39 @@ DECISIONS.md, 2026-10-26).
   `test_a_no_harm_test_says_no_weaker`, seen failing with the wording
   switched off, then passing (22 rig tests). The report workflow runs
   from main, so the new wording shows only after #35 merges.
+
+## The milder stability rule (2026-10-27)
+With #35 merged, the parked milder rule 2 was rebuilt on main (PR #44):
+`Stability` in `src/uci.rs` ignores depths below 6, gives 75% once the
+best move has held for 4 more depths and 150% right after it changes;
+`ScoreWatch` (rule 3) wins when the score has just fallen. New test
+`a_settled_best_move_gets_less_time_and_a_new_one_more`, seen failing
+with depths 1 to 5 counted again, then passing (121 tests). Bench is
+unchanged (343857): this only decides when to stop, which bench, a
+fixed-depth search, never asks.
+
+SPRTs under the no-harm bar, [-10, 0] at 8+0.08:
+- First launch: AWS had no Fargate Spot capacity; the workflow gave up
+  after 3 tries and posted nothing on the PR, so it went unnoticed for
+  six hours. Lesson: check that a test started, not just that it was
+  launched.
+- Second: stopped by AWS (SIGTERM, almost certainly the Spot machine
+  taken back) at 1,692 games, -4.5 ± 11.2 Elo, no verdict.
+- Third: **passed**, +6.2 ± 12.0 over 1,731 games (559 wins, 645 draws,
+  527 losses; LLR 2.97). The first report with the "no weaker" wording.
+- 60 seconds + 0.6 confirmation (after two more capacity failures):
+  **failed**, -19.7 ± 13.8 Elo over 1,434 games (390 wins, 570 draws,
+  474 losses; LLR -2.96).
+
+### Why it passed short and failed long (a reading, not yet checked)
+At 8+0.08 a move gets about a fifth of a second and the search reaches
+depth 8 to 10, so a best move "held for 4 more depths from depth 6" is
+rare and the rule barely acts: a tie is what you'd expect. At 60+0.6
+the search goes several depths further, the condition is met on most
+moves, and the engine plays them on three quarters of its time. Losing
+20 Elo says that time was worth more than the rule assumed. It is the
+same lesson as the first version (stopping early on "settled" moves
+costs more than it saves), and the clearest case yet for Charlie's
+point that short tests can miss what happens at real time controls.
+
+The code is taken out again; #44 keeps the docs and the record.

@@ -870,3 +870,32 @@ minutes") became counts. Timing them would mean patching lichess-bot.
 lines and, in CI, against lichess-bot's code at the pinned commit.
 Details and costs (about $0): cloud-homelab DECISIONS.md, 2026-10-27.
 
+## 2026-10-27: Try a milder best-move stability rule
+**Decision:** test a milder rule 2 (7b'): only depths 6 and up count
+towards stability, a best move that has held for 4 more depths gets 75%
+of the target instead of 50%, and a change gets 150%. When the score
+has just fallen (rule 3), that wins. Judged by the no-harm bar for time
+management (2026-10-26): [-10, 0] at 8+0.08, then 60 seconds + 0.6.
+**Alternatives:** leave stability out (the first version lost 24 Elo);
+retry the first version at a long control (its fault was structural:
+depths 1 to 5 take microseconds and always agree, so it stopped after a
+quarter of the planned time).
+**Why:** the reason we can articulate: time saved on obvious moves is
+time kept for hard ones, and against opponents who ponder, time spent
+confirming a settled move is free thinking for them (journal,
+2026-10-25, the pondering note). The milder version fixes what made the
+first one lose.
+**Cost:** about 30 lines; two SPRTs, about a dollar and a half.
+
+## 2026-10-28: The milder best-move stability rule dropped
+**Decision:** rule 2's milder version (7b', 2026-10-27) is taken out:
+it failed the 60 seconds + 0.6 no-harm confirmation, -19.7 ± 13.8 Elo
+over 1,434 games, after passing at 8+0.08 (+6.2 ± 12.0 over 1,731).
+**Alternatives:** an even milder version (later start, 85%), tested at
+the long control first; keep it for its pondering argument (rejected:
+a measured 20-Elo loss outweighs an argument).
+**Why:** a failed no-harm test is a clear stop under the bar set on
+2026-10-26. The likely reason (journal) is that the rule barely acts at
+short controls and acts on most moves at long ones.
+**Cost:** three short and three long launches (three hit no Spot
+capacity, one was cut off), about two dollars.
