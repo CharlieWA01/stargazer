@@ -270,4 +270,19 @@ SPRTs under the no-harm bar, [-10, 0] at 8+0.08:
   taken back) at 1,692 games, -4.5 ± 11.2 Elo, no verdict.
 - Third: **passed**, +6.2 ± 12.0 over 1,731 games (559 wins, 645 draws,
   527 losses; LLR 2.97). The first report with the "no weaker" wording.
-- Then the 60 seconds + 0.6 confirmation: see the PR and the roadmap.
+- 60 seconds + 0.6 confirmation (after two more capacity failures):
+  **failed**, -19.7 ± 13.8 Elo over 1,434 games (390 wins, 570 draws,
+  474 losses; LLR -2.96).
+
+### Why it passed short and failed long (a reading, not yet checked)
+At 8+0.08 a move gets about a fifth of a second and the search reaches
+depth 8 to 10, so a best move "held for 4 more depths from depth 6" is
+rare and the rule barely acts: a tie is what you'd expect. At 60+0.6
+the search goes several depths further, the condition is met on most
+moves, and the engine plays them on three quarters of its time. Losing
+20 Elo says that time was worth more than the rule assumed. It is the
+same lesson as the first version (stopping early on "settled" moves
+costs more than it saves), and the clearest case yet for Charlie's
+point that short tests can miss what happens at real time controls.
+
+The code is taken out again; #44 keeps the docs and the record.

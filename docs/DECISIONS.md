@@ -886,3 +886,16 @@ confirming a settled move is free thinking for them (journal,
 2026-10-25, the pondering note). The milder version fixes what made the
 first one lose.
 **Cost:** about 30 lines; two SPRTs, about a dollar and a half.
+
+## 2026-10-28: The milder best-move stability rule dropped
+**Decision:** rule 2's milder version (7b', 2026-10-27) is taken out:
+it failed the 60 seconds + 0.6 no-harm confirmation, -19.7 ± 13.8 Elo
+over 1,434 games, after passing at 8+0.08 (+6.2 ± 12.0 over 1,731).
+**Alternatives:** an even milder version (later start, 85%), tested at
+the long control first; keep it for its pondering argument (rejected:
+a measured 20-Elo loss outweighs an argument).
+**Why:** a failed no-harm test is a clear stop under the bar set on
+2026-10-26. The likely reason (journal) is that the rule barely acts at
+short controls and acts on most moves at long ones.
+**Cost:** three short and three long launches (three hit no Spot
+capacity, one was cut off), about two dollars.
