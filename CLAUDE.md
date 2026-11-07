@@ -62,6 +62,9 @@ cargo test                         # unit tests
 cargo fmt                          # format
 cargo clippy --all-targets -- -D warnings
 cargo build --lib --target wasm32-unknown-unknown   # the browser build must keep compiling
+cargo test --workspace             # includes the browser bridge (web/)
+cargo build -p stargazer-web --release --target wasm32-unknown-unknown
+node web/tests/smoke.mjs target/wasm32-unknown-unknown/release/stargazer_web.wasm
 python3 tools/selfplay.py target/release/stargazer  # after search, time or UCI changes
 python3 -m unittest discover -s rig -v              # after changing the test rig
 ./target/release/stargazer bench   # node count must not change for speed-only changes
@@ -98,6 +101,10 @@ python3 -m unittest discover -s rig -v              # after changing the test ri
   `d` to print the board, `eval`, `setoption` for `Hash` and `Move
   Overhead`, `ucinewgame`; a lone legal move is played at once);
   the search runs on its own thread
+- `web/`: the browser bridge (its own package; no crates): a game for a
+  web page (legal moves, game endings, notation) and the functions
+  `stargazer.wasm` exports; the portfolio's play page loads it
+  (`docs/runbooks/browser-build.md`)
 - `rig/`: the SPRT test container (`Dockerfile`, `run_test.py`), the
   report the workflows post (`report.py`), and their tests; started by the
   "Run SPRT" and "SPRT report" workflows; see `docs/runbooks/sprt.md`.

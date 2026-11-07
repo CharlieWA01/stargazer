@@ -1,12 +1,17 @@
 [package]
 name = "stargazer"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "A UCI chess engine"
 license = "GPL-3.0-or-later"
 publish = false
 
 [dependencies]
+
+# The browser bridge (web/) is its own small package, so the engine core
+# never depends on anything a web page needs (DESIGN.md, "Runs in a browser").
+[workspace]
+members = ["web"]
 
 # Chess engines live and die by raw speed, so release builds get every
 # optimization we can reasonably turn on.

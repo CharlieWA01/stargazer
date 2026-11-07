@@ -35,6 +35,10 @@ that way.
 - **Result:** The demo stays on track at about $0 a month (it runs on the
   visitor's computer), and the constraint costs almost nothing now instead
   of a rewrite later. It also made the engine easier to test.
+- **Payoff (2026-11-07):** when the browser version was finally built, the
+  engine core didn't change at all. The bridge is a separate 141 KB
+  package with no dependencies, and it reaches the same search depth per
+  second as the native engine.
 
 ## Proving the rules: a bug that hid at depth 3
 **Tags:** Testing, Design

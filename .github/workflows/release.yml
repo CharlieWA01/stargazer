@@ -1,8 +1,9 @@
 name: Release
 
 # Pushing a version tag (v0.2.0) publishes that version: Actions builds the
-# engine for ARM Linux (the Lichess bot's server, and the test rig) and
-# attaches it, with its SHA-256 checksum and `bench` node count, to a GitHub
+# engine for ARM Linux (the Lichess bot's server, and the test rig) and for
+# web pages (`stargazer.wasm`, the portfolio's play page), and attaches
+# them, with their SHA-256 checksums and `bench` node count, to a GitHub
 # release of the same name. The bot runs whichever release bot/ENGINE names
 # (docs/runbooks/lichess-bot.md). Decided 2026-10-25 (DECISIONS.md).
 
@@ -20,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-unknown-linux-gnu
+          targets: aarch64-unknown-linux-gnu, wasm32-unknown-unknown
 
       # The tag must match the version in Cargo.toml (what `uci` reports as
       # the engine's name), so a release can't claim the wrong version.
@@ -32,7 +33,7 @@ jobs:
           [ "$TAG" = "v$version" ] || { echo "tag $TAG doesn't match Cargo.toml's version $version"; exit 1; }
 
       - name: Test
-        run: cargo test --release
+        run: cargo test --workspace --release
 
       # Built on the same Ubuntu as the bot's server (24.04), so the C
       # library it links against is the one it runs with.
@@ -50,6 +51,15 @@ jobs:
           (cd dist && sha256sum stargazer-aarch64-linux > stargazer-aarch64-linux.sha256)
           file dist/stargazer-aarch64-linux
 
+      # The portfolio's play page copies this file (and checks its
+      # checksum) with its tools/update-stargazer.sh.
+      - name: Build for web pages
+        run: |
+          cargo build -p stargazer-web --release --target wasm32-unknown-unknown
+          cp target/wasm32-unknown-unknown/release/stargazer_web.wasm dist/stargazer.wasm
+          node web/tests/smoke.mjs dist/stargazer.wasm
+          (cd dist && sha256sum stargazer.wasm > stargazer.wasm.sha256)
+
       # bench's node count is the same on every machine, so the x86 build's
       # count fingerprints the ARM one too; the bot logs its own at install.
       - name: Write the release notes
@@ -64,6 +74,8 @@ jobs:
             echo "- \`$bench\` (the node count fingerprints this build)"
             echo "- \`stargazer-aarch64-linux\`: ARM64 Linux, built on Ubuntu 24.04 (the bot server's OS)"
             echo "- SHA-256: \`$(cut -d' ' -f1 dist/stargazer-aarch64-linux.sha256)\`"
+            echo "- \`stargazer.wasm\`: WebAssembly, for web pages (the portfolio's play page)"
+            echo "- SHA-256: \`$(cut -d' ' -f1 dist/stargazer.wasm.sha256)\`"
           } > notes.md
           cat notes.md
 

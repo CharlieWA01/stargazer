@@ -92,6 +92,15 @@ $0). So:
   separate small browser package, never in the engine core, and is asked
   about first.
 
+**Built 2026-11-07** (DECISIONS.md): the browser package is `web/`, a
+second member of a Cargo workspace, with no crates at all. It keeps a game
+(legal moves, how the game ends, moves in chess notation) and exports a
+few plain functions from `stargazer.wasm`; the page writes text into
+WebAssembly's memory, calls one, and reads back a short JSON answer. The
+page passes in its clock. Each release attaches `stargazer.wasm`; the
+portfolio's play page commits a copy of a tagged one and runs it in a
+background worker, at full strength, one second a move.
+
 ### 3. Search: **Decided** (2026-10-20)
 - **Core:** negamax with alpha-beta and iterative deepening. Scores are in
   centipawns (100 = one pawn) from the side to move's point of view; the

@@ -900,6 +900,39 @@ short controls and acts on most moves at long ones.
 **Cost:** three short and three long launches (three hit no Spot
 capacity, one was cut off), about two dollars.
 
+## 2026-11-07: The browser bridge: plain exports, no glue crate
+**Decision (Charlie's choice):** the web page talks to the engine through
+a small separate package, `web/` (a Cargo workspace member, so the core
+stays untouched), compiled to `stargazer.wasm`. It exports a handful of
+plain functions; text goes in and out through WebAssembly's shared memory,
+and each answer is a short JSON text. The page's clock is passed in.
+**Alternatives:** `wasm-bindgen`, which generates the JavaScript glue (a
+crate plus a matching command-line tool to keep in step, for six
+functions); a text protocol such as UCI over one function (simplest
+export, but the page would need its own parser and the rules for game
+endings).
+**Why:** no dependencies, and the glue is about 30 lines of JavaScript
+anyone can read. Keeps the 2026-10-20 rule that bridge code stays out of
+the core.
+**Cost:** none; the file is 141 KB.
+
+## 2026-11-07: Releases ship stargazer.wasm; the page plays at full strength
+**Decision (Charlie's choices):** each `v*` release also builds and
+attaches `stargazer.wasm` with its checksum; the portfolio repo commits
+a copy taken from a tagged release, so the page always runs a named
+version (not a build from some branch). The page plays at full strength
+with one think time (one second a move); difficulty levels are parked
+until they can be designed and measured properly.
+**Alternatives:** the portfolio's deploy downloading the file each time
+(no binary in git, but the deploy then depends on GitHub releases and the
+file isn't visible in the portfolio PR); a think-time or strength picker
+now (a weaker engine done quickly, such as random blunders, plays
+unnaturally; doing it right is its own design).
+**Why:** a released, checksummed file is traceable to a tag and the
+source (which the GPL requires anyway). Full strength is the honest
+demo of the engine.
+**Cost:** $0. Version bumped to 0.2.0 for the first release with the file.
+
 ## 2026-11-07: Evaluation terms, and the order to add them
 **Decision (Charlie, all five recommendations of the design doc):** add
 four evaluation terms, one PR and one SPRT each, in the order mop-up,

@@ -176,7 +176,9 @@ Next after Milestone 4. The bot doubles as Charlie's SRE showcase.
   bot needs always-on CPU. On-demand Fargate at 1 vCPU is roughly $25 to
   $30 a month, most of prod's budget, and EC2 is on the ask-first list:
   price both properly before deciding.
-- Playing Stargazer from the portfolio page (WebAssembly) stays planned.
+- Playing Stargazer from the portfolio page (WebAssembly): the engine's
+  half (the `web/` bridge, `stargazer.wasm` in releases) built
+  2026-11-07; the page is a portfolio PR, after the v0.2.0 tag.
 - **A database (Charlie, 2026-10-25), for practical AWS experience:**
   DynamoDB (on demand, pennies) for the bot's live records: games,
   challenges, rating over time, SLO counters; S3 + Athena stays the home
@@ -250,8 +252,8 @@ a release is tagged and built (DESIGN.md section 6).
 - Endgame tablebases (Syzygy): perfect play with 7 or fewer pieces, for
   the Lichess bot. Search extensions for endgames (passed pawn pushes,
   singular extensions) after check extensions.
-- A board widget for the browser page: write one or vendor a library
-  (check its licence).
+- ~~A board widget for the browser page~~: decided 2026-11-07, our own
+  board in the portfolio repo with an open-licence piece set.
 - Don't throw away thinking time: on about 2% of moves the engine spends
   up to a second on a depth it can't finish (seen in the self-match game
   files). Using the unfinished depth's best move is done (#16, +44 Elo);
@@ -265,7 +267,10 @@ a release is tagged and built (DESIGN.md section 6).
   - Lichess chat in the star theme (Milestone 5)
   - "watch it think" in the browser: candidate moves drawn as a
     constellation of arrows, plus an evaluation bar
-  - difficulty levels named after stars
+  - difficulty levels named after stars. Charlie, 2026-11-07: the play
+    page stays full strength; levels only when they can be done properly
+    (a natural-feeling weaker engine, each level measured), not a quick
+    slider
 - Regular Fargate as a fallback when Spot has no room or takes a test
   back. Charlie decided to stay on Spot for now (2026-10-23); revisit if
   Spot keeps failing (3 problems in the first 6 runs). AWS's reason is now
@@ -298,5 +303,7 @@ a release is tagged and built (DESIGN.md section 6).
   quiet mate in 2 1. Ra6! in `kbK5/pp6/1P6/8/8/8/8/R7 w`, missed since
   late move reductions (journal 2026-10-24-late-move-reductions). The
   parked verification search is the fix.
-- The browser build, when it exists, will be single-threaded and so a little
-  weaker than the Lichess bot.
+- The browser build is single-threaded, gets one second a move and plays
+  untimed games, so it isn't the Lichess bot's strength exactly. On a
+  desktop it reaches about the same depth per second as the native
+  engine (journal 2026-11-07); phones are slower.
