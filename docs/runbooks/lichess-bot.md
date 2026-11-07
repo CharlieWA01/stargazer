@@ -69,7 +69,10 @@ Commands below that use AWS run on the Chromebook with the
 Only during playing hours (the server is off otherwise).
 
 1. Tag the release (`vX.Y.Z`, matching `Cargo.toml`; bump it first in a
-   PR). Strength changes in it must have passed their SPRT.
+   PR). Strength changes in it must have passed their SPRT. Run
+   `git fetch origin` before `git tag vX.Y.Z origin/main`, or the tag can
+   land on an old commit (it happened with v0.2.0; `browser-build.md` has
+   the fix).
 2. A PR sets `bot/ENGINE` to the new tag and the checksum from the
    release page. Merge it; note the merge commit.
 3. Run the installer at that commit:

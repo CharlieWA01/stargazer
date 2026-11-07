@@ -171,9 +171,9 @@ Next after Milestone 4. The bot doubles as Charlie's SRE showcase.
   bot needs always-on CPU. On-demand Fargate at 1 vCPU is roughly $25 to
   $30 a month, most of prod's budget, and EC2 is on the ask-first list:
   price both properly before deciding.
-- Playing Stargazer from the portfolio page (WebAssembly): the engine's
-  half (the `web/` bridge, `stargazer.wasm` in releases) built
-  2026-11-07; the page is a portfolio PR, after the v0.2.0 tag.
+- Playing Stargazer from the portfolio page (WebAssembly): **live
+  2026-11-07.** The `web/` bridge and `stargazer.wasm` in releases (#47,
+  v0.2.0); the page, with click or drag to move, is portfolio #8 and #9.
 - **A database (Charlie, 2026-10-25), for practical AWS experience:**
   DynamoDB (on demand, pennies) for the bot's live records: games,
   challenges, rating over time, SLO counters; S3 + Athena stays the home

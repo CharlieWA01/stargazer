@@ -366,8 +366,9 @@ background worker, at full strength, one second a move.
   real rating. The page says the browser version is single-threaded and so
   a little weaker than the rated one. The tile links to Lichess rather than
   fetching the rating live, so the site makes no calls to other servers.
-  Until the browser version exists, the tile links straight to the
-  Lichess profile (portfolio DECISIONS.md, 2026-10-26).
+  The tile linked straight to the Lichess profile from 2026-10-26 until
+  the play page went live on 2026-11-07 (portfolio DECISIONS.md); it now
+  opens the play page, which links to Lichess.
 - Release process: **decided 2026-10-25.** A version is released by
   pushing a tag `vX.Y.Z` that matches `Cargo.toml`'s version. The
   `Release` workflow tests it, builds it for ARM Linux on Ubuntu 24.04,

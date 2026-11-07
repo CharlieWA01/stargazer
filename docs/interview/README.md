@@ -78,8 +78,8 @@ that way.
   like a person typing.
 - **Result:** Self-play under 10-second, 3-second and 1-second clocks with
   no losses on time and no illegal moves, plus tests that are proven to
-  catch the bugs they're for. The browser build will reuse the same
-  search unchanged. Lesson: a timing test that can't fail is worse than
+  catch the bugs they're for. The browser build reused the same
+  search unchanged (2026-11-07). Lesson: a timing test that can't fail is worse than
   none, because it looks like protection.
 
 ## The engine that beat itself: proving a test rig is fair

@@ -4,8 +4,16 @@ A chess engine written in Rust, named after an astronomer-diviner who reads the
 future in the stars, which is roughly what a search algorithm does.
 
 Stargazer speaks [UCI](https://www.chessprogramming.org/UCI), so it works with
-any standard chess GUI (Arena, Cute Chess, En Croissant, BanksiaGUI) and,
-eventually, as a Lichess bot.
+any standard chess GUI (Arena, Cute Chess, En Croissant, BanksiaGUI).
+
+## Play it
+
+- **In your browser:** the Stargazer tile on
+  [Charlie's portfolio](https://d2mxgk1quci5q8.cloudfront.net/) opens a
+  board where the engine runs on your own computer, compiled to
+  WebAssembly (`web/`).
+- **On Lichess:** [StargazerEngine](https://lichess.org/@/StargazerEngine)
+  plays rated games, 10am to 10pm US Central. Watch it or challenge it.
 
 ## Status
 
@@ -24,8 +32,11 @@ You need [Rust](https://rustup.rs) installed.
 cargo build --release          # build the engine
 ./target/release/stargazer     # run it, then type: uci, position startpos, go movetime 2000
 ./target/release/stargazer bench   # fixed search; prints its node count and speed
-cargo test                     # run the tests
+cargo test --workspace         # run the tests (engine and browser bridge)
 ```
+
+The browser build is in
+[`docs/runbooks/browser-build.md`](docs/runbooks/browser-build.md).
 
 ## Docs
 

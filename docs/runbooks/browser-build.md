@@ -16,8 +16,17 @@ the same three on every PR.
 
 ## Ship a new version to the play page
 
-1. Release as usual: bump `Cargo.toml`, merge, push the tag (`vX.Y.Z`).
-   The `Release` workflow attaches `stargazer.wasm` and its SHA-256.
+1. Release as usual: bump `Cargo.toml` and merge, then tag the merged
+   commit. Fetch first: `git tag` uses your copy of `origin/main`, which
+   may be out of date.
+   ```sh
+   git fetch origin
+   git log -1 --oneline origin/main     # the merge you expect?
+   git tag vX.Y.Z origin/main && git push origin vX.Y.Z
+   ```
+   The `Release` workflow attaches `stargazer.wasm` and its SHA-256. (A
+   tag on the wrong commit is refused by its version check; delete it with
+   `git tag -d vX.Y.Z && git push origin :refs/tags/vX.Y.Z` and tag again.)
 2. In the portfolio repo: `tools/update-stargazer.sh vX.Y.Z` downloads it,
    checks the checksum and records the version; open a PR with the
    result. Merging deploys it.
