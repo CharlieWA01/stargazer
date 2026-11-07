@@ -1,4 +1,4 @@
-# 2026-11-07: Evaluation terms, and mop-up
+# 2026-11-07: Evaluation terms, and mop-up (tried and dropped)
 
 ## Goal
 Decide which evaluation terms come next and in what order, then build
@@ -43,8 +43,24 @@ the first one, mop-up.
   33 half-moves, with no clear difference at this depth (the search
   already sees these short mates). Mop-up should matter most in longer
   endings with more material; the SPRT decides.
-- SPRT [0, 10] at 8+0.08 against main: see the PR and the roadmap.
+- SPRT [0, 10] at 8+0.08 against main (`sprt-42399585431-1`):
+  **failed**, +2.1 ± 6.1 Elo over 6,073 games (1,918 wins, 2,273 draws,
+  1,882 losses; LLR -2.95). It isn't weaker, but it didn't show the gain
+  the bar asks for, so the code was taken out of PR #46. The design,
+  the decision and this record stay.
+
+## Why it failed, most likely
+The test games start from balanced openings between two nearly equal
+engines, so very few of them reach a rook or more up against a bare
+king, and the search already finds the short mates in most of those
+that do (the quick check above). A term that almost never applies can
+only move the result by a fraction of an Elo, far less than the 0 to 10
+the test looks for. It may still help in the rare long ending against a
+weak opponent (the PyChess game); if that shows up again on Lichess, it
+can come back with a no-harm test and the code in this PR's history
+(commit 623ae91).
 
 ## Impact
-The engine has a plan in won endings against a bare king. The cost is a
-few additions per evaluation, only when the term applies.
+None on the engine: the code was dropped. The evaluation-terms design is
+decided, and the next term, pawn structure, applies in almost every
+game, so it should show up in a test far more clearly.

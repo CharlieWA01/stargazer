@@ -254,7 +254,9 @@ background worker, at full strength, one second a move.
   1. **Mop-up:** when one side's pieces are worth at least a rook more
      and the other side has no pawns, +10 per ring the losing king is
      from the centre and +4 per square the kings are closer than 14
-     (endgame score). Built in PR #46.
+     (endgame score). Tried in PR #46: failed its SPRT (+2.1 ± 6.1
+     Elo over 6,073 games), so it was dropped. Bare-king endings are
+     too rare in test games for it to show a gain.
   2. **Pawn structure:** doubled -10 / -20, isolated -10 / -15
      (middlegame / endgame), passed pawns +10 to +120 by rank in the
      endgame on top of the square tables. Backward pawns later.
