@@ -48,6 +48,16 @@ release builds the exact program it runs; deploys wait for the game in
 progress to finish. First rated games: a loss to a 2100 bot, a win
 against a 1750.
 
+## In the browser
+Since 2026-11-07, visitors to my portfolio site play it right on the
+page: the same engine compiled to WebAssembly (a 141 KB file), running on
+the visitor's own computer in a background worker, so it costs nothing to
+run and has no server to attack. The engine core didn't change at all
+for it, thanks to a design rule from day one (no clock or input/output in
+the core). Each release builds the file reproducibly: the released copy
+matched a local build byte for byte. Click or drag pieces, on a desktop
+or a phone.
+
 ## Games played in testing
 About **47,800** games so far, counted from the recorded test runs (a
 few hundred quick checks, such as self-play and container smoke tests,

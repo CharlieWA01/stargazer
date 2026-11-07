@@ -374,8 +374,11 @@ background worker, at full strength, one second a move.
     rewords a line fails CI instead of silently zeroing a metric;
   - **SLOs:** online (99% of checks) has two burn-rate alarms (1 hour at
     14 times the budget, 6 hours at 6 times) plus an "observer failing"
-    alarm, emailed through SNS; no on-call. Time losses and the log
-    counts are report-only for two weeks, then get targets.
+    alarm, emailed through SNS; no on-call. From 2026-11-07, set from 11
+    days of data: at most 2% of games lost on time a week (alarm when a
+    day of 20+ games goes over 5%), and alarms on any error, 2+ restarts
+    a day, 5+ connection drops an hour. Refused challenges stay
+    report-only.
 - **Open (Milestone 5 design, journal 2026-10-25-lichess-bot-design):**
   S3 + Athena for game history and a status page on the portfolio site
   (5c), and deploys gated on SPRT that let games finish (5d). Prod's budget
@@ -386,8 +389,9 @@ background worker, at full strength, one second a move.
   real rating. The page says the browser version is single-threaded and so
   a little weaker than the rated one. The tile links to Lichess rather than
   fetching the rating live, so the site makes no calls to other servers.
-  Until the browser version exists, the tile links straight to the
-  Lichess profile (portfolio DECISIONS.md, 2026-10-26).
+  The tile linked straight to the Lichess profile from 2026-10-26 until
+  the play page went live on 2026-11-07 (portfolio DECISIONS.md); it now
+  opens the play page, which links to Lichess.
 - Release process: **decided 2026-10-25.** A version is released by
   pushing a tag `vX.Y.Z` that matches `Cargo.toml`'s version. The
   `Release` workflow tests it, builds it for ARM Linux on Ubuntu 24.04,

@@ -152,9 +152,9 @@ Design: journal 2026-10-25-lichess-bot-design and DESIGN.md section 6.
   - [x] Matchmaking: opponents rated 1600 to 2400 (#39); rated play
   - [x] A day on the schedule: the 9:15pm drain and the 10am start
         (checked 2026-10-26)
-- [ ] 5b: the observer Lambda, DynamoDB records, SLO metrics and
-      burn-rate alarms (decided 2026-10-27; built in cloud-homelab,
-      waiting for Charlie's apply; then two weeks report-only and targets)
+- [x] 5b: the observer Lambda, DynamoDB records, SLO metrics and
+      burn-rate alarms (decided 2026-10-27, live the same day; targets
+      for the other signals set 2026-11-07 from 11 days of data)
 - [ ] 5c: game history in S3 with Athena; the status page
 - [ ] 5d: deploys gated on SPRT, from GitHub Actions, with rollback
 - [ ] 5e: chaos drills, written up as postmortems
@@ -178,9 +178,9 @@ Next after Milestone 4. The bot doubles as Charlie's SRE showcase.
   bot needs always-on CPU. On-demand Fargate at 1 vCPU is roughly $25 to
   $30 a month, most of prod's budget, and EC2 is on the ask-first list:
   price both properly before deciding.
-- Playing Stargazer from the portfolio page (WebAssembly): the engine's
-  half (the `web/` bridge, `stargazer.wasm` in releases) built
-  2026-11-07; the page is a portfolio PR, after the v0.2.0 tag.
+- Playing Stargazer from the portfolio page (WebAssembly): **live
+  2026-11-07.** The `web/` bridge and `stargazer.wasm` in releases (#47,
+  v0.2.0); the page, with click or drag to move, is portfolio #8 and #9.
 - **A database (Charlie, 2026-10-25), for practical AWS experience:**
   DynamoDB (on demand, pennies) for the bot's live records: games,
   challenges, rating over time, SLO counters; S3 + Athena stays the home
