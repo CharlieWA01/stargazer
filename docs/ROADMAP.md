@@ -113,8 +113,12 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
         head to head at 10 seconds + 0
   - [ ] Long-control confirmation at 60 seconds + 0.6 for the rules kept,
         against the same version (DECISIONS.md, 2026-10-25)
-  - [ ] The milder best-move stability rule (parking lot), tested at
-        60 seconds + 0.6
+  - [x] The milder best-move stability rule (tried and dropped): count only depths 6 and up,
+        75% once the best move has held 4 more depths, 150% after a
+        change; PR #44, no-harm SPRT at 8+0.08: **passed**, +6.2 ± 12.0
+        Elo over 1,731 games (an earlier run, cut off by AWS at 1,692
+        games, stood at -4.5 ± 11.2); 60 seconds + 0.6: **failed**, -19.7
+        ± 13.8 over 1,434 games. Dropped (PR #44 keeps the record)
 - [ ] Evaluation terms: mobility, pawn structure, king safety, and a
       "mop-up" term for won endgames (drive the losing king to the edge,
       bring your own king close; Charlie's endgame point, 2026-10-24,

@@ -146,6 +146,14 @@ that way.
   (a third of the time) was exactly the effect that lost games. Lesson:
   a hypothesis is only as good as its test, a failed one is still data,
   and "it looks faster" is not "it plays better".
+- **Second try (two days later):** a milder version, built to fix the
+  cause, passed a "does no harm" test at the short control (+6 ± 12
+  Elo) and then lost 20 ± 14 Elo at a control 7.5 times longer. At the
+  short control the search rarely got deep enough for the rule to act;
+  at the long one it acted on most moves. Charlie had insisted on
+  confirming time-management changes at the longest control we could
+  afford, and this is exactly what that step was for: without it, a
+  20-Elo loss at real time controls would have shipped.
 
 ## Going open source: picking a licence, and checking what goes public
 **Tags:** Process, Security, Design
