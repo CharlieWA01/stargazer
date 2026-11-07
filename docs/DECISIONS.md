@@ -952,3 +952,23 @@ little); a tighter online target (nothing has failed yet to size it
 against). Details and the alarms themselves: cloud-homelab DECISIONS.md,
 2026-11-07.
 **Cost:** $0, inside CloudWatch's free alarms.
+
+## 2026-11-07: Evaluation terms, and the order to add them
+**Decision (Charlie, all five recommendations of the design doc):** add
+four evaluation terms, one PR and one SPRT each, in the order mop-up,
+pawn structure, mobility, king safety (numbers in DESIGN.md section 4).
+Each must show a gain, [0, 10] Elo at 8+0.08. A pawn hash table only if
+bench speed drops by more than 10%. Mobility on today's ray walking,
+magic bitboards only if the slowdown costs strength. Texel tuning after
+all four.
+**Alternatives:** king safety first (often the biggest single gain, but
+the riskiest and slowest); the no-harm bar used for time management;
+tuning first; magic bitboards first.
+**Why:** cheap and safe terms first, so each loss points at one term;
+mop-up fixes a problem seen in a real game. An evaluation term is meant
+to make the engine play better, so it must show it, and unlike time
+management its effect shouldn't depend much on the time control. Tuning
+last tunes the new terms' hand-written guesses too.
+**Cost:** about $0.50 a test, about $2 for the four plus a Stockfish
+match; some evaluation speed for mobility and king safety, measured in
+each PR.

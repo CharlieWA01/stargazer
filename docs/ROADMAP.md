@@ -119,11 +119,18 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
         Elo over 1,731 games (an earlier run, cut off by AWS at 1,692
         games, stood at -4.5 ± 11.2); 60 seconds + 0.6: **failed**, -19.7
         ± 13.8 over 1,434 games. Dropped (PR #44 keeps the record)
-- [ ] Evaluation terms: mobility, pawn structure, king safety, and a
-      "mop-up" term for won endgames (drive the losing king to the edge,
-      bring your own king close; Charlie's endgame point, 2026-10-24,
-      after the queen-up shuffling game against PyChess) (design section
-      first)
+- [ ] Evaluation terms (design decided 2026-11-07, DESIGN.md section 4),
+      one PR and one SPRT [0, 10] at 8+0.08 each, in this order:
+  - [x] Mop-up (tried and dropped): in a won endgame against a bare
+        king, drive it to the edge and bring your own king close
+        (Charlie's endgame point, 2026-10-24, after the queen-up
+        shuffling game against PyChess); PR #46, SPRT [0, 10] at
+        8+0.08: **failed**, +2.1 ± 6.1 Elo over 6,073 games. Dropped
+        (PR #46 keeps the design and the record)
+  - [ ] Pawn structure: doubled, isolated, passed pawns
+  - [ ] Mobility: safe squares per piece (ray walking; measure the slowdown)
+  - [ ] King safety: pawn shield, open files, attackers near the king
+  - [ ] A Stockfish match after all four
 - [ ] Texel tuning (design section first)
 
 ### Milestone 5 steps
