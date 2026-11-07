@@ -68,3 +68,20 @@ release. The page itself is a portfolio PR.
 - One more package to build, but no new crates: the engine is still
   dependency-free.
 - Next: Charlie tags v0.2.0; the portfolio PR copies its `stargazer.wasm`.
+
+## Afterwards (same day)
+- Charlie merged #47 and tagged v0.2.0. The first tag landed on v0.1.0's
+  commit: the laptop's copy of `origin/main` hadn't been fetched since
+  then. The `Release` workflow's version check would have refused it, so
+  nothing wrong was published; Charlie deleted it and tagged again after
+  `git fetch origin`. Both release runbooks now say to fetch first.
+- The released `stargazer.wasm` has the same SHA-256 as the one built in
+  this session from the PR branch: the build is reproducible.
+- The play page went live (portfolio #8), then gained drag and drop
+  (portfolio #9). Charlie checked it with a mouse and a finger on a
+  laptop, and on a phone.
+- The Lichess bot still runs v0.1.0. v0.2.0 also carries the time
+  management change made since then (sudden-death pacing: the clock is
+  shared over the moves the game probably has left; `bench` is the same,
+  343857), so moving the bot to it is a separate deploy
+  (`docs/runbooks/lichess-bot.md`).
