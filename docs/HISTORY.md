@@ -53,3 +53,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-11-07 | [#44](https://github.com/CharlieWA01/stargazer/pull/44) | Time management: a milder best-move stability rule, tried and dropped |
 | 2026-11-07 | [#47](https://github.com/CharlieWA01/stargazer/pull/47) | The browser bridge: Stargazer as stargazer.wasm for the portfolio play page |
 | 2026-11-07 | [#48](https://github.com/CharlieWA01/stargazer/pull/48) | docs: the browser version is live; fetch before tagging |
+| 2026-11-07 | [#49](https://github.com/CharlieWA01/stargazer/pull/49) | docs: targets for the bot's SLOs; 5b done |
