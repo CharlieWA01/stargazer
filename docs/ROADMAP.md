@@ -127,8 +127,9 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
         shuffling game against PyChess); PR #46, SPRT [0, 10] at
         8+0.08: **failed**, +2.1 ± 6.1 Elo over 6,073 games. Dropped
         (PR #46 keeps the design and the record)
-  - [ ] Pawn structure: doubled, isolated, passed pawns (bench 282819,
-        about 4% slower)
+  - [x] Pawn structure: doubled, isolated, passed pawns; PR #50, SPRT
+        [0, 10] at 8+0.08: **passed**, +37.8 ± 20.4 Elo over 817 games
+        (bench 282819, about 4% slower)
   - [ ] Mobility: safe squares per piece (ray walking; measure the slowdown)
   - [ ] King safety: pawn shield, open files, attackers near the king
   - [ ] A Stockfish match after all four

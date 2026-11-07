@@ -58,8 +58,14 @@ decided 2026-11-07): doubled, isolated and passed pawns.
   419,000 positions a second against 435,000 for main, about 4% slower,
   under the 10% that would call for a pawn hash table (DECISIONS.md,
   2026-11-07).
-- SPRT [0, 10] at 8+0.08 against main: see the PR and the roadmap.
+- SPRT [0, 10] at 8+0.08 against main (`sprt-42414890759-1`):
+  **passed**, +37.8 ± 20.4 Elo over 817 games (334 wins, 236 draws,
+  247 losses; LLR 2.98), in about 20 minutes. The largest gain since
+  null-move pruning, despite being 4% slower.
 
 ## Impact
 The engine now sees weak pawns and dangerous passed pawns, not just how
-far each pawn has advanced. The cost is about 4% of search speed.
+far each pawn has advanced: about +38 Elo for about 4% of search speed.
+The contrast with mop-up, tested the same day under the same bar, is
+the lesson: a term that applies in almost every game shows up in a few
+hundred games; one that almost never applies can't show up at all.

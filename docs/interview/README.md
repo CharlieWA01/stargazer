@@ -262,3 +262,23 @@ that way.
   rule that saves time is worth more than the SPRT says. Lesson: know
   what your test environment leaves out; production showed a cost the
   lab couldn't, and it came from watching the real thing run.
+
+## Same bar, opposite results: why a test can only see what happens
+**Tags:** Testing, Statistics, Judgment
+
+- **Situation:** After deciding on four evaluation terms, each needing
+  a measured gain, the first one, mop-up (how to finish a won ending
+  against a lone king), came from a real game where the engine shuffled
+  a queen up instead of mating.
+- **Task:** Prove each term makes the engine stronger with the same
+  statistical test (SPRT, [0, 10] Elo), or drop it.
+- **Action:** Mop-up ran 6,073 games and failed: +2.1 ± 6.1 Elo. It
+  wasn't wrong; test games start from balanced openings between nearly
+  equal engines, so almost none reach a bare king, and a term that
+  almost never applies can't move the result. Charlie chose to drop it
+  rather than relax the bar. The next term, pawn structure (doubled,
+  isolated and passed pawns), applies in nearly every game.
+- **Result:** Pawn structure passed in 817 games and about 20 minutes:
+  +37.8 ± 20.4 Elo, even though it made the search 4% slower. Lesson:
+  a test measures how often a change matters as much as how much, and
+  "fixes a real game" isn't the same as "makes the engine stronger".
