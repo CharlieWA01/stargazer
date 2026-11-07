@@ -932,3 +932,23 @@ unnaturally; doing it right is its own design).
 source (which the GPL requires anyway). Full strength is the honest
 demo of the engine.
 **Cost:** $0. Version bumped to 0.2.0 for the first release with the file.
+
+## 2026-11-07: Targets for the bot's SLOs (Milestone 5b, finished)
+
+**Decision (Charlie):** after 11 days of report-only data (1,395 checks
+all online; 649 games, 7 lost on time, 1.1%; no connection drops,
+restarts or errors), the online target stays at 99% of checks, and the
+other signals get targets: at most 2% of games lost on time a week, with
+an email when more than 5% of a day's games (20 or more) are; emails on
+any error, on 2 or more restarts in a day and on 5 or more connection
+drops in an hour. Refused challenges (about 14 a day, other bots' daily
+limits) stay report-only.
+**Why:** each threshold sits above everything seen so far, so an email
+means something changed. The time-loss alarm is the one that touches
+the engine: a release that breaks time management should trip it within
+a day.
+**Alternatives:** the full two weeks first (three more days changed
+little); a tighter online target (nothing has failed yet to size it
+against). Details and the alarms themselves: cloud-homelab DECISIONS.md,
+2026-11-07.
+**Cost:** $0, inside CloudWatch's free alarms.
