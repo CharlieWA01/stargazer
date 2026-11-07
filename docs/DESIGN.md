@@ -240,7 +240,25 @@ $0). So:
   fitted to game results by our own tuner (Texel tuning) in Milestone 4.
   Rejected: the public "Simplified Evaluation Function" tables and PeSTO's
   machine-tuned tables, which would start stronger but aren't ours.
-- **Later, each by SPRT:** pawn structure, king safety, mobility.
+- **Evaluation terms: Decided (2026-11-07)** (DECISIONS.md), each in
+  its own PR, each needing a gain ([0, 10] Elo at 8+0.08), in this order:
+  1. **Mop-up:** when one side's pieces are worth at least a rook more
+     and the other side has no pawns, +10 per ring the losing king is
+     from the centre and +4 per square the kings are closer than 14
+     (endgame score). Built in PR #46.
+  2. **Pawn structure:** doubled -10 / -20, isolated -10 / -15
+     (middlegame / endgame), passed pawns +10 to +120 by rank in the
+     endgame on top of the square tables. Backward pawns later.
+  3. **Mobility:** safe squares (not own-occupied, not attacked by enemy
+     pawns) per knight 4, bishop 5, rook 2 / 4, queen 1 / 2, counted from
+     an average so a normal piece scores about 0. Today's ray walking;
+     magic bitboards only if the slowdown costs strength.
+  4. **King safety (middlegame):** shield pawns +10 (+5 one rank
+     further), an open file beside the king -15, attackers near the king
+     weighted knight 2, bishop 2, rook 3, queen 5 through a table that
+     grows faster than linearly.
+  - A pawn hash table only if bench speed drops by more than 10%.
+  - Texel tuning after all four, tuning every number at once.
 
 ### 5. Testing and infrastructure
 - CI: GitHub Actions running format, lint, tests and a release build (in place).

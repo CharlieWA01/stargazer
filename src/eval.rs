@@ -4,11 +4,14 @@
 //! The answer is a score in centipawns (100 = one pawn), from the point of
 //! view of the side to move: +150 means "I'm about a pawn and a half up".
 //!
-//! Two things count so far:
+//! Three things count so far:
 //! - **Material:** pawn 100, knight 320, bishop 330, rook 500, queen 900.
 //! - **Where each piece stands** ("piece-square tables"): knights like the
 //!   centre, pawns like to advance, the king hides in the middlegame and
 //!   walks to the centre in the endgame.
+//! - **Mop-up:** in a won endgame against a bare king (no pawns), drive
+//!   that king to the edge and bring your own king close, so the engine
+//!   makes progress towards mate instead of shuffling.
 //!
 //! Every position gets two scores, a middlegame one and an endgame one, and
 //! they're blended by how much material is left ("tapered evaluation").
@@ -31,6 +34,17 @@ const MATERIAL: [i32; 6] = [100, 320, 330, 500, 900, 0];
 /// 4 rooks x 2, 2 queens x 4); with none left it's 0, a pure endgame.
 const PHASE_WEIGHT: [i32; 6] = [0, 1, 1, 2, 4, 0];
 const FULL_PHASE: i32 = 24;
+
+/// Mop-up applies when one side's pieces (pawns not counted) are worth at
+/// least a rook more than the other side's, and the other side has no
+/// pawns left: the game is won, and what's left is to mate.
+const MOP_UP_MARGIN: i32 = 500;
+/// Points for each ring the losing king has been pushed out from the
+/// centre (0 in the middle, 3 on the edge).
+const MOP_UP_EDGE: i32 = 10;
+/// Points for each square the kings are closer than the furthest apart
+/// they can be (14 squares, counting along files and ranks).
+const MOP_UP_CLOSE: i32 = 4;
 
 /// How far a square is from the centre, in rings: 0 for d4, e4, d5, e5;
 /// 1 for the ring around them; 2 for the next; 3 for the edge of the board.
@@ -160,6 +174,8 @@ pub fn evaluate(position: &Position) -> i32 {
     let mut middlegame = 0;
     let mut endgame = 0;
     let mut phase = 0;
+    // Each side's pieces, pawns and kings not counted, for mop-up.
+    let mut piece_material = [0; 2];
 
     for color in Color::BOTH {
         let sign = match color {
@@ -173,9 +189,13 @@ pub fn evaluate(position: &Position) -> i32 {
                 middlegame += sign * (MATERIAL[kind_index] + tables[0][seen_from_own_side]);
                 endgame += sign * (MATERIAL[kind_index] + tables[1][seen_from_own_side]);
                 phase += PHASE_WEIGHT[kind_index];
+                if kind != PieceKind::Pawn {
+                    piece_material[color.index()] += MATERIAL[kind_index];
+                }
             }
         }
     }
+    endgame += mop_up(position, piece_material);
 
     // Blend: all middlegame with a full board, all endgame with no pieces
     // left. (Phase can exceed 24 after promotions; cap it.)
@@ -186,6 +206,34 @@ pub fn evaluate(position: &Position) -> i32 {
         Color::White => blended,
         Color::Black => -blended,
     }
+}
+
+/// The mop-up bonus, from White's point of view: when one side has a won
+/// endgame against a king with no pawns, reward pushing that king to the
+/// edge of the board and walking the winning king towards it. Mate needs
+/// both, and without this every king move looks the same, so the engine
+/// shuffles. Zero in any other position.
+fn mop_up(position: &Position, piece_material: [i32; 2]) -> i32 {
+    for strong in Color::BOTH {
+        let weak = strong.opponent();
+        let weak_pawns = position.pieces(Piece::new(weak, PieceKind::Pawn));
+        if piece_material[strong.index()] - piece_material[weak.index()] < MOP_UP_MARGIN
+            || weak_pawns.count() > 0
+        {
+            continue;
+        }
+        let lone_king = position.king_square(weak);
+        let own_king = position.king_square(strong);
+        let to_edge = centre_ring(lone_king.file() as i32, lone_king.rank() as i32);
+        let apart = (lone_king.file() as i32 - own_king.file() as i32).abs()
+            + (lone_king.rank() as i32 - own_king.rank() as i32).abs();
+        let bonus = MOP_UP_EDGE * to_edge + MOP_UP_CLOSE * (14 - apart);
+        return match strong {
+            Color::White => bonus,
+            Color::Black => -bonus,
+        };
+    }
+    0
 }
 
 /// The square's index as seen from this colour's own side of the board:
@@ -272,6 +320,8 @@ mod tests {
             "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
             "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
             "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+            // Mop-up: a rook against a bare king.
+            "8/8/2k5/8/8/5K2/8/R7 b - - 0 1",
         ] {
             assert_eq!(eval(fen), eval(&mirror(fen)), "{fen}");
         }
@@ -305,6 +355,49 @@ mod tests {
         let on_e3 = eval("4k3/8/8/8/8/4P3/8/4K3 w - - 0 1");
         let on_e6 = eval("4k3/8/4P3/8/8/8/8/4K3 w - - 0 1");
         assert!(on_e6 > on_e3 + 40, "e6 {on_e6} vs e3 {on_e3}");
+    }
+
+    /// The mop-up bonus alone for a position, from White's point of view.
+    fn mop(fen: &str) -> i32 {
+        let position = Position::from_fen(fen).unwrap();
+        let mut piece_material = [0; 2];
+        for color in Color::BOTH {
+            for (kind_index, kind) in PieceKind::ALL.into_iter().enumerate() {
+                if kind != PieceKind::Pawn {
+                    let count = position.pieces(Piece::new(color, kind)).count() as i32;
+                    piece_material[color.index()] += MATERIAL[kind_index] * count;
+                }
+            }
+        }
+        mop_up(&position, piece_material)
+    }
+
+    #[test]
+    fn mop_up_drives_a_bare_king_to_the_edge() {
+        // White has king and rook against a bare king: the black king on
+        // the edge earns White more than the same king in the centre.
+        let edge = mop("4k3/8/8/8/8/8/8/R3K3 w - - 0 1");
+        let centre = mop("8/8/8/4k3/8/8/8/R3K3 w - - 0 1");
+        assert!(edge > centre, "edge {edge} vs centre {centre}");
+    }
+
+    #[test]
+    fn mop_up_brings_the_winning_king_closer() {
+        // Same black king on the edge; the white king near it earns more.
+        let near = mop("4k3/8/4K3/8/8/8/8/R7 w - - 0 1");
+        let far = mop("4k3/8/8/8/8/8/8/R6K w - - 0 1");
+        assert!(near > far, "near {near} vs far {far}");
+    }
+
+    #[test]
+    fn mop_up_stays_out_of_ordinary_positions() {
+        // A bishop each: nobody is a rook up, so no mop-up.
+        assert_eq!(mop("4k3/8/4K3/8/8/8/8/B6b w - - 0 1"), 0);
+        // A rook up, but the defender still has a pawn: not yet.
+        assert_eq!(mop("4k3/4p3/4K3/8/8/8/8/R7 w - - 0 1"), 0);
+        // A rook up against a bare king: mop-up, for either colour.
+        assert!(mop("4k3/8/4K3/8/8/8/8/R7 w - - 0 1") > 0);
+        assert!(mop("r7/8/8/8/8/4k3/8/4K3 w - - 0 1") < 0);
     }
 
     #[test]
