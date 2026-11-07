@@ -19,17 +19,23 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Formatting
-        run: cargo fmt --check
+        run: cargo fmt --all --check
       - name: Lints
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Tests
-        run: cargo test
+        run: cargo test --workspace
       - name: Release build
         run: cargo build --release
       # The engine must also run in a browser (docs/DESIGN.md, "Runs in a
       # browser"). Building the library for WebAssembly proves it still can.
+      # The page's bridge (web/) is built too, and a few moves are played
+      # through it from JavaScript, as the portfolio page's worker does.
       - name: Browser (WebAssembly) build
-        run: cargo build --lib --release --target wasm32-unknown-unknown
+        run: |
+          cargo build --lib --release --target wasm32-unknown-unknown
+          cargo build -p stargazer-web --release --target wasm32-unknown-unknown
+          cargo clippy -p stargazer-web --target wasm32-unknown-unknown -- -D warnings
+          node web/tests/smoke.mjs target/wasm32-unknown-unknown/release/stargazer_web.wasm
       # The Lichess bot's settings (bot/): the ones a game depends on.
       # Fetches lichess-bot at the pinned commit, so the test that its log
       # lines still match cloud-homelab's metric filters runs too.

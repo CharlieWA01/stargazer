@@ -1,0 +1,16 @@
+[package]
+name = "stargazer-web"
+version = "0.2.0"
+edition = "2024"
+description = "Stargazer in a web page: the bridge between the engine and JavaScript"
+license = "GPL-3.0-or-later"
+publish = false
+
+# cdylib is the .wasm file a web page loads; rlib lets the tests (and
+# clippy) build the same code natively.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# No crates beyond the engine itself (DESIGN.md, "Runs in a browser").
+[dependencies]
+stargazer = { path = ".." }
