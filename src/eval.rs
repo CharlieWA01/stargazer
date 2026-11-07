@@ -4,11 +4,13 @@
 //! The answer is a score in centipawns (100 = one pawn), from the point of
 //! view of the side to move: +150 means "I'm about a pawn and a half up".
 //!
-//! Two things count so far:
+//! Three things count so far:
 //! - **Material:** pawn 100, knight 320, bishop 330, rook 500, queen 900.
 //! - **Where each piece stands** ("piece-square tables"): knights like the
 //!   centre, pawns like to advance, the king hides in the middlegame and
 //!   walks to the centre in the endgame.
+//! - **Pawn structure:** doubled and isolated pawns are weak, passed
+//!   pawns are strong, more so the further they have gone.
 //!
 //! Every position gets two scores, a middlegame one and an endgame one, and
 //! they're blended by how much material is left ("tapered evaluation").
@@ -19,6 +21,7 @@
 //! numbers later (Milestone 4). Everything sits behind `evaluate`, so
 //! the evaluation can grow or be replaced without touching the search.
 
+use crate::bitboard::Bitboard;
 use crate::board::{Color, Piece, PieceKind, Position, Square};
 
 /// Material value of each piece kind, in centipawns, in the order of
@@ -31,6 +34,23 @@ const MATERIAL: [i32; 6] = [100, 320, 330, 500, 900, 0];
 /// 4 rooks x 2, 2 queens x 4); with none left it's 0, a pure endgame.
 const PHASE_WEIGHT: [i32; 6] = [0, 1, 1, 2, 4, 0];
 const FULL_PHASE: i32 = 24;
+
+/// Pawn structure (DESIGN.md section 4, decided 2026-11-07). Each pair is
+/// (middlegame, endgame).
+///
+/// A **doubled** pawn, a second (or third) pawn on the same file: it can't
+/// protect the pawn in front of it, and it blocks it. Counted once for
+/// each extra pawn on the file.
+const DOUBLED: (i32, i32) = (-10, -20);
+/// An **isolated** pawn: no pawn of its own colour on the files beside it,
+/// so no pawn can ever protect it; pieces have to.
+const ISOLATED: (i32, i32) = (-10, -15);
+/// A **passed** pawn: no enemy pawn in front of it on its own file or the
+/// files beside it, so only pieces can stop it from queening. The bonus
+/// grows with the rank it has reached (counted from its own side: index 1
+/// is its starting rank, 6 the seventh rank), and applies in the endgame,
+/// on top of the square tables' bonus for advancing.
+const PASSED_ENDGAME: [i32; 8] = [0, 10, 15, 25, 45, 75, 120, 0];
 
 /// How far a square is from the centre, in rings: 0 for d4, e4, d5, e5;
 /// 1 for the ring around them; 2 for the next; 3 for the edge of the board.
@@ -177,6 +197,10 @@ pub fn evaluate(position: &Position) -> i32 {
         }
     }
 
+    let (pawn_middlegame, pawn_endgame) = pawn_structure(position);
+    middlegame += pawn_middlegame;
+    endgame += pawn_endgame;
+
     // Blend: all middlegame with a full board, all endgame with no pieces
     // left. (Phase can exceed 24 after promotions; cap it.)
     let phase = phase.min(FULL_PHASE);
@@ -186,6 +210,85 @@ pub fn evaluate(position: &Position) -> i32 {
         Color::White => blended,
         Color::Black => -blended,
     }
+}
+
+/// All the squares on one file (0 = the a-file, 7 = the h-file).
+const fn file_squares(file: u8) -> Bitboard {
+    Bitboard(0x0101_0101_0101_0101 << file)
+}
+
+/// The files beside this one (one for the a- and h-files, two otherwise).
+fn neighbour_files(file: u8) -> Bitboard {
+    let mut files = Bitboard::EMPTY;
+    if file > 0 {
+        files |= file_squares(file - 1);
+    }
+    if file < 7 {
+        files |= file_squares(file + 1);
+    }
+    files
+}
+
+/// The squares in front of a pawn on its own file and the files beside
+/// it, all the way to the far side: if no enemy pawn stands there, the
+/// pawn is passed.
+fn passed_pawn_path(color: Color, square: Square) -> Bitboard {
+    let files = file_squares(square.file()) | neighbour_files(square.file());
+    let rank = square.rank() as u32;
+    let ahead = match color {
+        // Ranks above this one (rank 8 is the top of the board)...
+        Color::White => {
+            if rank == 7 {
+                0
+            } else {
+                u64::MAX << (8 * (rank + 1))
+            }
+        }
+        // ...or, for Black, the ranks below it.
+        Color::Black => {
+            if rank == 0 {
+                0
+            } else {
+                u64::MAX >> (8 * (8 - rank))
+            }
+        }
+    };
+    files & Bitboard(ahead)
+}
+
+/// Doubled, isolated and passed pawns for both sides, as (middlegame,
+/// endgame) scores from White's point of view.
+fn pawn_structure(position: &Position) -> (i32, i32) {
+    let mut middlegame = 0;
+    let mut endgame = 0;
+    for color in Color::BOTH {
+        let sign = match color {
+            Color::White => 1,
+            Color::Black => -1,
+        };
+        let own_pawns = position.pieces(Piece::new(color, PieceKind::Pawn));
+        let enemy_pawns = position.pieces(Piece::new(color.opponent(), PieceKind::Pawn));
+
+        for file in 0..8 {
+            let on_file = (own_pawns & file_squares(file)).count() as i32;
+            if on_file > 1 {
+                middlegame += sign * DOUBLED.0 * (on_file - 1);
+                endgame += sign * DOUBLED.1 * (on_file - 1);
+            }
+        }
+
+        for square in own_pawns.squares() {
+            if (own_pawns & neighbour_files(square.file())).is_empty() {
+                middlegame += sign * ISOLATED.0;
+                endgame += sign * ISOLATED.1;
+            }
+            if (enemy_pawns & passed_pawn_path(color, square)).is_empty() {
+                let rank = own_side_index(color, square) / 8;
+                endgame += sign * PASSED_ENDGAME[rank];
+            }
+        }
+    }
+    (middlegame, endgame)
 }
 
 /// The square's index as seen from this colour's own side of the board:
@@ -272,6 +375,8 @@ mod tests {
             "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
             "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
             "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+            // Doubled, isolated and passed pawns on both sides.
+            "4k3/1p3pp1/1p6/3P4/7P/2p5/P4P2/4K3 w - - 0 1",
         ] {
             assert_eq!(eval(fen), eval(&mirror(fen)), "{fen}");
         }
@@ -305,6 +410,64 @@ mod tests {
         let on_e3 = eval("4k3/8/8/8/8/4P3/8/4K3 w - - 0 1");
         let on_e6 = eval("4k3/8/4P3/8/8/8/8/4K3 w - - 0 1");
         assert!(on_e6 > on_e3 + 40, "e6 {on_e6} vs e3 {on_e3}");
+    }
+
+    /// The pawn-structure scores alone, (middlegame, endgame), for White.
+    fn pawns(fen: &str) -> (i32, i32) {
+        pawn_structure(&Position::from_fen(fen).unwrap())
+    }
+
+    #[test]
+    fn doubled_pawns_score_lower_than_pawns_side_by_side() {
+        // White's pawns on d2, e2 and e3 (two on the e-file) against d2,
+        // e2 and f2 (side by side); none is isolated, and Black's two
+        // pawns are the same in both.
+        let doubled = pawns("4k3/pp6/8/8/8/4P3/3PP3/4K3 w - - 0 1");
+        let side_by_side = pawns("4k3/pp6/8/8/8/8/3PPP2/4K3 w - - 0 1");
+        assert!(
+            doubled.0 < side_by_side.0,
+            "{doubled:?} vs {side_by_side:?}"
+        );
+        assert!(
+            doubled.1 < side_by_side.1,
+            "{doubled:?} vs {side_by_side:?}"
+        );
+    }
+
+    #[test]
+    fn an_isolated_pawn_scores_lower_than_a_supported_one() {
+        // White: a2 and c2 (both isolated) against a2 and b2 (neither).
+        // Black's pawns stop every white pawn from being passed.
+        let isolated = pawns("4k3/ppp5/8/8/8/8/P1P5/4K3 w - - 0 1");
+        let together = pawns("4k3/ppp5/8/8/8/8/PP6/4K3 w - - 0 1");
+        assert!(isolated.0 < together.0, "{isolated:?} vs {together:?}");
+        assert!(isolated.1 < together.1, "{isolated:?} vs {together:?}");
+    }
+
+    #[test]
+    fn passed_pawns_are_recognised_and_grow_as_they_advance() {
+        // A white pawn on e5 with a black pawn on d7 in its path is not
+        // passed; with the black pawn on b7 instead, it is.
+        let blocked = pawns("4k3/3p4/8/4P3/8/8/8/4K3 w - - 0 1");
+        let passed = pawns("4k3/1p6/8/4P3/8/8/8/4K3 w - - 0 1");
+        assert!(passed.1 > blocked.1, "{passed:?} vs {blocked:?}");
+        // Only enemy pawns in front of it count: from e5, d7 is in the
+        // way, d4 (behind it) and b7 (two files over) are not.
+        let sq = |name: &str| Square::parse(name).unwrap();
+        let path = passed_pawn_path(Color::White, sq("e5"));
+        assert!(path.contains(sq("d7")) && path.contains(sq("e8")) && path.contains(sq("f6")));
+        assert!(!path.contains(sq("d4")) && !path.contains(sq("e5")) && !path.contains(sq("b7")));
+        let path = passed_pawn_path(Color::Black, sq("e5"));
+        assert!(path.contains(sq("d4")) && path.contains(sq("f1")));
+        assert!(!path.contains(sq("d7")) && !path.contains(sq("e5")));
+        // The further it has gone, the bigger the bonus.
+        let on_e3 = pawns("4k3/8/8/8/8/4P3/8/4K3 w - - 0 1");
+        let on_e7 = pawns("8/4P3/8/8/8/8/k7/4K3 w - - 0 1");
+        assert!(on_e7.1 > on_e3.1 + 80, "{on_e7:?} vs {on_e3:?}");
+        // And the same for Black, going the other way: a lone black pawn
+        // on e2 is a passed pawn on its seventh rank (and isolated).
+        let black_e2 = pawns("4k3/8/8/8/8/8/4p3/K7 w - - 0 1");
+        assert_eq!(black_e2.1, -(PASSED_ENDGAME[6] + ISOLATED.1));
     }
 
     #[test]

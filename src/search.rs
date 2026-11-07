@@ -1066,21 +1066,22 @@ mod tests {
 
     #[test]
     fn a_better_move_found_in_an_unfinished_depth_is_played() {
-        // Here depth 4 likes d2-d4 and depth 5 changes its mind to c4-c5.
-        let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
+        // In Kiwipete, depth 4 likes Bxa6 (e2-a6) and depth 5 changes its
+        // mind to dxe6 (d5-e6).
+        let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
         let (_, depths) = search_counting(fen, 5, None);
         let (asked_after_4, best_at_4) = depths[3];
         let (asked_after_5, best_at_5) = depths[4];
         assert_ne!(best_at_4, best_at_5);
 
         // Out of time at the last check of depth 5, just before it would
-        // have finished: c4-c5 has already beaten d2-d4, so it's played
+        // have finished: dxe6 has already beaten Bxa6, so it's played
         // even though depth 5 never completed.
         let (best, finished) = search_counting(fen, 5, Some(asked_after_5));
         assert_eq!(finished.len(), 4);
         assert_eq!(best, best_at_5);
 
-        // Out of time at the first check of depth 5, while d2-d4 (tried
+        // Out of time at the first check of depth 5, while Bxa6 (tried
         // first) is still being searched: nothing at depth 5 is finished,
         // so depth 4's move stands.
         let (best, finished) = search_counting(fen, 5, Some(asked_after_4 + 1));
@@ -1095,7 +1096,7 @@ mod tests {
             let mut last = 0;
             search(
                 &[position(kiwipete)],
-                4,
+                5,
                 table,
                 &mut History::new(),
                 &mut || false,
@@ -1107,7 +1108,7 @@ mod tests {
             last
         };
         // A table of one slot remembers almost nothing; a real one saves
-        // work (about a quarter at depth 4, much more deeper down).
+        // work (about a fifth at depth 5, much more deeper down).
         let mut tiny = Table::new(0);
         let mut table = Table::new(1);
         let without = nodes(&mut tiny);
