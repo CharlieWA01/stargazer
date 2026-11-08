@@ -60,3 +60,4 @@ story behind each change is in `docs/journal/`. See `docs/DOCS-STANDARD.md`.
 | 2026-11-07 | [#53](https://github.com/CharlieWA01/stargazer/pull/53) | docs: Milestone 5c is live |
 | 2026-11-07 | [#52](https://github.com/CharlieWA01/stargazer/pull/52) | Evaluation: mobility (safe squares per piece) |
 | 2026-11-07 | [#54](https://github.com/CharlieWA01/stargazer/pull/54) | Evaluation: king safety (pawn shield, open files, attackers) |
+| 2026-11-07 | [#55](https://github.com/CharlieWA01/stargazer/pull/55) | Docs: Stockfish match after the evaluation terms (about 2370) |
