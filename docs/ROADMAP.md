@@ -157,14 +157,15 @@ Design: journal 2026-10-25-lichess-bot-design and DESIGN.md section 6.
 - [x] 5b: the observer Lambda, DynamoDB records, SLO metrics and
       burn-rate alarms (decided 2026-10-27, live the same day; targets
       for the other signals set 2026-11-07 from 11 days of data)
-- [ ] 5c: game history in S3 with Athena; the status page
+- [x] 5c: game history in S3 with Athena; the status page (live
+      2026-11-08)
   - [x] Decided (2026-11-07): nightly archiver to S3, Athena with
         partition projection and a 10 MB cap, static JSON for a status
         page on the portfolio site (DESIGN.md section 6)
-  - [ ] cloud-homelab: the games bucket, Glue table, Athena workgroup,
-        archiver and the observer's live file; Charlie applies, then
-        the backfill
-  - [ ] portfolio: the status page
+  - [x] cloud-homelab (#38): the games bucket, Glue table, Athena
+        workgroup, archiver and the observer's live file; Charlie
+        applied 2026-11-08 and backfilled 728 games
+  - [x] portfolio (#11): the status page, `stargazer-bot.html`
 - [ ] 5d: deploys gated on SPRT, from GitHub Actions, with rollback
 - [ ] 5e: chaos drills, written up as postmortems
 - [ ] 5f: the AI responder
