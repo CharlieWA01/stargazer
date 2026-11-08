@@ -381,10 +381,36 @@ background worker, at full strength, one second a move.
     day of 20+ games goes over 5%), and alarms on any error, 2+ restarts
     a day, 5+ connection drops an hour. Refused challenges stay
     report-only.
+- **Game history and the status page (5c), decided 2026-11-07:** built
+  in cloud-homelab (`terraform/prod/stargazer-history.tf`, its
+  DECISIONS.md 2026-11-07); design doc "Stargazer 5c: game history and
+  status page" (Claude Docs):
+  - an **archiver** Lambda runs nightly at 22:50 Chicago time, after the
+    server is off. It fetches the day's finished games from Lichess (one
+    request, moves, clocks and openings, no token) and saves them as one
+    gzipped JSON-lines file per day in a private S3 bucket
+    (`games/dt=YYYY-MM-DD/`). Every game since 2026-10-26 is backfilled
+    once;
+  - **Athena** reads them through a Glue table whose daily partitions are
+    projected from the date (no crawler), in its own workgroup that
+    cancels any query reading more than 10 MB. Query results expire
+    after 7 days. Athena is more than 20 MB of games a year needs; it was
+    chosen for the practice (and the exam), at about $0.01 a month;
+  - the archiver then runs a few saved queries (results by speed and
+    colour, rating over time, top openings, recent games), sums 28 days
+    of the observer's DAY rows for the SLOs, and writes `stats.json`;
+    the observer writes `live.json` (online, last check, today's games)
+    at the end of every check. Both go under `data/stargazer/` in the
+    portfolio's site bucket (each Lambda may write its one file and
+    nothing else), with `Cache-Control: max-age=60`;
+  - the **status page** is portfolio's `stargazer-bot.html`, linked from
+    the play page. It fetches the two files from its own site (no other
+    servers, no API, nothing new facing the internet) and treats them as
+    untrusted (text only, never HTML). Alarm states stay off the page
+    for now (5e's postmortems may add incidents).
 - **Open (Milestone 5 design, journal 2026-10-25-lichess-bot-design):**
-  S3 + Athena for game history and a status page on the portfolio site
-  (5c), and deploys gated on SPRT that let games finish (5d). Prod's budget
-  rose to $25 for the server (cloud-homelab PR #28).
+  deploys gated on SPRT that let games finish (5d). Prod's budget rose to
+  $25 for the server (cloud-homelab PR #28).
 - Portfolio tile (decided 2026-10-20): **both** a "play it here" page on the
   portfolio site, with the engine running in the visitor's browser (see
   "Runs in a browser"), and a link to the Lichess bot's profile to show its

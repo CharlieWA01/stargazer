@@ -972,3 +972,35 @@ last tunes the new terms' hand-written guesses too.
 **Cost:** about $0.50 a test, about $2 for the four plus a Stockfish
 match; some evaluation speed for mobility and king safety, measured in
 each PR.
+
+## 2026-11-07: Game history in S3 with Athena; a static status page (Milestone 5c)
+
+**Decision (Charlie, all six recommendations in the 5c design doc):**
+1. **Athena** over the games in S3 (gzipped JSON lines, one file a day),
+   through a Glue table with partition projection, in a workgroup capped
+   at 10 MB a query.
+2. Games are archived **nightly** at 22:50 Chicago time, after the
+   server stops: one Lichess request a day, with moves, clocks and
+   openings. Every game since 2026-10-26 is backfilled once.
+3. The page reads **static JSON files** from its own site; no API.
+4. **The observer** writes the live file at the end of each check.
+5. The SLO numbers on the page come from the observer's **DynamoDB DAY
+   rows** (28 days), not CloudWatch.
+6. The page shows: online now and the last check, today's games, the
+   28-day online and time-loss figures against their targets, rating
+   over time per speed, results by speed and colour, top openings, and
+   the last 10 games linked to Lichess. No alarm states for now.
+**Alternatives:** Python over the DynamoDB game rows instead of Athena
+(about $0 and enough for the sums; Athena was chosen for the practice and
+the exam); Parquet files (a 50 MB+ library for 20 MB of data); archiving
+each game from the observer (many tiny files, more Lichess calls); API
+Gateway or a Lambda function URL for the page (a public endpoint to
+secure and pay for per request); a separate status Lambda reading
+CloudWatch (paid metric reads); CloudWatch for the SLO numbers (paid
+reads, and 5-minute data ages out after 63 days).
+**Why:** nothing new faces the internet, the page can't drift from the
+alarms' own numbers, and every cost is capped.
+**Cost:** about $0.05 a month (Athena about $0.01 at its 10 MB minimum
+per query, S3 writes about $0.02, the rest in free tiers). The trap
+avoided: a nightly Glue crawler, about $4.50 a month. Details:
+cloud-homelab DECISIONS.md, 2026-11-07.
