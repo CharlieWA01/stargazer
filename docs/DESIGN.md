@@ -259,7 +259,9 @@ background worker, at full strength, one second a move.
      too rare in test games for it to show a gain.
   2. **Pawn structure:** doubled -10 / -20, isolated -10 / -15
      (middlegame / endgame), passed pawns +10 to +120 by rank in the
-     endgame on top of the square tables. Backward pawns later.
+     endgame on top of the square tables (10, 15, 25, 45, 75, 120 for
+     the 2nd to 7th rank). Backward pawns later. Built in `eval.rs`
+     (`pawn_structure`); about 4% slower, so no pawn hash table yet.
   3. **Mobility:** safe squares (not own-occupied, not attacked by enemy
      pawns) per knight 4, bishop 5, rook 2 / 4, queen 1 / 2, counted from
      an average so a normal piece scores about 0. Today's ray walking;
