@@ -130,8 +130,9 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
   - [x] Pawn structure: doubled, isolated, passed pawns; PR #50, SPRT
         [0, 10] at 8+0.08: **passed**, +37.8 ± 20.4 Elo over 817 games
         (bench 282819, about 4% slower)
-  - [ ] Mobility: safe squares per piece (ray walking; bench 296359,
-        about 5% slower)
+  - [x] Mobility: safe squares per piece (ray walking; bench 296359,
+        about 5% slower); PR #52, SPRT [0, 10] at 8+0.08: **passed**,
+        +74.0 ± 29.6 Elo over 389 games
   - [ ] King safety: pawn shield, open files, attackers near the king
   - [ ] A Stockfish match after all four
 - [ ] Texel tuning (design section first)
