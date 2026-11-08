@@ -59,9 +59,13 @@ piece. That's why king safety costs no measurable speed.
 - Bench changes, as expected: 296359 nodes becomes **287042**. Speed,
   six runs each, alternating: median about 401,000 positions a second
   against 398,000 for main, the same within the noise.
-- SPRT [0, 10] at 8+0.08 against main: see the PR and the roadmap.
+- SPRT [0, 10] at 8+0.08 against main (`sprt-42432258847-1`):
+  **passed**, +70.6 ± 28.9 Elo over 437 games (191 wins, 141 draws,
+  105 losses; LLR 2.98), in about 13 minutes.
 
 ## Impact
-All four evaluation terms from the design are now built (mop-up was
-tried and dropped). Next: a Stockfish match to put a rating on the
+About +71 Elo at no speed cost. All four evaluation terms from the
+design are now done: mop-up was tried and dropped, and pawn structure
+(+38), mobility (+74) and king safety (+71) together come to about
++180 Elo over the engine before them, measured one step at a time. Next: a Stockfish match to put a rating on the
 whole step, then Texel tuning of every number at once.
