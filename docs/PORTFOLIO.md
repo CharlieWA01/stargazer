@@ -29,7 +29,7 @@ transposition table that remembers searched positions, killer moves,
 history moves, principal variation search, aspiration windows, null-move
 pruning, check extensions, late move reductions, thinking longer
 when the score drops, pawn structure and mobility) passed at +44, +136, +45, +25,
-+19, +8, +73, +33, +113, +11, +38 and +74 Elo; one idea (best-move stability) lost and was dropped. On 2026-10-23 it beat PyChess's engine
++19, +8, +73, +33, +113, +11, +38 and +74 Elo; two ideas were dropped (best-move stability lost; mop-up showed no gain). On 2026-10-23 it beat PyChess's engine
 at full strength for the first time. Measured ratings, from 400-game
 matches against Stockfish at a set strength, on the scale Stockfish's
 levels are tied to (the CCRL list): **about 1900** on 2026-10-24 (64%
