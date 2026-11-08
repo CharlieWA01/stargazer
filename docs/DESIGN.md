@@ -264,8 +264,10 @@ background worker, at full strength, one second a move.
      (`pawn_structure`); about 4% slower, so no pawn hash table yet.
   3. **Mobility:** safe squares (not own-occupied, not attacked by enemy
      pawns) per knight 4, bishop 5, rook 2 / 4, queen 1 / 2, counted from
-     an average so a normal piece scores about 0. Today's ray walking;
-     magic bitboards only if the slowdown costs strength.
+     an average so a normal piece scores about 0 (usual counts: knight 4,
+     bishop 7, rook 7, queen 14). Today's ray walking; magic bitboards
+     only if the slowdown costs strength. Built in `eval.rs`
+     (`mobility`); about 5% slower.
   4. **King safety (middlegame):** shield pawns +10 (+5 one rank
      further), an open file beside the king -15, attackers near the king
      weighted knight 2, bishop 2, rook 3, queen 5 through a table that

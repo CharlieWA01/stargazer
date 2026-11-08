@@ -24,12 +24,12 @@ Spot (16 ARM CPUs, about 2,000 games in 50 minutes for roughly 25 cents)
 and posts a statistical verdict (SPRT) on the pull request. It was proven
 fair by playing the engine against itself: +1.0 ± 7.5 Elo over 2,000
 games. Milestone 4 makes it stronger one measured change at a time: the
-first nine (keeping the best move from an unfinished search, a
+twelve so far (keeping the best move from an unfinished search, a
 transposition table that remembers searched positions, killer moves,
 history moves, principal variation search, aspiration windows, null-move
 pruning, check extensions, late move reductions, thinking longer
-when the score drops, and pawn structure) passed at +44, +136, +45, +25,
-+19, +8, +73, +33, +113, +11 and +38 Elo; one idea (best-move stability) lost and was dropped. On 2026-10-23 it beat PyChess's engine
+when the score drops, pawn structure and mobility) passed at +44, +136, +45, +25,
++19, +8, +73, +33, +113, +11, +38 and +74 Elo; two ideas were dropped (best-move stability lost; mop-up showed no gain). On 2026-10-23 it beat PyChess's engine
 at full strength for the first time. Measured ratings, from 400-game
 matches against Stockfish at a set strength, on the scale Stockfish's
 levels are tied to (the CCRL list): **about 1900** on 2026-10-24 (64%
@@ -59,7 +59,7 @@ matched a local build byte for byte. Click or drag pieces, on a desktop
 or a phone.
 
 ## Games played in testing
-About **48,600** games so far, counted from the recorded test runs (a
+About **49,000** games so far, counted from the recorded test runs (a
 few hundred quick checks, such as self-play and container smoke tests,
 aren't counted). Updated with each test.
 
@@ -71,9 +71,9 @@ local checks), so roughly **4.5 cents per 1,000 games**.
 | What | Games |
 |---|---|
 | Milestone 3: proving the rig fair (first AWS runs, local checks, two 2,000-game self-matches) | 6,619 |
-| Milestone 4 SPRTs: #16 503, #19 235, #21 588, #22 1,095, #23 1,572, #25 6,282, #28 392, #30 753, #31 264, #34 626 + 2,651, #35 5,827 + 2,695 + 1,815 + 3,707, #44 1,692 + 1,731 + 1,434, #46 6,073, #50 817 | 40,752 |
+| Milestone 4 SPRTs: #16 503, #19 235, #21 588, #22 1,095, #23 1,572, #25 6,282, #28 392, #30 753, #31 264, #34 626 + 2,651, #35 5,827 + 2,695 + 1,815 + 3,707, #44 1,692 + 1,731 + 1,434, #46 6,073, #50 817, #52 389 | 41,141 |
 | Stockfish matches: 2026-10-24 against 1800, 1900, then 2100 | 1,200 |
-| **Total** | **48,571** |
+| **Total** | **48,960** |
 
 ## What makes it interesting
 - **Two targets from one codebase:** a native engine (chess GUIs, Lichess
