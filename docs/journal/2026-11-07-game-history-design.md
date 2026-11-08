@@ -34,3 +34,8 @@ the first million objects and requests; crawlers $0.44 per DPU-hour).
 Nothing changes yet. When built: about $0.05 a month, one new private
 bucket, two Lambdas writing one file each into the site bucket, and no
 new public endpoint.
+
+## Follow-up (2026-11-08): live
+Built in cloud-homelab#38 and portfolio#11; Charlie applied the
+Terraform and backfilled every game since 2026-10-26: 728 games, 51 to
+64 a day. The status page reads them from the next nightly run on.
