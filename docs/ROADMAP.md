@@ -119,7 +119,7 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
         Elo over 1,731 games (an earlier run, cut off by AWS at 1,692
         games, stood at -4.5 ± 11.2); 60 seconds + 0.6: **failed**, -19.7
         ± 13.8 over 1,434 games. Dropped (PR #44 keeps the record)
-- [ ] Evaluation terms (design decided 2026-11-07, DESIGN.md section 4),
+- [x] Evaluation terms (design decided 2026-11-07, DESIGN.md section 4),
       one PR and one SPRT [0, 10] at 8+0.08 each, in this order:
   - [x] Mop-up (tried and dropped): in a won endgame against a bare
         king, drive it to the edge and bring your own king close
@@ -136,7 +136,9 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
   - [x] King safety: pawn shield, open files, attackers near the king
         (bench 287042, no measurable slowdown); PR #54, SPRT [0, 10] at
         8+0.08: **passed**, +70.6 ± 28.9 Elo over 437 games
-  - [ ] A Stockfish match after all four
+  - [x] A Stockfish match after all four: **about 2370** (2368 ± 34,
+        59.6% over 400 games against Stockfish 2300 at 10+0.1, 2026-11-08),
+        up from about 2180
 - [ ] Texel tuning (design section first)
 
 ### Milestone 5 steps
