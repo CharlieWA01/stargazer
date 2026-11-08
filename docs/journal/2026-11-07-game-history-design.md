@@ -38,4 +38,5 @@ new public endpoint.
 ## Follow-up (2026-11-08): live
 Built in cloud-homelab#38 and portfolio#11; Charlie applied the
 Terraform and backfilled every game since 2026-10-26: 728 games, 51 to
-64 a day. The status page reads them from the next nightly run on.
+64 a day. The backfill also wrote the first stats.json, so the page
+shows them now; the live file starts with the observer's next check.
