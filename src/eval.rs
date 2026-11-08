@@ -4,13 +4,14 @@
 //! The answer is a score in centipawns (100 = one pawn), from the point of
 //! view of the side to move: +150 means "I'm about a pawn and a half up".
 //!
-//! Three things count so far:
+//! Four things count so far:
 //! - **Material:** pawn 100, knight 320, bishop 330, rook 500, queen 900.
 //! - **Where each piece stands** ("piece-square tables"): knights like the
 //!   centre, pawns like to advance, the king hides in the middlegame and
 //!   walks to the centre in the endgame.
 //! - **Pawn structure:** doubled and isolated pawns are weak, passed
 //!   pawns are strong, more so the further they have gone.
+//! - **Mobility:** pieces with more safe squares to go to are better.
 //!
 //! Every position gets two scores, a middlegame one and an endgame one, and
 //! they're blended by how much material is left ("tapered evaluation").
@@ -21,6 +22,7 @@
 //! numbers later (Milestone 4). Everything sits behind `evaluate`, so
 //! the evaluation can grow or be replaced without touching the search.
 
+use crate::attacks::{bishop_attacks, knight_attacks, pawn_attacks, queen_attacks, rook_attacks};
 use crate::bitboard::Bitboard;
 use crate::board::{Color, Piece, PieceKind, Position, Square};
 
@@ -51,6 +53,23 @@ const ISOLATED: (i32, i32) = (-10, -15);
 /// is its starting rank, 6 the seventh rank), and applies in the endgame,
 /// on top of the square tables' bonus for advancing.
 const PASSED_ENDGAME: [i32; 8] = [0, 10, 15, 25, 45, 75, 120, 0];
+
+/// Mobility (DESIGN.md section 4, decided 2026-11-07): a piece with more
+/// squares to go to is worth more. Only **safe** squares count: not held
+/// by its own pieces, and not attacked by an enemy pawn (a piece that
+/// steps there can be taken by a pawn).
+///
+/// For each kind: (the usual number of safe squares, points per square
+/// above or below it in the middlegame, and in the endgame). Counting
+/// from the usual number keeps a typical piece near 0, so material and
+/// the square tables keep their meaning; a knight stuck on the rim with
+/// 2 squares scores (2 - 4) x 4 = -8, a bishop on an open diagonal with
+/// 11 scores (11 - 7) x 5 = +20. Rooks and queens matter more in the
+/// endgame, when the board opens up.
+const MOBILITY_KNIGHT: (i32, i32, i32) = (4, 4, 4);
+const MOBILITY_BISHOP: (i32, i32, i32) = (7, 5, 5);
+const MOBILITY_ROOK: (i32, i32, i32) = (7, 2, 4);
+const MOBILITY_QUEEN: (i32, i32, i32) = (14, 1, 2);
 
 /// How far a square is from the centre, in rings: 0 for d4, e4, d5, e5;
 /// 1 for the ring around them; 2 for the next; 3 for the edge of the board.
@@ -201,6 +220,10 @@ pub fn evaluate(position: &Position) -> i32 {
     middlegame += pawn_middlegame;
     endgame += pawn_endgame;
 
+    let (mobility_middlegame, mobility_endgame) = mobility(position);
+    middlegame += mobility_middlegame;
+    endgame += mobility_endgame;
+
     // Blend: all middlegame with a full board, all endgame with no pieces
     // left. (Phase can exceed 24 after promotions; cap it.)
     let phase = phase.min(FULL_PHASE);
@@ -254,6 +277,49 @@ fn passed_pawn_path(color: Color, square: Square) -> Bitboard {
         }
     };
     files & Bitboard(ahead)
+}
+
+/// Mobility for both sides, as (middlegame, endgame) scores from White's
+/// point of view.
+fn mobility(position: &Position) -> (i32, i32) {
+    let occupied = position.occupied();
+    let mut middlegame = 0;
+    let mut endgame = 0;
+    for color in Color::BOTH {
+        let sign = match color {
+            Color::White => 1,
+            Color::Black => -1,
+        };
+        let enemy = color.opponent();
+        // Every square an enemy pawn attacks.
+        let mut pawn_guarded = Bitboard::EMPTY;
+        for pawn in position
+            .pieces(Piece::new(enemy, PieceKind::Pawn))
+            .squares()
+        {
+            pawn_guarded |= pawn_attacks(enemy, pawn);
+        }
+        let unsafe_squares = position.occupied_by(color) | pawn_guarded;
+
+        let mut score = |kind: PieceKind, (usual, per_mg, per_eg): (i32, i32, i32)| {
+            for square in position.pieces(Piece::new(color, kind)).squares() {
+                let reach = match kind {
+                    PieceKind::Knight => knight_attacks(square),
+                    PieceKind::Bishop => bishop_attacks(square, occupied),
+                    PieceKind::Rook => rook_attacks(square, occupied),
+                    _ => queen_attacks(square, occupied),
+                };
+                let safe = (reach & !unsafe_squares).count() as i32;
+                middlegame += sign * per_mg * (safe - usual);
+                endgame += sign * per_eg * (safe - usual);
+            }
+        };
+        score(PieceKind::Knight, MOBILITY_KNIGHT);
+        score(PieceKind::Bishop, MOBILITY_BISHOP);
+        score(PieceKind::Rook, MOBILITY_ROOK);
+        score(PieceKind::Queen, MOBILITY_QUEEN);
+    }
+    (middlegame, endgame)
 }
 
 /// Doubled, isolated and passed pawns for both sides, as (middlegame,
@@ -377,6 +443,8 @@ mod tests {
             "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
             // Doubled, isolated and passed pawns on both sides.
             "4k3/1p3pp1/1p6/3P4/7P/2p5/P4P2/4K3 w - - 0 1",
+            // Pieces hemmed in and pieces free, on both sides.
+            "r1b1k2r/ppq2ppp/2n1pn2/3p4/1bPP4/2N1PN2/PP1B1PPP/R2QKB1R w KQkq - 0 8",
         ] {
             assert_eq!(eval(fen), eval(&mirror(fen)), "{fen}");
         }
@@ -468,6 +536,47 @@ mod tests {
         // on e2 is a passed pawn on its seventh rank (and isolated).
         let black_e2 = pawns("4k3/8/8/8/8/8/4p3/K7 w - - 0 1");
         assert_eq!(black_e2.1, -(PASSED_ENDGAME[6] + ISOLATED.1));
+    }
+
+    /// The mobility scores alone, (middlegame, endgame), for White.
+    fn mobile(fen: &str) -> (i32, i32) {
+        mobility(&Position::from_fen(fen).unwrap())
+    }
+
+    #[test]
+    fn a_free_piece_scores_more_than_a_hemmed_in_one() {
+        // A bishop on c1 behind its own pawns on b2 and d2 has no moves;
+        // on f4 with the same pawns it sees 9 squares.
+        let shut_in = mobile("4k3/8/8/8/8/8/1P1P4/2B1K3 w - - 0 1");
+        let free = mobile("4k3/8/8/8/5B2/8/1P1P4/4K3 w - - 0 1");
+        assert_eq!(shut_in, (-7 * 5, -7 * 5));
+        assert!(free.0 > 0 && free.1 > 0, "{free:?}");
+        // A knight in the corner reaches 2 squares, in the centre 8.
+        let corner = mobile("4k3/8/8/8/8/8/8/N3K3 w - - 0 1");
+        let centre = mobile("4k3/8/8/3N4/8/8/8/4K3 w - - 0 1");
+        assert_eq!(corner, (-2 * 4, -2 * 4));
+        assert_eq!(centre, (4 * 4, 4 * 4));
+    }
+
+    #[test]
+    fn squares_an_enemy_pawn_guards_dont_count() {
+        // A knight on d4 reaches 8 squares. Black pawns on d7 and c4
+        // guard c6, e6 (from d7) and b3 (from c4), leaving 5.
+        let free = mobile("4k3/8/8/8/3N4/8/8/4K3 w - - 0 1");
+        let guarded = mobile("4k3/3p4/8/8/2pN4/8/8/4K3 w - - 0 1");
+        assert_eq!(free.0, (8 - 4) * 4);
+        assert_eq!(guarded.0, 4); // one square above the usual 4
+    }
+
+    #[test]
+    fn rooks_and_queens_count_more_in_the_endgame() {
+        // A rook on a1 beside its king on g1 reaches 12 squares: worth 2
+        // a square above the usual 7 in the middlegame, 4 in the endgame.
+        let rook = mobile("4k3/8/8/8/8/8/8/R5K1 w - - 0 1");
+        assert_eq!(rook, ((12 - 7) * 2, (12 - 7) * 4));
+        // And Black's pieces count the other way.
+        let black_knight = mobile("4k3/8/8/3n4/8/8/8/4K3 w - - 0 1");
+        assert_eq!(black_knight, (-4 * 4, -4 * 4));
     }
 
     #[test]
