@@ -271,7 +271,11 @@ background worker, at full strength, one second a move.
   4. **King safety (middlegame):** shield pawns +10 (+5 one rank
      further), an open file beside the king -15, attackers near the king
      weighted knight 2, bishop 2, rook 3, queen 5 through a table that
-     grows faster than linearly.
+     grows faster than linearly. Built in `eval.rs` (`king_safety`):
+     shield and open files only while the king is on its first two
+     ranks; danger = (total weight)² / 2, capped at 250. The attackers
+     are counted inside `mobility`, which already has each piece's
+     reach, so it costs no measurable speed.
   - A pawn hash table only if bench speed drops by more than 10%.
   - Texel tuning after all four, tuning every number at once.
 

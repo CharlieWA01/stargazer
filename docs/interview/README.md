@@ -282,5 +282,5 @@ that way.
   +37.8 ± 20.4 Elo, even though it made the search 4% slower. Lesson:
   a test measures how often a change matters as much as how much, and
   "fixes a real game" isn't the same as "makes the engine stronger".
-  The next term, mobility (also in nearly every position), passed in
-  389 games: +74 Elo.
+  The next terms, mobility and king safety (also in nearly every
+  position), passed in 389 and 437 games: +74 and +71 Elo.

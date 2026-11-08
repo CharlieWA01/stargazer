@@ -133,7 +133,9 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
   - [x] Mobility: safe squares per piece (ray walking; bench 296359,
         about 5% slower); PR #52, SPRT [0, 10] at 8+0.08: **passed**,
         +74.0 ± 29.6 Elo over 389 games
-  - [ ] King safety: pawn shield, open files, attackers near the king
+  - [x] King safety: pawn shield, open files, attackers near the king
+        (bench 287042, no measurable slowdown); PR #54, SPRT [0, 10] at
+        8+0.08: **passed**, +70.6 ± 28.9 Elo over 437 games
   - [ ] A Stockfish match after all four
 - [ ] Texel tuning (design section first)
 
