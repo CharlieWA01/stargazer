@@ -134,6 +134,7 @@ Each step is one PR with its own SPRT test (journal 2026-10-23 has the plan).
         about 5% slower); PR #52, SPRT [0, 10] at 8+0.08: **passed**,
         +74.0 ± 29.6 Elo over 389 games
   - [ ] King safety: pawn shield, open files, attackers near the king
+        (bench 287042, no measurable slowdown)
   - [ ] A Stockfish match after all four
 - [ ] Texel tuning (design section first)
 

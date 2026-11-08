@@ -4,7 +4,7 @@
 //! The answer is a score in centipawns (100 = one pawn), from the point of
 //! view of the side to move: +150 means "I'm about a pawn and a half up".
 //!
-//! Four things count so far:
+//! Five things count so far:
 //! - **Material:** pawn 100, knight 320, bishop 330, rook 500, queen 900.
 //! - **Where each piece stands** ("piece-square tables"): knights like the
 //!   centre, pawns like to advance, the king hides in the middlegame and
@@ -12,6 +12,8 @@
 //! - **Pawn structure:** doubled and isolated pawns are weak, passed
 //!   pawns are strong, more so the further they have gone.
 //! - **Mobility:** pieces with more safe squares to go to are better.
+//! - **King safety** (middlegame): a king behind its pawns is safe; a
+//!   king on open files, or with enemy pieces aiming at it, is not.
 //!
 //! Every position gets two scores, a middlegame one and an endgame one, and
 //! they're blended by how much material is left ("tapered evaluation").
@@ -22,7 +24,9 @@
 //! numbers later (Milestone 4). Everything sits behind `evaluate`, so
 //! the evaluation can grow or be replaced without touching the search.
 
-use crate::attacks::{bishop_attacks, knight_attacks, pawn_attacks, queen_attacks, rook_attacks};
+use crate::attacks::{
+    bishop_attacks, king_attacks, knight_attacks, pawn_attacks, queen_attacks, rook_attacks,
+};
 use crate::bitboard::Bitboard;
 use crate::board::{Color, Piece, PieceKind, Position, Square};
 
@@ -70,6 +74,31 @@ const MOBILITY_KNIGHT: (i32, i32, i32) = (4, 4, 4);
 const MOBILITY_BISHOP: (i32, i32, i32) = (7, 5, 5);
 const MOBILITY_ROOK: (i32, i32, i32) = (7, 2, 4);
 const MOBILITY_QUEEN: (i32, i32, i32) = (14, 1, 2);
+
+/// King safety (DESIGN.md section 4, decided 2026-11-07), middlegame only:
+/// with queens and rooks about, a king needs cover; in the endgame it
+/// should come out and fight, which the square tables already say.
+///
+/// The **pawn shield**: for a king still on its first two ranks, each of
+/// the three files around it (its own and the ones beside it) earns
+/// +10 for a pawn of its own just in front of the king, or +5 for one a
+/// rank further on. A file there with no pawn of its own at all is an
+/// **open file** for enemy rooks and queens to come down: -15.
+const SHIELD_NEAR: i32 = 10;
+const SHIELD_FAR: i32 = 5;
+const OPEN_FILE_BY_KING: i32 = -15;
+/// **Attackers**: each enemy piece that reaches the king's square or one
+/// next to it adds its weight (knight 2, bishop 2, rook 3, queen 5;
+/// pawns and kings 0). The danger grows with the square of the total, so
+/// one attacker barely matters and several together matter a lot: a
+/// queen alone costs 12, a queen and a knight 24, a queen, rook and
+/// knight 50, capped at 250.
+const ATTACKER_WEIGHT: [i32; 6] = [0, 2, 2, 3, 5, 0];
+const MAX_KING_DANGER: i32 = 250;
+
+fn king_danger(attack_weight: i32) -> i32 {
+    (attack_weight * attack_weight / 2).min(MAX_KING_DANGER)
+}
 
 /// How far a square is from the centre, in rings: 0 for d4, e4, d5, e5;
 /// 1 for the ring around them; 2 for the next; 3 for the edge of the board.
@@ -220,9 +249,11 @@ pub fn evaluate(position: &Position) -> i32 {
     middlegame += pawn_middlegame;
     endgame += pawn_endgame;
 
-    let (mobility_middlegame, mobility_endgame) = mobility(position);
+    let (mobility_middlegame, mobility_endgame, attack_weight) = mobility(position);
     middlegame += mobility_middlegame;
     endgame += mobility_endgame;
+
+    middlegame += king_safety(position, attack_weight);
 
     // Blend: all middlegame with a full board, all endgame with no pieces
     // left. (Phase can exceed 24 after promotions; cap it.)
@@ -280,11 +311,15 @@ fn passed_pawn_path(color: Color, square: Square) -> Bitboard {
 }
 
 /// Mobility for both sides, as (middlegame, endgame) scores from White's
-/// point of view.
-fn mobility(position: &Position) -> (i32, i32) {
+/// point of view. While it has each piece's reach worked out, it also
+/// adds up how hard each side attacks the other's king (the attackers
+/// part of king safety): `attack_weight[White]` is White's pieces
+/// against Black's king.
+fn mobility(position: &Position) -> (i32, i32, [i32; 2]) {
     let occupied = position.occupied();
     let mut middlegame = 0;
     let mut endgame = 0;
+    let mut attack_weight = [0; 2];
     for color in Color::BOTH {
         let sign = match color {
             Color::White => 1,
@@ -300,6 +335,9 @@ fn mobility(position: &Position) -> (i32, i32) {
             pawn_guarded |= pawn_attacks(enemy, pawn);
         }
         let unsafe_squares = position.occupied_by(color) | pawn_guarded;
+        // The enemy king's square and the squares around it.
+        let enemy_king = position.king_square(enemy);
+        let king_zone = king_attacks(enemy_king) | Bitboard::from_square(enemy_king);
 
         let mut score = |kind: PieceKind, (usual, per_mg, per_eg): (i32, i32, i32)| {
             for square in position.pieces(Piece::new(color, kind)).squares() {
@@ -312,6 +350,9 @@ fn mobility(position: &Position) -> (i32, i32) {
                 let safe = (reach & !unsafe_squares).count() as i32;
                 middlegame += sign * per_mg * (safe - usual);
                 endgame += sign * per_eg * (safe - usual);
+                if !(reach & king_zone).is_empty() {
+                    attack_weight[color.index()] += ATTACKER_WEIGHT[kind as usize];
+                }
             }
         };
         score(PieceKind::Knight, MOBILITY_KNIGHT);
@@ -319,7 +360,52 @@ fn mobility(position: &Position) -> (i32, i32) {
         score(PieceKind::Rook, MOBILITY_ROOK);
         score(PieceKind::Queen, MOBILITY_QUEEN);
     }
-    (middlegame, endgame)
+    (middlegame, endgame, attack_weight)
+}
+
+/// King safety for both sides, as a middlegame score from White's point
+/// of view. `attack_weight` comes from `mobility`.
+fn king_safety(position: &Position, attack_weight: [i32; 2]) -> i32 {
+    let mut score = 0;
+    for color in Color::BOTH {
+        let sign = match color {
+            Color::White => 1,
+            Color::Black => -1,
+        };
+        let king = position.king_square(color);
+        let own_pawns = position.pieces(Piece::new(color, PieceKind::Pawn));
+
+        // Shield and open files, only while the king is at home (its
+        // first two ranks), where pawns in front of it can cover it.
+        let home_rank = own_side_index(color, king) / 8;
+        if home_rank <= 1 {
+            let file = king.file() as i32;
+            for f in (file - 1).max(0)..=(file + 1).min(7) {
+                let f = f as u8;
+                if (own_pawns & file_squares(f)).is_empty() {
+                    score += sign * OPEN_FILE_BY_KING;
+                    continue;
+                }
+                // The squares one and two ranks in front of the king,
+                // towards the enemy.
+                let ahead = |steps: usize| {
+                    let rank = home_rank + steps;
+                    match color {
+                        Color::White => Square::new(f, rank as u8),
+                        Color::Black => Square::new(f, 7 - rank as u8),
+                    }
+                };
+                if own_pawns.contains(ahead(1)) {
+                    score += sign * SHIELD_NEAR;
+                } else if own_pawns.contains(ahead(2)) {
+                    score += sign * SHIELD_FAR;
+                }
+            }
+        }
+
+        score -= sign * king_danger(attack_weight[color.opponent().index()]);
+    }
+    score
 }
 
 /// Doubled, isolated and passed pawns for both sides, as (middlegame,
@@ -540,7 +626,8 @@ mod tests {
 
     /// The mobility scores alone, (middlegame, endgame), for White.
     fn mobile(fen: &str) -> (i32, i32) {
-        mobility(&Position::from_fen(fen).unwrap())
+        let (middlegame, endgame, _) = mobility(&Position::from_fen(fen).unwrap());
+        (middlegame, endgame)
     }
 
     #[test]
@@ -579,11 +666,62 @@ mod tests {
         assert_eq!(black_knight, (-4 * 4, -4 * 4));
     }
 
+    /// The king-safety score alone (middlegame), for White.
+    fn safety(fen: &str) -> i32 {
+        let position = Position::from_fen(fen).unwrap();
+        let (_, _, attack_weight) = mobility(&position);
+        king_safety(&position, attack_weight)
+    }
+
+    #[test]
+    fn a_king_behind_its_pawns_is_safer() {
+        // White castled on g1 with pawns f2, g2, h2: three near shield
+        // pawns. Black's king on e8 with no pawns at all: three open files.
+        let home = safety("4k3/8/8/8/8/8/5PPP/6K1 w - - 0 1");
+        assert_eq!(home, 3 * 10 + 3 * 15);
+        // The same pawns pushed a rank (f3, g3, h3) shield less, two
+        // ranks (f4, g4, h4) not at all, but the files aren't open.
+        let pushed = safety("4k3/8/8/8/8/5PPP/8/6K1 w - - 0 1");
+        let far = safety("4k3/8/8/8/5PPP/8/8/6K1 w - - 0 1");
+        assert_eq!(pushed, 3 * 5 + 3 * 15);
+        assert_eq!(far, 3 * 15);
+        // Black's shield counts the other way: f7, g7, h7 for a king on g8.
+        let black = safety("6k1/5ppp/8/8/8/8/8/4K3 w - - 0 1");
+        assert_eq!(black, -(3 * 15) - 3 * 10);
+    }
+
+    #[test]
+    fn a_king_that_has_walked_out_gets_no_shield() {
+        // A king on g3 has left its first two ranks: pawns around it
+        // don't count as a shield, and no file is open "beside it".
+        assert_eq!(safety("4k3/8/8/8/5PPP/6K1/8/8 w - - 0 1"), 3 * 15);
+    }
+
+    #[test]
+    fn attackers_near_the_king_add_up_faster_than_one_by_one() {
+        // White's castled king on g1 behind f2, g2, h2; the squares
+        // next to it are f1, f2, g2, h2 and h1.
+        let quiet = safety("k7/pp6/8/8/8/8/5PPP/6K1 w - - 0 1");
+        // A black queen on h4 reaches f2 and h2 along its lines.
+        let queen = safety("k7/pp6/8/8/7q/8/5PPP/6K1 w - - 0 1");
+        assert_eq!(quiet - queen, king_danger(5));
+        // Add a knight on f4 (it reaches g2) and a rook on d2 (it reaches
+        // f2 along the second rank).
+        let three = safety("k7/pp6/8/8/5n1q/8/3r1PPP/6K1 w - - 0 1");
+        assert_eq!(quiet - three, king_danger(5 + 2 + 3));
+        // Together they cost more than the three would one at a time.
+        assert!(king_danger(10) > king_danger(5) + king_danger(2) + king_danger(3));
+        // A queen whose lines miss the king's squares (a5) doesn't count.
+        let far = safety("k7/pp6/8/q7/8/8/5PPP/6K1 w - - 0 1");
+        assert_eq!(far, quiet);
+    }
+
     #[test]
     fn the_king_hides_in_the_middlegame_and_centralises_in_the_endgame() {
-        // Middlegame (queens and rooks on): a castled king on g1 beats one on e3.
-        let castled = eval("r2qk2r/8/8/8/8/8/8/R2Q1RK1 w - - 0 1");
-        let exposed = eval("r2qk2r/8/8/8/8/4K3/8/R2Q1R2 w - - 0 1");
+        // Middlegame (queens and rooks on): a king castled on g1 behind
+        // its pawns beats one that has walked out to e3.
+        let castled = eval("r2qk2r/8/8/8/8/8/5PPP/R2Q1RK1 w - - 0 1");
+        let exposed = eval("r2qk2r/8/8/8/8/4K3/5PPP/R2Q1R2 w - - 0 1");
         assert!(castled > exposed, "g1 {castled} vs e3 {exposed}");
         // Endgame (kings and pawns only): a central king beats a corner one.
         let central = eval("4k3/p7/8/8/3K4/8/P7/8 w - - 0 1");
