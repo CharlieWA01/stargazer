@@ -56,6 +56,7 @@ testing" table in `docs/PORTFOLIO.md`.
 | 2026-10-24 | `main` after #26 (bench 924579) | 1800 (Stockfish 17.1) | 400 (251 W, 12 D, 137 L) | 10+0.1 | 64.2% | 1902 ± 35 | `match-40099086284-1` |
 | 2026-10-24 | `main` after #28, null-move pruning (bench 942397) | 1900 (Stockfish 17.1) | 400 (262 W, 16 D, 122 L) | 10+0.1 | 67.5% | 2027 ± 35 | `match-40106942104-1` |
 | 2026-10-24 | `main` after #31, check extensions and late move reductions (bench 343857) | 2100 (Stockfish 17.1) | 400 (237 W, 21 D, 142 L) | 10+0.1 | 61.9% | 2184 ± 35 | `match-40140530140-1` |
+| 2026-11-08 | `main` after #54, the evaluation terms: pawn structure, mobility, king safety (bench 287042) | 2300 (Stockfish 17.1) | 400 (225 W, 27 D, 148 L) | 10+0.1 | 59.6% | 2368 ± 34 | `match-42438078050-1` |
 
 ## On your own machine (to watch games)
 

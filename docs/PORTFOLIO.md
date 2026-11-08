@@ -37,7 +37,9 @@ against Stockfish 1800), then **about 2030** the same day after
 null-move pruning (2027 ± 35, 67.5% against Stockfish 1900), the goal
 of about 2000 reached on that scale, and **about 2180** that evening
 after check extensions and late move reductions (2184 ± 35, 61.9%
-against Stockfish 2100).
+against Stockfish 2100). After the evaluation terms (pawn structure,
+mobility, king safety), **about 2370** on 2026-11-08 (2368 ± 34, 59.6%
+against Stockfish 2300).
 
 ## On Lichess
 Since 2026-10-26 it plays rated games on Lichess as
@@ -59,7 +61,7 @@ matched a local build byte for byte. Click or drag pieces, on a desktop
 or a phone.
 
 ## Games played in testing
-About **49,400** games so far, counted from the recorded test runs (a
+About **49,800** games so far, counted from the recorded test runs (a
 few hundred quick checks, such as self-play and container smoke tests,
 aren't counted). Updated with each test.
 
@@ -72,8 +74,8 @@ local checks), so roughly **4.5 cents per 1,000 games**.
 |---|---|
 | Milestone 3: proving the rig fair (first AWS runs, local checks, two 2,000-game self-matches) | 6,619 |
 | Milestone 4 SPRTs: #16 503, #19 235, #21 588, #22 1,095, #23 1,572, #25 6,282, #28 392, #30 753, #31 264, #34 626 + 2,651, #35 5,827 + 2,695 + 1,815 + 3,707, #44 1,692 + 1,731 + 1,434, #46 6,073, #50 817, #52 389, #54 437 | 41,578 |
-| Stockfish matches: 2026-10-24 against 1800, 1900, then 2100 | 1,200 |
-| **Total** | **49,397** |
+| Stockfish matches: 2026-10-24 against 1800, 1900, then 2100; 2026-11-08 against 2300 | 1,600 |
+| **Total** | **49,797** |
 
 ## What makes it interesting
 - **Two targets from one codebase:** a native engine (chess GUIs, Lichess
